@@ -36,12 +36,14 @@ class ParkingLot:
         self.level = 0
         self.slotid= 0
         self.slotEvId = 0
+        # TODO: Remove or repurpose slotid and slotEvId if not used for any logic. See anti-patterns.md.
         self.numOfOccupiedSlots = 0
         self.numOfOccupiedEvSlots = 0
 
     def createParkingLot(self,capacity,evcapacity,level):
         self.slots = [-1] * capacity
         self.evSlots = [-1] * evcapacity
+        # TODO: Refactor to use a single slot collection with EV capability property. See anti-patterns.md.
         self.level = level
         self.capacity = capacity
         self.evCapacity = evcapacity
@@ -58,10 +60,12 @@ class ParkingLot:
                 return i
 
     def getEmptyLevel(self):
+        # TODO: Remove unused method. See anti-patterns.md.
         if (self.numOfOccupiedEvSlots == 0 and self.numOfOccupiedSlots == 0):
             return self.level
 
     def park(self,regnum,make,model,color,ev,motor):
+        # TODO: Refactor to reduce deep nesting and use guard clauses. See anti-patterns.md.
         if (self.numOfOccupiedEvSlots < self.evCapacity or self.numOfOccupiedSlots < self.capacity):
             slotid = -1
             if (ev == 1):
@@ -115,6 +119,7 @@ class ParkingLot:
         return False     
 
     def status(self):
+        # TODO: Decouple UI logic from business logic. Return data instead of directly updating tfield. See anti-patterns.md.
         output = "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         tfield.insert(tk.INSERT, output)
         for i in range(len(self.slots)):
@@ -134,6 +139,7 @@ class ParkingLot:
                 continue
 
     def chargeStatus(self):
+        # TODO: Decouple UI logic from business logic. Return data instead of directly updating tfield. See anti-patterns.md.
         output = "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n"
         tfield.insert(tk.INSERT, output)
         
@@ -145,6 +151,7 @@ class ParkingLot:
                 continue
 
     def getRegNumFromColor(self,color):
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         regnums = []
         for i in self.slots:
 
@@ -155,6 +162,7 @@ class ParkingLot:
         return regnums
             
     def getSlotNumFromRegNum(self,regnum):
+        # TODO: Remove redundant else: continue. See anti-patterns.md.
         for i in range(len(self.slots)):
             if (self.slots[i] != -1):
                 if self.slots[i].regnum == regnum:
@@ -164,6 +172,7 @@ class ParkingLot:
         return -1
             
     def getSlotNumFromColor(self,color): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.slots)):
@@ -174,6 +183,7 @@ class ParkingLot:
         return slotnums
 
     def getSlotNumFromMake(self,make): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.slots)):
@@ -184,6 +194,7 @@ class ParkingLot:
         return slotnums
 
     def getSlotNumFromModel(self,model): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.slots)):
@@ -195,7 +206,7 @@ class ParkingLot:
 
 
     def getRegNumFromColorEv(self,color):
-
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         regnums = []
         for i in self.evSlots:
 
@@ -206,7 +217,7 @@ class ParkingLot:
         return regnums
             
     def getSlotNumFromRegNumEv(self,regnum):
-
+        # TODO: Remove redundant else: continue. See anti-patterns.md.
         for i in range(len(self.evSlots)):
             if (self.evSlots[i] != -1):
                 if str(self.evSlots[i].regnum) == str(regnum):
@@ -216,6 +227,7 @@ class ParkingLot:
         return -1
             
     def getSlotNumFromColorEv(self,color): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.evSlots)):          
@@ -226,6 +238,7 @@ class ParkingLot:
         return slotnums
 
     def getSlotNumFromMakeEv(self,color): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.evSlots)):          
@@ -236,6 +249,7 @@ class ParkingLot:
         return slotnums
 
     def getSlotNumFromModelEv(self,color): 
+        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
         slotnums = []
 
         for i in range(len(self.evSlots)):          
@@ -246,6 +260,7 @@ class ParkingLot:
         return slotnums
 
     def slotNumByReg(self):
+        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
         slot_val = slot1_value.get()
         slotnum = self.getSlotNumFromRegNum(slot_val)
         slotnum2 = self.getSlotNumFromRegNumEv(slot_val)
@@ -260,6 +275,7 @@ class ParkingLot:
         tfield.insert(tk.INSERT, output)
 
     def slotNumByColor(self):
+        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
         slotnums = self.getSlotNumFromColor(slot2_value.get())
         slotnums2 = self.getSlotNumFromColorEv(slot2_value.get())
         output = "Identified slots: " + ', '.join(slotnums) + "\n"
@@ -268,6 +284,7 @@ class ParkingLot:
         tfield.insert(tk.INSERT, output)
 
     def regNumByColor(self):
+        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
         regnums = self.getRegNumFromColor(reg1_value.get())
         regnums2 = self.getRegNumFromColorEv(reg1_value.get())
         output = "Registation Numbers: "+', '.join(regnums) + "\n"        
@@ -276,11 +293,13 @@ class ParkingLot:
         tfield.insert(tk.INSERT, output)
 
     def makeLot(self):
+        # TODO: Add input validation and exception handling. See anti-patterns.md.
         res = self.createParkingLot(int(num_value.get()),int(ev_value.get()),int(level_value.get()),)
         output = 'Created a parking lot with '+num_value.get()+' regular slots and '+ev_value.get()+' ev slots on level: '+level_value.get()+ "\n"
         tfield.insert(tk.INSERT, output)
 
     def parkCar(self):  
+        # TODO: Add input validation and exception handling. See anti-patterns.md.
         res = self.park(reg_value.get(),make_value.get(),model_value.get(),color_value.get(),ev_car_value.get(),ev_motor_value.get())
         if res == -1:
             tfield.insert(tk.INSERT, "Sorry, parking lot is full\n")

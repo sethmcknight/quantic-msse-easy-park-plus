@@ -1,4 +1,4 @@
-
+# TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.
 class ElectricVehicle:
     def __init__(self,regnum,make,model,color):
         self.color = color
@@ -21,12 +21,13 @@ class ElectricVehicle:
 
     def setCharge(self, charge):
         self.charge = charge
-
+    # TODO: Remove or implement setCharge if needed. Currently unused. See anti-patterns.md.
     def getCharge(self):
         return self.charge
 
 class ElectricCar:
     def __init__(self,regnum,make,model,color):
+        # TODO: Use proper inheritance from ElectricVehicle. See anti-patterns.md.
         ElectricVehicle.__init__(self,regnum,make,model,color)
 
     def getType(self):
@@ -34,6 +35,7 @@ class ElectricCar:
 
 class ElectricBike:
     def __init__(self,regnum,make,model,color):
+        # TODO: Use proper inheritance from ElectricVehicle. See anti-patterns.md.
         ElectricVehicle.__init__(self,regnum,make,model,color)
 
     def getType(self):
