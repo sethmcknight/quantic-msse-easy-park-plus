@@ -194,11 +194,67 @@
         - Conclusion: ElectricVehicle.setCharge() appears to be an unused method. Potential dead code. (This also implies the charge feature is incomplete, as charges never change from 0).
 - Potentially Redundant Instance Variables in ParkingLot (ParkingManager.py):
     - self.slotid and self.slotEvId initialized in ParkingLot.__init__:
-        - In the ParkingLot.park() method, the actual slotid assigned to a vehicle comes from self.getEmptySlot() or self.getEmptyEvSlot(). If the lines self.slotid = self.slotid + 1 and self.slotEvId = self.slotEvId + 1 (which were commented out in some earlier suggestions but might be present in your code) are indeed present and uncommented, these variables would act as simple counters for the number of vehicles parked, or perhaps an attempt to generate unique IDs. However, if these variables are only incremented and their values are never read or used for any decision-making, ID assignment, or output, then the increment operations and potentially the variables themselves (if not used for any other purpose) could be considered dead or redundant in their current role. The actual slot index is determined by finding an empty slot. This is more nuanced: if they are intended to be a separate ID system or a count, they might not be "dead" but their purpose and interaction with the slot finding logic is unclear and potentially redundant. If they are not used for anything after being incremented, then the incrementing part is dead.
+        - In the ParkingLot.park() method, the actual slotid assigned to a vehicle comes from self.getEmptySlot() or self.getEmptyEvSlot(). 
+        - self.slotid = self.slotid + 1 and self.slotEvId = self.slotEvId + 1 act as simple counters for the number of vehicles parked, or perhaps an attempt to generate unique IDs.
+        - if these variables are only incremented and their values are never read or used for any decision-making, ID assignment, or output, then the increment operations and potentially the variables themselves could be considered dead or redundant in their current role. 
+        The actual slot index is determined by finding an empty slot.
 - Summary
     - Global variables in ParkingManager.py: command_value, level_remove_value.
     - Method in ParkingLot: getEmptyLevel().
     - Methods in Vehicle.py and ElectricVehicle.py: All getType() methods, ElectricVehicle.setCharge().
 
 # Unnecessary abstractions
-- 
+- Vehicle Hierarchy
+    - Vehicle Subclasses only override the getType method
+    - These getType() methods are unused in the application
+    - This inheritance hierarchy adds complexity without functionality
+- ElectricVehicle Hierarchy
+    - ElectricCar and ElectricBike classes don't properly inherit from ElectricVehicle
+    - They attempt to call ElectricVehicle.__init__() directly, which is an incorrect OOP pattern
+    - Their getType() methods are never used
+- Duplicate Vehicle/ElectricVehicle Structure
+    - Vehicle and ElectricVehicle share almost identical properties and methods
+    - The only difference is that ElectricVehicle has a charge property
+    - This creates unnecessary code duplication rather than using proper inheritance
+- Redundant Search Methods
+    - Multiple nearly-identical search methods in ParkingLot:
+        - getRegNumFromColor / getRegNumFromColorEv
+        - getSlotNumFromRegNum / getSlotNumFromRegNumEv
+        - getSlotNumFromColor / getSlotNumFromColorEv
+        - And several others that all follow the same pattern
+- Parallel Slot Collections
+    - The code keeps separate arrays (self.slots and self.evSlots) with duplicated operations
+    - A more elegant approach would be a single collection of slots with properties indicating EV capabilities 
+
+# Other Anti-Patterns & Bad Practices
+1. Violation of Single Responsibility Principle
+The ParkingLot class handles too many responsibilities:
+- Managing slot allocation
+- Vehicle data management
+- Direct UI interactions (calls to tfield.insert())
+- Search functionality
+- Status reporting
+This makes the class difficult to maintain, test, and extend.
+
+2. UI-Business Logic Coupling
+The ParkingLot class directly manipulates the UI via tfield.insert()
+This tight coupling makes it impossible to separate business logic from presentation
+Methods like status(), chargeStatus(), etc., should return data instead of directly updating the UI
+3. Lack of Input Validation
+User inputs are used without validation in multiple places
+For example, in removeCar() and makeLot(), there's no checking if inputs are valid integers
+Could lead to runtime errors with invalid user input
+4. Inconsistent Method Naming
+Some methods follow getXFromY pattern: getSlotNumFromRegNum
+While others use a different pattern: slotNumByReg
+This inconsistency makes the API harder to learn and use
+5. Improper Exception Handling
+Integer conversions (int()) are used without try/except blocks
+No error handling strategy for invalid inputs or unexpected states
+6. Direct Property Access vs. Getters
+Classes define getter methods like getMake(), but the code accesses properties directly:
+Inconsistent usage pattern makes code harder to maintain
+7. Hard-Coded UI Elements
+UI layout, colors, and font sizes are hard-coded throughout the application
+Makes the UI difficult to update or adapt to different environments
+These issues compound the already identified anti-patterns and further reduce code maintainability and extensibility.
