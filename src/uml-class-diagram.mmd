@@ -1,0 +1,91 @@
+---
+title: Easy Park Plus UML Class Diagram
+---
+classDiagram
+    class Vehicle {
+        -regnum
+        -make
+        -model
+        -color
+        +getMake()
+        +getModel()
+        +getColor()
+        +getRegNum()
+    }
+    class Car {
+        +getType()
+    }
+    class Truck {
+        +getType()
+    }
+    class Motorcycle {
+        +getType()
+    }
+    class Bus {
+        +getType()
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Motorcycle
+    Vehicle <|-- Bus
+
+    class ElectricVehicle {
+        -regnum
+        -make
+        -model
+        -color
+        -charge
+        +getMake()
+        +getModel()
+        +getColor()
+        +getRegNum()
+        +setCharge(charge)
+        +getCharge()
+    }
+    class ElectricCar {
+        +getType()
+    }
+    class ElectricBike {
+        +getType()
+    }
+    ElectricVehicle <|-- ElectricCar
+    ElectricVehicle <|-- ElectricBike
+
+    class ParkingLot {
+        -capacity
+        -evCapacity
+        -level
+        -slotid
+        -slotEvId
+        -numOfOccupiedSlots
+        -numOfOccupiedEvSlots
+        -slots
+        -evSlots
+        +createParkingLot()
+        +getEmptySlot()
+        +getEmptyEvSlot()
+        +getEmptyLevel()
+        +park()
+        +leave()
+        +edit()
+        +status()
+        +chargeStatus()
+        +getRegNumFromColor()
+        +getSlotNumFromRegNum()
+        +getSlotNumFromColor()
+        +getSlotNumFromMake()
+        +getSlotNumFromModel()
+        +getRegNumFromColorEv()
+        +getSlotNumFromRegNumEv()
+        +getSlotNumFromColorEv()
+        +getSlotNumFromMakeEv()
+        +getSlotNumFromModelEv()
+        +slotNumByReg()
+        +slotNumByColor()
+        +regNumByColor()
+        +makeLot()
+        +parkCar()
+        +removeCar()
+    }
+    ParkingLot "*" o-- "*" Vehicle : contains
+    ParkingLot "*" o-- "*" ElectricVehicle : contains
