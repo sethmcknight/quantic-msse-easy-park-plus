@@ -150,17 +150,10 @@ class ParkingLot:
             else:
                 continue
 
-    def getRegNumFromColor(self,color):
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        regnums = []
-        for i in self.slots:
-
-            if i == -1:
-                continue
-            if i.color == color:
-                regnums.append(i.regnum)
-        return regnums
-            
+    def getRegNumFromColor(self, color: str) -> list[str]:
+        # Refactored with list comprehensions for clarity.
+        return [str(i.regnum) for i in self.slots if i != -1 and hasattr(i, 'color') and i.color == color]
+    
     def getSlotNumFromRegNum(self,regnum):
         # TODO: Remove redundant else: continue. See anti-patterns.md.
         for i in range(len(self.slots)):
@@ -171,50 +164,21 @@ class ParkingLot:
                     continue
         return -1
             
-    def getSlotNumFromColor(self,color): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
+    def getSlotNumFromColor(self, color: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'color') and i.color == color]
 
-        for i in range(len(self.slots)):
-            if self.slots[i] == -1:
-                continue
-            if self.slots[i].color == color:
-                slotnums.append(str(i+1))
-        return slotnums
+    def getSlotNumFromMake(self, make: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'make') and i.make == make]
 
-    def getSlotNumFromMake(self,make): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
+    def getSlotNumFromModel(self, model: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'model') and i.model == model]
 
-        for i in range(len(self.slots)):
-            if self.slots[i] == -1:
-                continue
-            if self.slots[i].make == make:
-                slotnums.append(str(i+1))
-        return slotnums
-
-    def getSlotNumFromModel(self,model): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
-
-        for i in range(len(self.slots)):
-            if self.slots[i] == -1:
-                continue
-            if self.slots[i].model == model:
-                slotnums.append(str(i+1))
-        return slotnums
-
-
-    def getRegNumFromColorEv(self,color):
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        regnums = []
-        for i in self.evSlots:
-
-            if i == -1:
-                continue
-            if i.color == color:
-                regnums.append(i.regnum)
-        return regnums
+    def getRegNumFromColorEv(self, color: str) -> list[str]:
+        # Refactored with list comprehensions for clarity.
+        return [str(i.regnum) for i in self.evSlots if i != -1 and hasattr(i, 'color') and i.color == color]
             
     def getSlotNumFromRegNumEv(self,regnum):
         # TODO: Remove redundant else: continue. See anti-patterns.md.
@@ -226,38 +190,17 @@ class ParkingLot:
                     continue
         return -1
             
-    def getSlotNumFromColorEv(self,color): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
+    def getSlotNumFromColorEv(self, color: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'color') and i.color == color]
 
-        for i in range(len(self.evSlots)):          
-            if self.evSlots[i] == -1:
-                continue
-            if self.evSlots[i].color == color:
-                slotnums.append(str(i+1))
-        return slotnums
+    def getSlotNumFromMakeEv(self, make: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'make') and i.make == make]
 
-    def getSlotNumFromMakeEv(self,color): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
-
-        for i in range(len(self.evSlots)):          
-            if self.evSlots[i] == -1:
-                continue
-            if self.evSlots[i].make == make:
-                slotnums.append(str(i+1))
-        return slotnums
-
-    def getSlotNumFromModelEv(self,color): 
-        # TODO: Refactor with list comprehensions for clarity. See anti-patterns.md.
-        slotnums = []
-
-        for i in range(len(self.evSlots)):          
-            if self.evSlots[i] == -1:
-                continue
-            if self.evSlots[i].model == model:
-                slotnums.append(str(i+1))
-        return slotnums
+    def getSlotNumFromModelEv(self, model: str) -> list[str]: 
+        # Refactored with list comprehensions for clarity.
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'model') and i.model == model]
 
     def slotNumByReg(self):
         # TODO: Decouple UI logic from business logic. See anti-patterns.md.
