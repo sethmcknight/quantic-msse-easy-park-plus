@@ -154,14 +154,11 @@ class ParkingLot:
         # Refactored with list comprehensions for clarity.
         return [str(i.regnum) for i in self.slots if i != -1 and hasattr(i, 'color') and i.color == color]
     
-    def getSlotNumFromRegNum(self,regnum):
-        # TODO: Remove redundant else: continue. See anti-patterns.md.
-        for i in range(len(self.slots)):
-            if (self.slots[i] != -1):
-                if self.slots[i].regnum == regnum:
-                    return i+1
-                else:
-                    continue
+    def getSlotNumFromRegNum(self, regnum: str) -> int:
+        # Refactored to remove redundant else: continue and added type annotations.
+        for i, slot in enumerate(self.slots):
+            if slot != -1 and hasattr(slot, 'regnum') and str(slot.regnum) == str(regnum):
+                return i + 1
         return -1
             
     def getSlotNumFromColor(self, color: str) -> list[str]: 
