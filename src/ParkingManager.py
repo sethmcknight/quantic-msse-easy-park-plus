@@ -177,16 +177,14 @@ class ParkingLot:
         # Refactored with list comprehensions for clarity.
         return [str(i.regnum) for i in self.evSlots if i != -1 and hasattr(i, 'color') and i.color == color]
             
-    def getSlotNumFromRegNumEv(self,regnum):
-        # TODO: Remove redundant else: continue. See anti-patterns.md.
+    def getSlotNumFromRegNumEv(self,regnum: str) -> int:
+        # Refactored to remove redundant else: continue and added type annotations.
         for i in range(len(self.evSlots)):
             if (self.evSlots[i] != -1):
                 if str(self.evSlots[i].regnum) == str(regnum):
                     return i+1
-                else:
-                    continue
         return -1
-            
+
     def getSlotNumFromColorEv(self, color: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
         return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'color') and i.color == color]
