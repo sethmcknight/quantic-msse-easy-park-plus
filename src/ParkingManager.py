@@ -150,6 +150,8 @@ class ParkingLot:
             else:
                 continue
 
+# Search functions
+
     def getRegNumFromColor(self, color: str) -> list[str]:
         # Refactored with list comprehensions for clarity.
         return [str(i.regnum) for i in self.slots if i != -1 and hasattr(i, 'color') and i.color == color]
@@ -230,6 +232,8 @@ class ParkingLot:
         output = "Registation Numbers (EV): "+', '.join(regnums2) + "\n"        
         tfield.insert(tk.INSERT, output)
 
+# Slot Management Functions
+
     def makeLot(self):
         # TODO: Add input validation and exception handling. See anti-patterns.md.
         res = self.createParkingLot(int(num_value.get()),int(ev_value.get()),int(level_value.get()),)
@@ -253,7 +257,9 @@ class ParkingLot:
         else:
             tfield.insert(tk.INSERT, "Unable to remove a car from slot: " + slot_value.get() + "\n")
 
-             
+
+# Main App
+# TODO: Refactor to separate UI and business logic. See anti-patterns.md.             
 def main():
 
     parkinglot = ParkingLot()
