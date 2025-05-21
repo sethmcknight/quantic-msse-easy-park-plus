@@ -237,7 +237,7 @@ class ParkingLot:
 
 # Slot Management Functions
 
-    def makeLot(self):
+    def makeLot(self) -> None:
         # Input validation and exception handling added.
         try:
             num = int(num_value.get())
@@ -256,7 +256,7 @@ class ParkingLot:
         except Exception as e:
             tfield.insert(tk.INSERT, f"Error creating parking lot: {e}\n")
 
-    def parkCar(self):  
+    def parkCar(self) -> None:  
         # Input validation and exception handling added.
         try:
             reg = reg_value.get().strip()
@@ -281,13 +281,31 @@ class ParkingLot:
         except Exception as e:
             tfield.insert(tk.INSERT, f"Error parking car: {e}\n")
 
-    def removeCar(self):
-        status = self.leave(int(slot_value.get()),int(ev_car2_value.get()))
-        if status:
-            output = 'Slot number '+str(slot_value.get())+' is free\n'
-            tfield.insert(tk.INSERT, output)
-        else:
-            tfield.insert(tk.INSERT, "Unable to remove a car from slot: " + slot_value.get() + "\n")
+    def removeCar(self) -> None:
+        # Input validation and exception handling added.
+        try:
+            slot_str = slot_value.get()
+            ev_str = ev_car2_value.get()
+            slot_num = int(slot_str)
+            ev_flag = int(ev_str)
+            if slot_num < 1:
+                tfield.insert(tk.INSERT, "Invalid input: Slot number must be a positive integer.\n")
+                return
+        except ValueError:
+            tfield.insert(tk.INSERT, "Invalid input: Please enter a valid slot number.\n")
+            return
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error reading input: {e}\n")
+            return
+        try:
+            status = self.leave(slot_num, ev_flag)
+            if status:
+                output = f'Slot number {slot_num} is free\n'
+                tfield.insert(tk.INSERT, output)
+            else:
+                tfield.insert(tk.INSERT, f"Unable to remove a car from slot: {slot_num}\n")
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error removing car: {e}\n")
 
 
 # Main App
