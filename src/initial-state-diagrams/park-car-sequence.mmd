@@ -1,0 +1,55 @@
+---
+title: Easy Park Plus - Park Car Sequence Diagram
+---
+
+sequenceDiagram
+
+    participant User
+    participant GUI
+    participant ParkingLot
+    participant ParkingLevel
+    participant ParkingSlot
+    participant Vehicle
+    participant EVCharger
+
+    User->>GUI: Clicks 'Park Car' button
+    GUI->>ParkingLot: park(vehicle)
+    ParkingLot->>ParkingLot: park(regnum, make, model, color, ev, motor)
+    alt Vehicle
+        alt Vehicle
+            alt Car
+                ParkingLot->>ParkingLevel: findAvailableSlot()
+                ParkingLevel->>ParkingSlot: findAvailableSlot()
+                ParkingSlot-->>ParkingLevel: slot number
+                ParkingLot->>Vehicle: Car(regnum, make, model, color)
+            else Motorcycle
+                ParkingLot->>ParkingLevel: findAvailableSlot()
+                ParkingLevel->>ParkingSlot: findAvailableSlot()
+                ParkingSlot-->>ParkingLevel: slot number
+            end
+                ParkingLot->>Vehicle: Motorcycle(regnum, make, model, color)
+        else ElectricVehicle
+            alt ElectricCar
+                ParkingLot->>ParkingLevel: findAvailableSlot()
+                ParkingLevel->>ParkingSlot: findAvailableSlot()
+                ParkingSlot-->>ParkingLevel: slot number
+                ParkingLot->>ElectricVehicle: ElectricCar(regnum, make, model, color)
+                ParkingLot->>EVCharger: findAvailableCharger()
+                EVCharger-->>ParkingLot: charger number
+            else ElectricBike
+                ParkingLot->>ParkingLevel: findAvailableSlot()
+                ParkingLevel->>ParkingSlot: findAvailableSlot()
+                ParkingSlot-->>ParkingLevel: slot number
+                ParkingLot->>ElectricVehicle: ElectricBike(regnum, make, model, color)
+                ParkingLot->>EVCharger: findAvailableCharger()
+                EVCharger-->>ParkingLot: charger number
+            end
+        end
+    end
+    ParkingLot-->>GUI: Return slot number or error
+    GUI-->>User: Display result (slot allocated or full)
+
+
+
+
+
