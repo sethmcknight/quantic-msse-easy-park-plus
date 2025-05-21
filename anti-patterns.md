@@ -235,7 +235,6 @@ The ParkingLot class handles too many responsibilities:
 - Search functionality
 - Status reporting
 This makes the class difficult to maintain, test, and extend.
-
 2. UI-Business Logic Coupling
 The ParkingLot class directly manipulates the UI via tfield.insert()
 This tight coupling makes it impossible to separate business logic from presentation
@@ -258,3 +257,5 @@ Inconsistent usage pattern makes code harder to maintain
 UI layout, colors, and font sizes are hard-coded throughout the application
 Makes the UI difficult to update or adapt to different environments
 These issues compound the already identified anti-patterns and further reduce code maintainability and extensibility.
+8. Magic Numbers (ie -1) instead of specific statements
+Replace use of Magic Numbers with None / is None in slot Management
