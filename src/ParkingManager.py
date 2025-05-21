@@ -235,10 +235,23 @@ class ParkingLot:
 # Slot Management Functions
 
     def makeLot(self):
-        # TODO: Add input validation and exception handling. See anti-patterns.md.
-        res = self.createParkingLot(int(num_value.get()),int(ev_value.get()),int(level_value.get()),)
-        output = 'Created a parking lot with '+num_value.get()+' regular slots and '+ev_value.get()+' ev slots on level: '+level_value.get()+ "\n"
-        tfield.insert(tk.INSERT, output)
+        # Input validation and exception handling added.
+        try:
+            num = int(num_value.get())
+            ev = int(ev_value.get())
+            level = int(level_value.get())
+            if num < 0 or ev < 0 or level < 1:
+                tfield.insert(tk.INSERT, "Invalid input: All values must be positive integers.\n")
+                return
+        except ValueError:
+            tfield.insert(tk.INSERT, "Invalid input: Please enter valid numbers for all fields.\n")
+            return
+        try:
+            res = self.createParkingLot(num, ev, level)
+            output = f'Created a parking lot with {num} regular slots and {ev} ev slots on level: {level}\n'
+            tfield.insert(tk.INSERT, output)
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error creating parking lot: {e}\n")
 
     def parkCar(self):  
         # TODO: Add input validation and exception handling. See anti-patterns.md.

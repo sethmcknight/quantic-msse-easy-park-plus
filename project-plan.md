@@ -32,10 +32,16 @@
 **Priority:** High  
 **Estimated Time:** 3 hours  
 **Description:** Identify where design patterns could improve the architecture and functionality.
-- [ ] Research applicable design patterns for parking management systems
+- [X] Research applicable design patterns for parking management systems
 - [ ] Identify at least 4 potential patterns to consider
+    1.
+    2.
+    3.
+    4.
 - [ ] Document how each pattern could benefit the application
 - [ ] Select the 2 most impactful patterns to implement
+    1.
+    2.
 
 
 
