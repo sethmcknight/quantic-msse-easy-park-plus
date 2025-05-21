@@ -4,29 +4,29 @@
 **Priority:** High  
 **Estimated Time:** 4 hours  
 **Description:** Run and thoroughly understand the existing parking lot manager application.
-- [ ] Create a document summarizing application functionality
-    - [ ] Document the current features and behavior
-    - [ ] Identify key components and their relationships
+- [X] Create a document summarizing application functionality
+- [X] Document the current features and behavior
+- [X] Identify key components and their relationships
 
 ### Issue #5: Original UML Diagrams
 **Priority:** Medium  
 **Estimated Time:** 6 hours  
 **Description:** Create structural and behavioral UML diagrams for the original codebase.
-- [ ] Create a class/component diagram (structural)
-- [ ] Create a sequence/activity diagram (behavioral)
-- [ ] Ensure diagrams accurately represent the current code structure
-- [ ] Add appropriate annotations and explanations
+- [X] Create a class/component diagram (structural)
+- [X] Create a sequence/activity diagram (behavioral)
+- [X] Ensure diagrams accurately represent the current code structure
+- [X] Add appropriate annotations and explanations
 
 
 ### Issue #3: Anti-Pattern Identification
 **Priority:** High  
 **Estimated Time:** 4 hours  
 **Description:** Review the codebase to identify all anti-patterns and problematic code practices.
-- [ ] Review variable naming conventions
-- [ ] Identify poor code structure and organization
-- [ ] Look for dead code and unnecessary abstractions
-- [ ] Document all identified anti-patterns with line references
-- [ ] Prioritize anti-patterns to be fixed
+- [X] Review variable naming conventions
+- [X] Identify poor code structure and organization
+- [X] Look for dead code and unnecessary abstractions
+- [X] Document all identified anti-patterns with line references
+- [X] Prioritize anti-patterns to be fixed
 
 ### Issue #4: Design Pattern Opportunities
 **Priority:** High  
