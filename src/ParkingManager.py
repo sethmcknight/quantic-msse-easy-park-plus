@@ -128,7 +128,7 @@ class ParkingLot:
             self.evSlots[slotid-1] = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
             return True
         else:
-            self.slots[slotid-1] = Vehicle.Car(str(registrationNumber), str(make), str(model), str(color))
+            self.slots[slotid-1] = Vehicle.Car(registrationNumber, make, model, color)
             return True
         return False     
 
