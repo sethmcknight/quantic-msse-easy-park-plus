@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant User
+    participant GUI as tkinter GUI
+    participant PL as ParkingLot
+    participant Level as ParkingLevel
+    participant Slot as ParkingSlot
+    participant Vehicle
+    participant EVCharger as EVCharger
+
+    User->>GUI: Enters vehicle info and clicks "Park Car"
+    GUI->>GUI: Constructs Vehicle or ElectricVehicle instance
+    GUI->>PL: park(vehicle)
+
+    PL->>Level: hasEmptySlotFor(vehicle)
+    alt Slot Available
+        Level->>Slot: assign(vehicle)
+        alt vehicle.isElectric()
+            Slot->>EVCharger: connect(vehicle)
+            Slot->>EVCharger: startCharging()
+        end
+        Slot-->>Level: assigned
+        Level-->>PL: slot ID
+        PL-->>GUI: slot assigned
+        GUI-->>User: Show confirmation
+    else Slot Not Available
+        Level-->>PL: None
+        PL-->>GUI: "Lot Full"
+        GUI-->>User: Show error message
+    end
