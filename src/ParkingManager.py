@@ -1,6 +1,5 @@
 import src.Vehicle as Vehicle
 import src.ElectricVehicle as ElectricVehicle
-import sys
 import tkinter as tk
 from typing import Optional
 
@@ -125,10 +124,10 @@ class ParkingLot:
 
     def edit(self, slotid: int, regnum: str, make: str, model: str, color: str, ev: int) -> bool:
         if (ev == 1):
-            self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum, make, model, color)  # type: ignore
+            self.evSlots[slotid-1] = ElectricVehicle.ElectricCar(str(regnum), str(make), str(model), str(color))
             return True
         else:
-            self.slots[slotid] = Vehicle.Car(regnum, make, model, color)  # type: ignore
+            self.slots[slotid-1] = Vehicle.Car(str(regnum), str(make), str(model), str(color))
             return True
         return False     
 
