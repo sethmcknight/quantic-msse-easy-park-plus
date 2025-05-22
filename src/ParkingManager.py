@@ -106,7 +106,7 @@ class ParkingLot:
             self.numOfOccupiedSlots += 1
             return slot_index + 1  # Return 1-based slot ID
 
-    def leave(self,slotid,ev):
+    def leave(self, slotid: int, ev: int):
         if (ev == 1):
             if self.numOfOccupiedEvSlots > 0 and self.evSlots[slotid-1] is not None:
                 self.evSlots[slotid-1] = None
@@ -155,57 +155,47 @@ class ParkingLot:
         for i in range(len(self.evSlots)):
             slot = self.evSlots[i]
             if slot is not None:
-                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.charge}\n"
+                charge = getattr(slot, 'charge', 'N/A')
+                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{charge}\n"
                 tfield.insert(tk.INSERT, output)
 
 # Search functions
 
     def getRegNumFromColor(self, color: str) -> list[str]:
-        # Refactored with list comprehensions for clarity.
-        return [str(i.regnum) for i in self.slots if i is not None and hasattr(i, 'color') and i.color == color]
+        return [str(i.regnum) for i in self.slots if i is not None and i.color == color]
     
     def getSlotNumFromRegNum(self, regnum: str) -> int:
-        # Refactored to remove redundant else: continue and added type annotations.
-        for i, slot in enumerate(self.slots):
-            if slot is not None and hasattr(slot, 'regnum') and str(slot.regnum) == str(regnum):
-                return i + 1
+        for idx, slot in enumerate(self.slots):
+            if slot is not None and str(slot.regnum) == str(regnum):
+                return idx + 1
         return -1
             
     def getSlotNumFromColor(self, color: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'color') and i.color == color]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and i.color == color]
 
     def getSlotNumFromMake(self, make: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'make') and i.make == make]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and i.make == make]
 
     def getSlotNumFromModel(self, model: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'model') and i.model == model]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and i.model == model]
 
     def getRegNumFromColorEv(self, color: str) -> list[str]:
-        # Refactored with list comprehensions for clarity.
-        return [str(i.regnum) for i in self.evSlots if i is not None and hasattr(i, 'color') and i.color == color]
+        return [str(i.regnum) for i in self.evSlots if i is not None and i.color == color]
             
     def getSlotNumFromRegNumEv(self,regnum: str) -> int:
-        # Refactored to remove redundant else: continue and added type annotations.
-        for i in range(len(self.evSlots)):
-            if (self.evSlots[i] is not None):
-                if str(self.evSlots[i].regnum) == str(regnum):
-                    return i+1
+        for idx, slot in enumerate(self.evSlots):
+            if slot is not None and str(slot.regnum) == str(regnum):
+                return idx + 1
         return -1
 
     def getSlotNumFromColorEv(self, color: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'color') and i.color == color]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and i.color == color]
 
     def getSlotNumFromMakeEv(self, make: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'make') and i.make == make]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and i.make == make]
 
     def getSlotNumFromModelEv(self, model: str) -> list[str]: 
-        # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'model') and i.model == model]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and i.model == model]
 
     def slotNumByReg(self):
         # TODO: Decouple UI logic from business logic. See anti-patterns.md.
@@ -255,7 +245,7 @@ class ParkingLot:
             tfield.insert(tk.INSERT, "Invalid input: Please enter valid numbers for all fields.\n")
             return
         try:
-            res = self.createParkingLot(num, ev, level)
+            self.createParkingLot(num, ev, level)
             output = f'Created a parking lot with {num} regular slots and {ev} ev slots on level: {level}\n'
             tfield.insert(tk.INSERT, output)
         except Exception as e:

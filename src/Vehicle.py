@@ -1,7 +1,12 @@
 # TODO: Refactor or remove unused getType() methods and unnecessary inheritance hierarchy. See anti-patterns.md.
 #Vehicle class for use with Parking Lot Manager
 class Vehicle:
-    def __init__(self,regnum,make,model,color):
+    color: str
+    regnum: str
+    make: str
+    model: str
+
+    def __init__(self, regnum: str, make: str, model: str, color: str):
         self.color = color
         self.regnum = regnum
         self.make = make
