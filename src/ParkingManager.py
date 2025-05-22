@@ -2,10 +2,11 @@ import src.Vehicle as Vehicle
 import src.ElectricVehicle as ElectricVehicle
 import sys
 import tkinter as tk
+from typing import Optional
 
 root = tk.Tk()
 root.geometry("650x850")
-root.resizable(0,0)
+root.resizable(False, False)
 root.title("Parking Lot Manager")
 
 #input values
@@ -31,33 +32,35 @@ tfield = tk.Text(root, width=70, height=15)
 #Parking Lot class
 class ParkingLot:
     def __init__(self):
-        self.capacity = 0
-        self.evCapacity = 0
-        self.level = 0
-        self.slotid= 0
-        self.slotEvId = 0
-        # TODO: Remove or repurpose slotid and slotEvId if not used for any logic. See anti-patterns.md.
-        self.numOfOccupiedSlots = 0
-        self.numOfOccupiedEvSlots = 0
+        self.capacity: int = 0
+        self.evCapacity: int = 0
+        self.level: int = 0
+        self.slotid: int = 0
+        self.slotEvId: int = 0
+        self.numOfOccupiedSlots: int = 0
+        self.numOfOccupiedEvSlots: int = 0
+        self.slots: list[Optional[Vehicle.Vehicle]] = []
+        self.evSlots: list[Optional[ElectricVehicle.ElectricVehicle]] = []
 
-    def createParkingLot(self,capacity,evcapacity,level):
-        self.slots = [-1] * capacity
-        self.evSlots = [-1] * evcapacity
-        # TODO: Refactor to use a single slot collection with EV capability property. See anti-patterns.md.
+    def createParkingLot(self, capacity: int, evcapacity: int, level: int) -> int:
+        self.slots = [None] * capacity
+        self.evSlots = [None] * evcapacity
         self.level = level
         self.capacity = capacity
         self.evCapacity = evcapacity
         return self.level
 
-    def getEmptySlot(self):
+    def getEmptySlot(self) -> Optional[int]:
         for i in range(len(self.slots)):
-            if self.slots[i] == -1:
+            if self.slots[i] is None:
                 return i
+        return None
 
-    def getEmptyEvSlot(self):
+    def getEmptyEvSlot(self) -> Optional[int]:
         for i in range(len(self.evSlots)):
-            if self.evSlots[i] == -1:
+            if self.evSlots[i] is None:
                 return i
+        return None
 
     def getEmptyLevel(self):
         # TODO: Remove unused method. See anti-patterns.md.
@@ -70,52 +73,57 @@ class ParkingLot:
             slotid = -1
             if (ev == 1):
                 if self.numOfOccupiedEvSlots < self.evCapacity:
-                    slotid = self.getEmptyEvSlot()
+                    empty_slot = self.getEmptyEvSlot()
+                    if empty_slot is None:
+                        return -1
+                    slotid = empty_slot
                     if (motor == 1):
-                        self.evSlots[slotid] = ElectricVehicle.ElectricBike(regnum,make,model,color)
+                        self.evSlots[slotid] = ElectricVehicle.ElectricBike(regnum, make, model, color)  # type: ignore
                     else:
-                        self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum,make,model,color)
-                    self.slotEvId = self.slotEvId+1
+                        self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum, make, model, color)  # type: ignore
+                    self.slotEvId = self.slotEvId + 1
                     self.numOfOccupiedEvSlots = self.numOfOccupiedEvSlots + 1
                     slotid = self.slotEvId
             else:
                 if self.numOfOccupiedSlots < self.capacity:
-                    slotid = self.getEmptySlot()
+                    empty_slot = self.getEmptySlot()
+                    if empty_slot is None:
+                        return -1
+                    slotid = empty_slot
                     if (motor == 1):
-                        self.slots[slotid] = Vehicle.Car(regnum,make,model,color)
+                        self.slots[slotid] = Vehicle.Car(regnum, make, model, color)  # type: ignore
                     else:
-                        self.slots[slotid] = Vehicle.Motorcycle(regnum,make,model,color)
-                    self.slotid = self.slotid+1
+                        self.slots[slotid] = Vehicle.Motorcycle(regnum, make, model, color)  # type: ignore
+                    self.slotid = self.slotid + 1
                     self.numOfOccupiedSlots = self.numOfOccupiedSlots + 1
-                    slotid = self.slotid    
+                    slotid = self.slotid
             return slotid
         else:
             return -1
 
-    def leave(self,slotid,ev):
+    def leave(self, slotid: int, ev: int) -> bool:
         if (ev == 1):
-            if self.numOfOccupiedEvSlots > 0 and self.evSlots[slotid-1] != -1:
-                self.evSlots[slotid-1] = -1
+            if self.numOfOccupiedEvSlots > 0 and self.evSlots[slotid-1] is not None:
+                self.evSlots[slotid-1] = None
                 self.numOfOccupiedEvSlots = self.numOfOccupiedEvSlots - 1
                 return True
             else:
                 return False
         else:
-            if self.numOfOccupiedSlots > 0 and self.slots[slotid-1] != -1:
-                self.slots[slotid-1] = -1
+            if self.numOfOccupiedSlots > 0 and self.slots[slotid-1] is not None:
+                self.slots[slotid-1] = None
                 self.numOfOccupiedSlots = self.numOfOccupiedSlots - 1
                 return True
             else:
                 return False
 
-    def edit(self,slotid,regnum,make,model,color,ev):
+    def edit(self, slotid: int, regnum: str, make: str, model: str, color: str, ev: int) -> bool:
         if (ev == 1):
-            self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum,make,model,color)
+            self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum, make, model, color)  # type: ignore
             return True
         else:
-            self.slots[slotid] = Vehicle.Car(regnum,make,model,color)
+            self.slots[slotid] = Vehicle.Car(regnum, make, model, color)  # type: ignore
             return True
-            
         return False     
 
     def status(self):
@@ -123,81 +131,76 @@ class ParkingLot:
         output = "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         tfield.insert(tk.INSERT, output)
         for i in range(len(self.slots)):
-            if self.slots[i] != -1:
-                output = str(i+1) + "\t" +str(self.level) + "\t" + str(self.slots[i].regnum) + "\t\t" + str(self.slots[i].color) + "\t\t" +str(self.slots[i].make) +"\t\t" +str(self.slots[i].model) +"\n"                    
+            slot = self.slots[i]
+            if slot is not None:
+                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
                 tfield.insert(tk.INSERT, output)
-            else:
-                continue
-            
         output = "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         tfield.insert(tk.INSERT, output)
         for i in range(len(self.evSlots)):
-            if self.evSlots[i] != -1:
-                output = str(i+1) + "\t" +str(self.level) + "\t" + str(self.evSlots[i].regnum) + "\t\t" + str(self.evSlots[i].color) + "\t\t" +str(self.evSlots[i].make) +"\t\t" +str(self.evSlots[i].model) +"\n"                    
+            slot = self.evSlots[i]
+            if slot is not None:
+                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
                 tfield.insert(tk.INSERT, output)
-            else:
-                continue
 
     def chargeStatus(self):
         # TODO: Decouple UI logic from business logic. Return data instead of directly updating tfield. See anti-patterns.md.
         output = "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n"
         tfield.insert(tk.INSERT, output)
-        
         for i in range(len(self.evSlots)):
-            if self.evSlots[i] != -1:
-                output = str(i+1) + "\t" +str(self.level) + "\t" + str(self.evSlots[i].regnum) + "\t\t" + str(self.evSlots[i].charge) +"\n"                    
+            slot = self.evSlots[i]
+            if slot is not None:
+                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.charge}\n"
                 tfield.insert(tk.INSERT, output)
-            else:
-                continue
 
 # Search functions
 
     def getRegNumFromColor(self, color: str) -> list[str]:
         # Refactored with list comprehensions for clarity.
-        return [str(i.regnum) for i in self.slots if i != -1 and hasattr(i, 'color') and i.color == color]
+        return [str(i.regnum) for i in self.slots if i is not None and hasattr(i, 'color') and i.color == color]
     
     def getSlotNumFromRegNum(self, regnum: str) -> int:
         # Refactored to remove redundant else: continue and added type annotations.
         for i, slot in enumerate(self.slots):
-            if slot != -1 and hasattr(slot, 'regnum') and str(slot.regnum) == str(regnum):
+            if slot is not None and hasattr(slot, 'regnum') and str(slot.regnum) == str(regnum):
                 return i + 1
         return -1
             
     def getSlotNumFromColor(self, color: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'color') and i.color == color]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'color') and i.color == color]
 
     def getSlotNumFromMake(self, make: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'make') and i.make == make]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'make') and i.make == make]
 
     def getSlotNumFromModel(self, model: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.slots) if i != -1 and hasattr(i, 'model') and i.model == model]
+        return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and hasattr(i, 'model') and i.model == model]
 
     def getRegNumFromColorEv(self, color: str) -> list[str]:
         # Refactored with list comprehensions for clarity.
-        return [str(i.regnum) for i in self.evSlots if i != -1 and hasattr(i, 'color') and i.color == color]
+        return [str(i.regnum) for i in self.evSlots if i is not None and hasattr(i, 'color') and i.color == color]
             
     def getSlotNumFromRegNumEv(self,regnum: str) -> int:
         # Refactored to remove redundant else: continue and added type annotations.
         for i in range(len(self.evSlots)):
-            if (self.evSlots[i] != -1):
+            if (self.evSlots[i] is not None):
                 if str(self.evSlots[i].regnum) == str(regnum):
                     return i+1
         return -1
 
     def getSlotNumFromColorEv(self, color: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'color') and i.color == color]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'color') and i.color == color]
 
     def getSlotNumFromMakeEv(self, make: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'make') and i.make == make]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'make') and i.make == make]
 
     def getSlotNumFromModelEv(self, model: str) -> list[str]: 
         # Refactored with list comprehensions for clarity.
-        return [str(index + 1) for index, i in enumerate(self.evSlots) if i != -1 and hasattr(i, 'model') and i.model == model]
+        return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and hasattr(i, 'model') and i.model == model]
 
     def slotNumByReg(self):
         # TODO: Decouple UI logic from business logic. See anti-patterns.md.
@@ -234,28 +237,84 @@ class ParkingLot:
 
 # Slot Management Functions
 
-    def makeLot(self):
-        # TODO: Add input validation and exception handling. See anti-patterns.md.
-        res = self.createParkingLot(int(num_value.get()),int(ev_value.get()),int(level_value.get()),)
-        output = 'Created a parking lot with '+num_value.get()+' regular slots and '+ev_value.get()+' ev slots on level: '+level_value.get()+ "\n"
-        tfield.insert(tk.INSERT, output)
-
-    def parkCar(self):  
-        # TODO: Add input validation and exception handling. See anti-patterns.md.
-        res = self.park(reg_value.get(),make_value.get(),model_value.get(),color_value.get(),ev_car_value.get(),ev_motor_value.get())
-        if res == -1:
-            tfield.insert(tk.INSERT, "Sorry, parking lot is full\n")
-        else:
-            output = 'Allocated slot number: '+str(res)+ "\n"
+    def makeLot(self) -> None:
+        # Input validation and exception handling added.
+        try:
+            num = int(num_value.get())
+            ev = int(ev_value.get())
+            level = int(level_value.get())
+            if num < 0 or ev < 0 or level < 1:
+                tfield.insert(tk.INSERT, "Invalid input: All values must be positive integers.\n")
+                return
+        except ValueError:
+            tfield.insert(tk.INSERT, "Invalid input: Please enter valid numbers for all fields.\n")
+            return
+        try:
+            res = self.createParkingLot(num, ev, level)
+            output = f'Created a parking lot with {num} regular slots and {ev} ev slots on level: {level}\n'
             tfield.insert(tk.INSERT, output)
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error creating parking lot: {e}\n")
 
-    def removeCar(self):
-        status = self.leave(int(slot_value.get()),int(ev_car2_value.get()))
-        if status:
-            output = 'Slot number '+str(slot_value.get())+' is free\n'
-            tfield.insert(tk.INSERT, output)
-        else:
-            tfield.insert(tk.INSERT, "Unable to remove a car from slot: " + slot_value.get() + "\n")
+    def parkCar(self) -> None:  
+        # Input validation and exception handling added.
+        try:
+            reg = reg_value.get().strip()
+            make = make_value.get().strip()
+            model = model_value.get().strip()
+            color = color_value.get().strip()
+            ev = ev_car_value.get()
+            motor = ev_motor_value.get()
+            if not reg or not make or not model or not color:
+                tfield.insert(tk.INSERT, "Invalid input: All fields must be filled.\n")
+                return
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error reading input: {e}\n")
+            return
+        try:
+            res = self.park(reg, make, model, color, ev, motor)
+            if res == -1:
+                tfield.insert(tk.INSERT, "Sorry, parking lot is full\n")
+            else:
+                output = 'Allocated slot number: '+str(res)+ "\n"
+                tfield.insert(tk.INSERT, output)
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error parking car: {e}\n")
+
+    def removeCar(self) -> None:
+        # Input validation and exception handling added.
+        try:
+            slot_str = slot_value.get()
+            ev_str = ev_car2_value.get()
+            slot_num = int(slot_str)
+            ev_flag = int(ev_str)
+            if slot_num < 1:
+                tfield.insert(tk.INSERT, "Invalid input: Slot number must be a positive integer.\n")
+                return
+            # Out-of-range check for slot number
+            if ev_flag == 1:
+                if slot_num > len(self.evSlots):
+                    tfield.insert(tk.INSERT, f"Invalid input: Slot number {slot_num} is out of range for EV slots.\n")
+                    return
+            else:
+                if slot_num > len(self.slots):
+                    tfield.insert(tk.INSERT, f"Invalid input: Slot number {slot_num} is out of range for regular slots.\n")
+                    return
+        except ValueError:
+            tfield.insert(tk.INSERT, "Invalid input: Please enter a valid slot number.\n")
+            return
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error reading input: {e}\n")
+            return
+        try:
+            status = self.leave(slot_num, ev_flag)
+            if status:
+                output = f'Slot number {slot_num} is free\n'
+                tfield.insert(tk.INSERT, output)
+            else:
+                tfield.insert(tk.INSERT, f"Unable to remove a car from slot: {slot_num}\n")
+        except Exception as e:
+            tfield.insert(tk.INSERT, f"Error removing car: {e}\n")
 
 
 # Main App
