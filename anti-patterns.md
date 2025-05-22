@@ -131,14 +131,13 @@
     - 4 levels deep of nested if's
     - length combined conditions (slot + ev + motor)
     - superfluous == 1 vs bool (ie `if ev` vs `if ev == 1`)
-    - recommendations
-        - use guard clauses to return early if specific slots aren't available
-        - use booleans
-        - create helper methods for ev/regular to reduce nesting in the main park method
+    - ✅ **RESOLVED:** Refactored to use guard clauses, booleans, and helper methods to reduce nesting in the main park method. See ParkingManager.py.
 - ParkingLot.getSlotFromRegNum(Ev)
     - superfluous else: continue
+    - ✅ **RESOLVED:** Redundant else: continue removed. See ParkingManager.py.
 - ParkingLot.getRegNumFromColor, etc.
     - use list comprehension instead
+    - ✅ **RESOLVED:** Refactored to use list comprehensions. See ParkingManager.py.
 
 # Global Variables
 - Tkinter variables
@@ -278,3 +277,5 @@ Replace use of Magic Numbers with None / is None in slot Management
    - Slot management functions should not directly interact with the UI (`tfield.insert`). Instead, return status or messages and let the UI layer handle display. This will make your code more testable and maintainable.
 17. **Add Docstrings**
    - Add docstrings to all slot management functions to clarify their purpose, parameters, and return values.
+8. Magic Numbers (ie -1) instead of specific statements
+Replace use of Magic Numbers with None / is None in slot Management

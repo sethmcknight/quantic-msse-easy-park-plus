@@ -67,41 +67,47 @@ class ParkingLot:
         if (self.numOfOccupiedEvSlots == 0 and self.numOfOccupiedSlots == 0):
             return self.level
 
-    def park(self,regnum,make,model,color,ev,motor):
-        # TODO: Refactor to reduce deep nesting and use guard clauses. See anti-patterns.md.
-        if (self.numOfOccupiedEvSlots < self.evCapacity or self.numOfOccupiedSlots < self.capacity):
-            slotid = -1
-            if (ev == 1):
-                if self.numOfOccupiedEvSlots < self.evCapacity:
-                    empty_slot = self.getEmptyEvSlot()
-                    if empty_slot is None:
-                        return -1
-                    slotid = empty_slot
-                    if (motor == 1):
-                        self.evSlots[slotid] = ElectricVehicle.ElectricBike(regnum, make, model, color)  # type: ignore
-                    else:
-                        self.evSlots[slotid] = ElectricVehicle.ElectricCar(regnum, make, model, color)  # type: ignore
-                    self.slotEvId = self.slotEvId + 1
-                    self.numOfOccupiedEvSlots = self.numOfOccupiedEvSlots + 1
-                    slotid = self.slotEvId
-            else:
-                if self.numOfOccupiedSlots < self.capacity:
-                    empty_slot = self.getEmptySlot()
-                    if empty_slot is None:
-                        return -1
-                    slotid = empty_slot
-                    if (motor == 1):
-                        self.slots[slotid] = Vehicle.Car(regnum, make, model, color)  # type: ignore
-                    else:
-                        self.slots[slotid] = Vehicle.Motorcycle(regnum, make, model, color)  # type: ignore
-                    self.slotid = self.slotid + 1
-                    self.numOfOccupiedSlots = self.numOfOccupiedSlots + 1
-                    slotid = self.slotid
-            return slotid
+    def _create_ev_vehicle(self, regnum: str, make: str, model: str, color: str, motor: bool):
+        """Helper to create an EV vehicle (car or bike)"""
+        if motor:
+            return ElectricVehicle.ElectricBike(regnum, make, model, color)
         else:
-            return -1
+            return ElectricVehicle.ElectricCar(regnum, make, model, color)
 
-    def leave(self, slotid: int, ev: int) -> bool:
+    def _create_regular_vehicle(self, regnum: str, make: str, model: str, color: str, motor: bool):
+        """Helper to create a regular vehicle (car or motorcycle)"""
+        if motor:
+            return Vehicle.Motorcycle(regnum, make, model, color)
+        else:
+            return Vehicle.Car(regnum, make, model, color)
+
+    def park(self, regnum: str, make: str, model: str, color: str, ev: int, motor: int) -> int:
+        """Parks a vehicle and returns the 1-based slot number, or -1 if full."""
+        ev_bool = bool(ev)
+        motor_bool = bool(motor)
+
+        if ev_bool:
+            if self.numOfOccupiedEvSlots >= self.evCapacity:
+                return -1  # EV lot is full
+            slot_index = self.getEmptyEvSlot()
+            if slot_index is None:
+                return -1  # No available EV slot
+            vehicle_to_park = self._create_ev_vehicle(regnum, make, model, color, motor_bool)
+            self.evSlots[slot_index] = vehicle_to_park
+            self.numOfOccupiedEvSlots += 1
+            return slot_index + 1  # Return 1-based slot ID
+        else:
+            if self.numOfOccupiedSlots >= self.capacity:
+                return -1  # Regular lot is full
+            slot_index = self.getEmptySlot()
+            if slot_index is None:
+                return -1  # No available regular slot
+            vehicle_to_park = self._create_regular_vehicle(regnum, make, model, color, motor_bool)
+            self.slots[slot_index] = vehicle_to_park
+            self.numOfOccupiedSlots += 1
+            return slot_index + 1  # Return 1-based slot ID
+
+    def leave(self,slotid,ev):
         if (ev == 1):
             if self.numOfOccupiedEvSlots > 0 and self.evSlots[slotid-1] is not None:
                 self.evSlots[slotid-1] = None
