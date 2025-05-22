@@ -26,16 +26,16 @@ class Vehicle:
 
 class Car(Vehicle):
 
-    def __init__(self,regnum,make,model,color):
-        Vehicle.__init__(self,regnum,make,model,color)
+    def __init__(self, regnum: str, make: str, model: str, color: str):
+        Vehicle.__init__(self, regnum, make, model, color)
 
     def getType(self):
         return "Car"
 
 class Truck(Vehicle):
 
-    def __init__(self,regnum,make,model,color):
-        Vehicle.__init__(self,regnum,make,model,color)
+    def __init__(self, regnum: str, make: str, model: str, color: str):
+        Vehicle.__init__(self, regnum, make, model, color)
 
     def getType(self):
         return "Truck"
@@ -43,8 +43,8 @@ class Truck(Vehicle):
 
 class Motorcycle(Vehicle):
 
-    def __init__(self,regnum,make,model,color):
-        Vehicle.__init__(self,regnum,make,model,color)
+    def __init__(self, regnum: str, make: str, model: str, color: str):
+        Vehicle.__init__(self, regnum, make, model, color)
 
     def getType(self):
         return "Motorcycle"
@@ -52,8 +52,8 @@ class Motorcycle(Vehicle):
 
 class Bus(Vehicle):
 
-    def __init__(self,regnum,make,model,color):
-        Vehicle.__init__(self,regnum,make,model,color)
+    def __init__(self, regnum: str, make: str, model: str, color: str):
+        Vehicle.__init__(self, regnum, make, model, color)
 
     def getType(self):
         return "Bus"
