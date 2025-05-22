@@ -259,3 +259,22 @@ Makes the UI difficult to update or adapt to different environments
 These issues compound the already identified anti-patterns and further reduce code maintainability and extensibility.
 8. Magic Numbers (ie -1) instead of specific statements
 Replace use of Magic Numbers with None / is None in slot Management
+9. **Reduce Code Duplication**
+   - The logic in `makeLot`, `parkCar`, and `removeCar` for input validation and error handling is very similar. Extract common validation logic into helper methods to avoid repetition.
+10. **Consistent and Clear Naming**
+   - Consider renaming `makeLot` to `createLot` or `initializeLot` for clarity.
+   - Use more descriptive variable names in loops (e.g., `slot_index` instead of `i`).
+11. **Guard Clauses and Early Returns**
+   - In `parkCar` and `removeCar`, use guard clauses to return early on invalid input (already present), but further simplify nested logic in `park` using guard clauses.
+12. **Type Annotations for All Methods**
+   - Ensure all slot management and related methods have full type hints, including parameters and return types.
+13. **Remove Magic Numbers**
+   - Instead of returning `-1` for errors in `park`, return `None` and update callers to check for this. This is more Pythonic and avoids magic numbers.
+14. **Use Enum for Vehicle Types**
+   - Instead of using `ev` and `motor` as integers, use an `Enum` for vehicle types. This makes the code more readable and less error-prone.
+15. **Refactor Slot Collections**
+   - Use a single slot collection with a property indicating EV capability, rather than two parallel lists. This will simplify slot management and searching.
+16. **Decouple UI from Logic**
+   - Slot management functions should not directly interact with the UI (`tfield.insert`). Instead, return status or messages and let the UI layer handle display. This will make your code more testable and maintainable.
+17. **Add Docstrings**
+   - Add docstrings to all slot management functions to clarify their purpose, parameters, and return values.
