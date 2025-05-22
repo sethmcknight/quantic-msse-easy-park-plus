@@ -291,6 +291,15 @@ class ParkingLot:
             if slot_num < 1:
                 tfield.insert(tk.INSERT, "Invalid input: Slot number must be a positive integer.\n")
                 return
+            # Out-of-range check for slot number
+            if ev_flag == 1:
+                if slot_num > len(self.evSlots):
+                    tfield.insert(tk.INSERT, f"Invalid input: Slot number {slot_num} is out of range for EV slots.\n")
+                    return
+            else:
+                if slot_num > len(self.slots):
+                    tfield.insert(tk.INSERT, f"Invalid input: Slot number {slot_num} is out of range for regular slots.\n")
+                    return
         except ValueError:
             tfield.insert(tk.INSERT, "Invalid input: Please enter a valid slot number.\n")
             return
