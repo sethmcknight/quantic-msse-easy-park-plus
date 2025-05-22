@@ -66,21 +66,21 @@ class ParkingLot:
         if (self.numOfOccupiedEvSlots == 0 and self.numOfOccupiedSlots == 0):
             return self.level
 
-    def _create_ev_vehicle(self, regnum: str, make: str, model: str, color: str, motor: bool):
+    def _create_ev_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool):
         """Helper to create an EV vehicle (car or bike)"""
         if motor:
-            return ElectricVehicle.ElectricBike(regnum, make, model, color)
+            return ElectricVehicle.ElectricBike(registrationNumber, make, model, color)
         else:
-            return ElectricVehicle.ElectricCar(regnum, make, model, color)
+            return ElectricVehicle.ElectricCar(registrationNumber, make, model, color)
 
-    def _create_regular_vehicle(self, regnum: str, make: str, model: str, color: str, motor: bool):
+    def _create_regular_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool):
         """Helper to create a regular vehicle (car or motorcycle)"""
         if motor:
-            return Vehicle.Motorcycle(regnum, make, model, color)
+            return Vehicle.Motorcycle(registrationNumber, make, model, color)
         else:
-            return Vehicle.Car(regnum, make, model, color)
+            return Vehicle.Car(registrationNumber, make, model, color)
 
-    def park(self, regnum: str, make: str, model: str, color: str, ev: int, motor: int) -> int:
+    def park(self, registrationNumber: str, make: str, model: str, color: str, ev: int, motor: int) -> int:
         """Parks a vehicle and returns the 1-based slot number, or -1 if full."""
         ev_bool = bool(ev)
         motor_bool = bool(motor)
@@ -91,7 +91,7 @@ class ParkingLot:
             slot_index = self.getEmptyEvSlot()
             if slot_index is None:
                 return -1  # No available EV slot
-            vehicle_to_park = self._create_ev_vehicle(regnum, make, model, color, motor_bool)
+            vehicle_to_park = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
             self.evSlots[slot_index] = vehicle_to_park
             self.numOfOccupiedEvSlots += 1
             return slot_index + 1  # Return 1-based slot ID
@@ -101,7 +101,7 @@ class ParkingLot:
             slot_index = self.getEmptySlot()
             if slot_index is None:
                 return -1  # No available regular slot
-            vehicle_to_park = self._create_regular_vehicle(regnum, make, model, color, motor_bool)
+            vehicle_to_park = self._create_regular_vehicle(registrationNumber, make, model, color, motor_bool)
             self.slots[slot_index] = vehicle_to_park
             self.numOfOccupiedSlots += 1
             return slot_index + 1  # Return 1-based slot ID
@@ -122,12 +122,12 @@ class ParkingLot:
             else:
                 return False
 
-    def edit(self, slotid: int, regnum: str, make: str, model: str, color: str, ev: int) -> bool:
+    def edit(self, slotid: int, registrationNumber: str, make: str, model: str, color: str, ev: int) -> bool:
         if (ev == 1):
-            self.evSlots[slotid-1] = ElectricVehicle.ElectricCar(str(regnum), str(make), str(model), str(color))
+            self.evSlots[slotid-1] = ElectricVehicle.ElectricCar(str(registrationNumber), str(make), str(model), str(color))
             return True
         else:
-            self.slots[slotid-1] = Vehicle.Car(str(regnum), str(make), str(model), str(color))
+            self.slots[slotid-1] = Vehicle.Car(str(registrationNumber), str(make), str(model), str(color))
             return True
         return False     
 
@@ -138,14 +138,14 @@ class ParkingLot:
         for i in range(len(self.slots)):
             slot = self.slots[i]
             if slot is not None:
-                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
+                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
                 tfield.insert(tk.INSERT, output)
         output = "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
         tfield.insert(tk.INSERT, output)
         for i in range(len(self.evSlots)):
             slot = self.evSlots[i]
             if slot is not None:
-                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
+                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
                 tfield.insert(tk.INSERT, output)
 
     def chargeStatus(self):
@@ -156,17 +156,17 @@ class ParkingLot:
             slot = self.evSlots[i]
             if slot is not None:
                 charge = getattr(slot, 'charge', 'N/A')
-                output = f"{i+1}\t{self.level}\t{slot.regnum}\t\t{charge}\n"
+                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{charge}\n"
                 tfield.insert(tk.INSERT, output)
 
 # Search functions
 
     def getRegNumFromColor(self, color: str) -> list[str]:
-        return [str(i.regnum) for i in self.slots if i is not None and i.color == color]
+        return [str(i.registrationNumber) for i in self.slots if i is not None and i.color == color]
     
-    def getSlotNumFromRegNum(self, regnum: str) -> int:
+    def getSlotNumFromRegNum(self, registrationNumber: str) -> int:
         for idx, slot in enumerate(self.slots):
-            if slot is not None and str(slot.regnum) == str(regnum):
+            if slot is not None and str(slot.registrationNumber) == str(registrationNumber):
                 return idx + 1
         return -1
             
@@ -180,11 +180,11 @@ class ParkingLot:
         return [str(index + 1) for index, i in enumerate(self.slots) if i is not None and i.model == model]
 
     def getRegNumFromColorEv(self, color: str) -> list[str]:
-        return [str(i.regnum) for i in self.evSlots if i is not None and i.color == color]
+        return [str(i.registrationNumber) for i in self.evSlots if i is not None and i.color == color]
             
-    def getSlotNumFromRegNumEv(self,regnum: str) -> int:
+    def getSlotNumFromRegNumEv(self, registrationNumber: str) -> int:
         for idx, slot in enumerate(self.evSlots):
-            if slot is not None and str(slot.regnum) == str(regnum):
+            if slot is not None and str(slot.registrationNumber) == str(registrationNumber):
                 return idx + 1
         return -1
 
