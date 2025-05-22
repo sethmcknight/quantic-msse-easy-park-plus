@@ -1,42 +1,46 @@
 # TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.
 class ElectricVehicle:
-    def __init__(self,regnum,make,model,color):
+    color: str
+    registrationNumber: str
+    make: str
+    model: str
+    charge: int
+
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
         self.color = color
-        self.regnum = regnum
+        self.registrationNumber = registrationNumber
         self.make = make
         self.model = model
         self.charge = 0
 
-    def getMake(self):
+    def getMake(self) -> str:
         return self.make
 
-    def getModel(self):
+    def getModel(self) -> str:
         return self.model
 
-    def getColor(self):
+    def getColor(self) -> str:
         return self.color
 
-    def getRegNum(self):
-        return self.regnum
+    def getRegistrationNumber(self) -> str:
+        return self.registrationNumber
 
-    def setCharge(self, charge):
+    def setCharge(self, charge: int):
         self.charge = charge
     # TODO: Remove or implement setCharge if needed. Currently unused. See anti-patterns.md.
-    def getCharge(self):
+    def getCharge(self) -> int:
         return self.charge
 
-class ElectricCar:
-    def __init__(self,regnum,make,model,color):
-        # TODO: Use proper inheritance from ElectricVehicle. See anti-patterns.md.
-        ElectricVehicle.__init__(self,regnum,make,model,color)
+class ElectricCar(ElectricVehicle):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
+        super().__init__(registrationNumber, make, model, color)
 
-    def getType(self):
+    def getType(self) -> str:
         return "Car"
 
-class ElectricBike:
-    def __init__(self,regnum,make,model,color):
-        # TODO: Use proper inheritance from ElectricVehicle. See anti-patterns.md.
-        ElectricVehicle.__init__(self,regnum,make,model,color)
+class ElectricBike(ElectricVehicle):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
+        super().__init__(registrationNumber, make, model, color)
 
-    def getType(self):
+    def getType(self) -> str:
         return "Motorcycle"
