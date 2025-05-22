@@ -122,9 +122,10 @@ class ParkingLot:
             else:
                 return False
 
-    def edit(self, slotid: int, registrationNumber: str, make: str, model: str, color: str, ev: int) -> bool:
-        if (ev == 1):
-            self.evSlots[slotid-1] = ElectricVehicle.ElectricCar(str(registrationNumber), str(make), str(model), str(color))
+    def edit(self, slotid: int, registrationNumber: str, make: str, model: str, color: str, ev: int, motor: int) -> bool:
+        if ev == 1:
+            motor_bool = bool(motor)
+            self.evSlots[slotid-1] = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
             return True
         else:
             self.slots[slotid-1] = Vehicle.Car(str(registrationNumber), str(make), str(model), str(color))
