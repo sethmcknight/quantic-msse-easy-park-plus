@@ -1,14 +1,21 @@
-import src.Vehicle as Vehicle
-import src.ElectricVehicle as ElectricVehicle
 import tkinter as tk
-from typing import Optional
+from typing import List, Optional, Union, TypeVar, cast
+from src.Vehicle import Vehicle, Car, Motorcycle
+from src.ElectricVehicle import ElectricVehicle, ElectricCar, ElectricBike
+from src.parking_data import ParkingStatus, ChargeStatus, SearchResult, ParkingResult, VehicleInfo, EVChargeInfo
 
+# Type aliases for clarity
+VehicleType = Union[Vehicle, ElectricVehicle]
+VehicleList = List[Optional[Vehicle]]
+EVList = List[Optional[ElectricVehicle]]
+
+# Global UI elements
 root = tk.Tk()
 root.geometry("650x850")
 root.resizable(False, False)
 root.title("Parking Lot Manager")
 
-#input values
+# Input values
 command_value = tk.StringVar()
 num_value = tk.StringVar()
 ev_value = tk.StringVar()
@@ -27,8 +34,7 @@ ev_motor_value = tk.IntVar()
 level_remove_value = tk.StringVar()
     
 tfield = tk.Text(root, width=70, height=15)
-    
-#Parking Lot class
+
 class ParkingLot:
     def __init__(self):
         self.capacity: int = 0
@@ -38,9 +44,9 @@ class ParkingLot:
         self.slotEvId: int = 0
         self.numOfOccupiedSlots: int = 0
         self.numOfOccupiedEvSlots: int = 0
-        self.slots: list[Optional[Vehicle.Vehicle]] = []
-        self.evSlots: list[Optional[ElectricVehicle.ElectricVehicle]] = []
-
+        self.slots: VehicleList = []
+        self.evSlots: EVList = []
+    
     def createParkingLot(self, capacity: int, evcapacity: int, level: int) -> int:
         self.slots = [None] * capacity
         self.evSlots = [None] * evcapacity
@@ -66,43 +72,43 @@ class ParkingLot:
         if (self.numOfOccupiedEvSlots == 0 and self.numOfOccupiedSlots == 0):
             return self.level
 
-    def _create_ev_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool):
-        """Helper to create an EV vehicle (car or bike)"""
+    def _create_ev_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool) -> ElectricVehicle:
+        """Create an electric vehicle instance"""
         if motor:
-            return ElectricVehicle.ElectricBike(registrationNumber, make, model, color)
+            return ElectricBike(registrationNumber, make, model, color)
         else:
-            return ElectricVehicle.ElectricCar(registrationNumber, make, model, color)
+            return ElectricCar(registrationNumber, make, model, color)
 
-    def _create_regular_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool):
-        """Helper to create a regular vehicle (car or motorcycle)"""
+    def _create_regular_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool) -> Vehicle:
+        """Create a regular vehicle instance"""
         if motor:
-            return Vehicle.Motorcycle(registrationNumber, make, model, color)
+            return Motorcycle(registrationNumber, make, model, color)
         else:
-            return Vehicle.Car(registrationNumber, make, model, color)
+            return Car(registrationNumber, make, model, color)
 
     def park(self, registrationNumber: str, make: str, model: str, color: str, ev: int, motor: int) -> int:
-        """Parks a vehicle and returns the 1-based slot number, or -1 if full."""
+        """Park a vehicle and return its slot number"""
         ev_bool = bool(ev)
         motor_bool = bool(motor)
 
         if ev_bool:
             if self.numOfOccupiedEvSlots >= self.evCapacity:
-                return -1  # EV lot is full
+                return -1
             slot_index = self.getEmptyEvSlot()
             if slot_index is None:
-                return -1  # No available EV slot
-            vehicle_to_park = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
-            self.evSlots[slot_index] = vehicle_to_park
+                return -1
+            vehicle = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
+            self.evSlots[slot_index] = vehicle
             self.numOfOccupiedEvSlots += 1
-            return slot_index + 1  # Return 1-based slot ID
+            return slot_index + 1
         else:
             if self.numOfOccupiedSlots >= self.capacity:
                 return -1  # Regular lot is full
             slot_index = self.getEmptySlot()
             if slot_index is None:
                 return -1  # No available regular slot
-            vehicle_to_park = self._create_regular_vehicle(registrationNumber, make, model, color, motor_bool)
-            self.slots[slot_index] = vehicle_to_park
+            vehicle = self._create_regular_vehicle(registrationNumber, make, model, color, motor_bool)
+            self.slots[slot_index] = vehicle
             self.numOfOccupiedSlots += 1
             return slot_index + 1  # Return 1-based slot ID
 
@@ -130,35 +136,51 @@ class ParkingLot:
         else:
             self.slots[slotid-1] = Vehicle.Car(registrationNumber, make, model, color)
             return True
-        return False     
+        return False        
 
-    def status(self):
-        # TODO: Decouple UI logic from business logic. Return data instead of directly updating tfield. See anti-patterns.md.
-        output = "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
-        tfield.insert(tk.INSERT, output)
-        for i in range(len(self.slots)):
-            slot = self.slots[i]
-            if slot is not None:
-                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
-                tfield.insert(tk.INSERT, output)
-        output = "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n"
-        tfield.insert(tk.INSERT, output)
-        for i in range(len(self.evSlots)):
-            slot = self.evSlots[i]
-            if slot is not None:
-                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{slot.color}\t\t{slot.make}\t\t{slot.model}\n"
-                tfield.insert(tk.INSERT, output)
+    def status(self) -> ParkingStatus:
+        """Get the current status of the parking lot"""
+        regular_vehicles: List[VehicleInfo] = []
+        ev_vehicles: List[VehicleInfo] = []
 
-    def chargeStatus(self):
-        # TODO: Decouple UI logic from business logic. Return data instead of directly updating tfield. See anti-patterns.md.
-        output = "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n"
-        tfield.insert(tk.INSERT, output)
-        for i in range(len(self.evSlots)):
-            slot = self.evSlots[i]
-            if slot is not None:
-                charge = getattr(slot, 'charge', 'N/A')
-                output = f"{i+1}\t{self.level}\t{slot.registrationNumber}\t\t{charge}\n"
-                tfield.insert(tk.INSERT, output)
+        for i, vehicle in enumerate(self.slots):
+            if vehicle:
+                regular_vehicles.append(VehicleInfo(
+                    slot=i+1,
+                    floor=self.level,
+                    reg_no=vehicle.registrationNumber,
+                    color=vehicle.color,
+                    make=vehicle.make,
+                    model=vehicle.model
+                ))
+
+        for i, vehicle in enumerate(self.evSlots):
+            if vehicle:
+                ev_vehicles.append(VehicleInfo(
+                    slot=i+1,
+                    floor=self.level,
+                    reg_no=vehicle.registrationNumber,
+                    color=vehicle.color,
+                    make=vehicle.make,
+                    model=vehicle.model
+                ))
+
+        return ParkingStatus(regular_vehicles=regular_vehicles, ev_vehicles=ev_vehicles)
+
+    def chargeStatus(self) -> ChargeStatus:
+        """Get the charging status of electric vehicles"""
+        charging_vehicles: List[EVChargeInfo] = []
+
+        for i, vehicle in enumerate(self.evSlots):
+            if vehicle:
+                charging_vehicles.append(EVChargeInfo(
+                    slot=i+1,
+                    floor=self.level,
+                    reg_no=vehicle.registrationNumber,
+                    charge=str(vehicle.charge)
+                ))
+
+        return ChargeStatus(vehicles=charging_vehicles)
 
 # Search functions
 
@@ -198,39 +220,53 @@ class ParkingLot:
     def getSlotNumFromModelEv(self, model: str) -> list[str]: 
         return [str(index + 1) for index, i in enumerate(self.evSlots) if i is not None and i.model == model]
 
-    def slotNumByReg(self):
-        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
-        slot_val = slot1_value.get()
-        slotnum = self.getSlotNumFromRegNum(slot_val)
-        slotnum2 = self.getSlotNumFromRegNumEv(slot_val)
-        output = ""
+    def slotNumByReg(self, reg_no: str) -> SearchResult:
+        """Returns slot numbers for vehicles with the given registration number."""
+        slotnum = self.getSlotNumFromRegNum(reg_no)
+        slotnum2 = self.getSlotNumFromRegNumEv(reg_no)
+        
         if slotnum >= 0:
-            output = "Identified slot: " + str(slotnum) + "\n"
+            return SearchResult(
+                result_type='slot',
+                items=[str(slotnum)],
+                is_ev=False
+            )
         elif slotnum2 >= 0:
-            output = "Identified slot (EV): " + str(slotnum2) + "\n"
+            return SearchResult(
+                result_type='slot',
+                items=[str(slotnum2)],
+                is_ev=True
+            )
         else:
-            output = "Not found\n"
+            return SearchResult(
+                result_type='slot',
+                items=[],
+                is_ev=False,
+                error="Not found"
+            )
 
-        tfield.insert(tk.INSERT, output)
+    def slotNumByColor(self, color: str) -> SearchResult:
+        """Returns slot numbers for vehicles with the given color."""
+        regular_slots = self.getSlotNumFromColor(color)
+        ev_slots = self.getSlotNumFromColorEv(color)
+        
+        return SearchResult(
+            result_type='slot',
+            items=regular_slots + ev_slots,
+            is_ev=False  # Combined results, so we don't distinguish
+        )
 
-    def slotNumByColor(self):
-        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
-        slotnums = self.getSlotNumFromColor(slot2_value.get())
-        slotnums2 = self.getSlotNumFromColorEv(slot2_value.get())
-        output = "Identified slots: " + ', '.join(slotnums) + "\n"
-        tfield.insert(tk.INSERT, output)
-        output = "Identified slots (EV): " + ', '.join(slotnums2) + "\n"
-        tfield.insert(tk.INSERT, output)
-
-    def regNumByColor(self):
-        # TODO: Decouple UI logic from business logic. See anti-patterns.md.
-        regnums = self.getRegNumFromColor(reg1_value.get())
-        regnums2 = self.getRegNumFromColorEv(reg1_value.get())
-        output = "Registation Numbers: "+', '.join(regnums) + "\n"        
-        tfield.insert(tk.INSERT, output)
-        output = "Registation Numbers (EV): "+', '.join(regnums2) + "\n"        
-        tfield.insert(tk.INSERT, output)
-
+    def regNumByColor(self, color: str) -> SearchResult:
+        """Returns registration numbers for vehicles with the given color."""
+        regular_regs = self.getRegNumFromColor(color)
+        ev_regs = self.getRegNumFromColorEv(color)
+        
+        return SearchResult(
+            result_type='registration',
+            items=regular_regs + ev_regs,
+            is_ev=False  # Combined results, so we don't distinguish
+        )
+        
 # Slot Management Functions
 
     def makeLot(self) -> None:
@@ -316,8 +352,139 @@ class ParkingLot:
 # Main App
 # TODO: Refactor to separate UI and business logic. See anti-patterns.md.             
 def main():
+    def display_search_result(result: SearchResult) -> None:
+        """Display search results in the text field."""
+        tfield.delete("1.0", tk.END)  # Clear previous content
+        
+        if result.error:
+            tfield.insert(tk.INSERT, f"{result.error}\n")
+            return
+            
+        if result.result_type == 'slot':
+            if len(result.items) == 1 and result.is_ev:
+                prefix = "Identified slot (EV): "
+            elif len(result.items) == 1:
+                prefix = "Identified slot: "
+            else:
+                prefix = "Identified slots: "
+        else:  # registration
+            prefix = "Registration Numbers: "
+            
+        output = prefix + ', '.join(result.items) + "\n"
+        tfield.insert(tk.INSERT, output)
+
+    def display_status(status: ParkingStatus) -> None:
+        """Display parking status in the text field."""
+        tfield.insert(tk.INSERT, "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n")
+        for vehicle in status.regular_vehicles:
+            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.color}\t\t{vehicle.make}\t\t{vehicle.model}\n"
+            tfield.insert(tk.INSERT, output)
+
+        tfield.insert(tk.INSERT, "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n")
+        for vehicle in status.ev_vehicles:
+            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.color}\t\t{vehicle.make}\t\t{vehicle.model}\n"
+            tfield.insert(tk.INSERT, output)
+
+    def display_charge_status(charge_status: ChargeStatus) -> None:
+        """Display EV charge status in the text field."""
+        tfield.insert(tk.INSERT, "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n")
+        for vehicle in charge_status.vehicles:
+            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.charge}\n"
+            tfield.insert(tk.INSERT, output)
+
+    class ParkingLotUI:
+        # ParkingLotUI acts as the interface between the UI and the business logic.
+        # All UI actions (such as search, status, and charge status display) call methods on ParkingLotUI,
+        # which then call the appropriate business logic methods on the ParkingLot instance.
+        # This ensures that the UI does not directly access or depend on the internal implementation of ParkingLot.
+        # Example: show_slot_by_reg, show_slots_by_color, and show_reg_by_color call slotNumByReg, slotNumByColor, and regNumByColor.
+        def __init__(self, parking_lot: ParkingLot):
+            self.parking_lot = parking_lot
+
+        def _clear_text_field(self) -> None:
+            """Clear the text field for fresh output"""
+            tfield.delete("1.0", tk.END)
+
+        def display_search_result(self, result: SearchResult) -> None:
+            """Display search results in the text field"""
+            self._clear_text_field()
+            
+            if result.error:
+                tfield.insert(tk.END, f"Error: {result.error}\n")
+                return
+
+            if result.result_type == 'slot':
+                if result.is_ev:
+                    prefix = "EV "
+                else:
+                    prefix = ""
+                if len(result.items) == 1:
+                    tfield.insert(tk.END, f"{prefix}Slot Number: {result.items[0]}\n")
+                else:
+                    slots = ", ".join(result.items)
+                    tfield.insert(tk.END, f"{prefix}Slot Numbers: {slots}\n")
+            else:  # registration numbers
+                reg_numbers = ", ".join(result.items)
+                tfield.insert(tk.END, f"Registration Numbers: {reg_numbers}\n")
+
+        def show_slot_by_reg(self, reg_no: str) -> None:
+            """Display the slot number for a given registration number"""
+            # Updated to use business logic method slotNumByReg instead of non-existent search_slot_by_reg
+            result = self.parking_lot.slotNumByReg(reg_no)
+            self.display_search_result(result)
+
+        def show_slots_by_color(self, color: str) -> None:
+            """Display slot numbers for vehicles of given color"""
+            # Updated to use business logic method slotNumByColor instead of non-existent search_slots_by_color
+            result = self.parking_lot.slotNumByColor(color)
+            self.display_search_result(result)
+
+        def show_reg_by_color(self, color: str) -> None:
+            """Display registration numbers of vehicles with given color"""
+            # Already uses correct business logic method regNumByColor
+            result = self.parking_lot.regNumByColor(color)
+            self.display_search_result(result)
+
+        def show_status(self) -> None:
+            """Display current parking lot status"""
+            status = self.parking_lot.status()
+            self._clear_text_field()
+            
+            if not status.regular_vehicles and not status.ev_vehicles:
+                tfield.insert(tk.END, "Parking lot is empty\n")
+                return
+
+            if status.regular_vehicles:
+                tfield.insert(tk.END, "Regular Vehicles:\n")
+                tfield.insert(tk.END, "Slot\tFloor\tReg No.\t\tColor\t\tMake\t\tModel\n")
+                for vehicle in status.regular_vehicles:
+                    tfield.insert(tk.END, f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t{vehicle.color}\t"
+                                f"{vehicle.make}\t{vehicle.model}\n")
+            
+            if status.ev_vehicles:
+                tfield.insert(tk.END, "\nElectric Vehicles:\n")
+                tfield.insert(tk.END, "Slot\tFloor\tReg No.\t\tColor\t\tMake\t\tModel\n")
+                for vehicle in status.ev_vehicles:
+                    tfield.insert(tk.END, f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t{vehicle.color}\t"
+                                f"{vehicle.make}\t{vehicle.model}\n")
+
+        def show_charge_status(self) -> None:
+            """Display charging status of electric vehicles"""
+            charge_status = self.parking_lot.chargeStatus()
+            self._clear_text_field()
+
+            if not charge_status.vehicles:
+                tfield.insert(tk.END, "No electric vehicles are currently charging\n")
+                return
+
+            tfield.insert(tk.END, "Electric Vehicle Charging Status:\n")
+            tfield.insert(tk.END, "Slot\tFloor\tReg No.\t\tCharge %\n")
+            for vehicle in charge_status.vehicles:
+                tfield.insert(tk.END, f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t"
+                            f"{vehicle.charge}%\n")
 
     parkinglot = ParkingLot()
+    parking_ui = ParkingLotUI(parkinglot)
     
     #input boxes and GUI
     label_head= tk.Label(root, text = 'Parking Lot Manager', font = 'Arial 14 bold')
@@ -399,28 +566,28 @@ def main():
     spacer1 = tk.Label(root, text="")
     spacer1.grid(row=12, column=0)
 
-    slotRegBtn = tk.Button(root, command = parkinglot.slotNumByReg, text = "Get Slot ID by Registration #", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
+    slotRegBtn = tk.Button(root, command=lambda: parking_ui.show_slot_by_reg(slot1_value.get()), text = "Get Slot ID by Registration #", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
     slotRegBtn.grid(column=0, row=13,  padx = 4, pady = 4)
 
     slot1_entry = tk.Entry(root, textvariable = slot1_value,  width = 12, font='Arial 12')
     slot1_entry.grid(row=13, column=1,  padx = 4, pady = 4)
 
-    slotColorBtn = tk.Button(root, command = parkinglot.slotNumByColor, text = "Get Slot ID by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
+    slotColorBtn = tk.Button(root, command=lambda: parking_ui.show_slots_by_color(slot2_value.get()), text = "Get Slot ID by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
     slotColorBtn.grid(column=2, row=13,  padx = 4, pady = 4)
 
     slot2_entry = tk.Entry(root, textvariable = slot2_value,  width = 12, font='Arial 12')
     slot2_entry.grid(row=13, column=3,  padx = 4, pady = 4)
     
-    regColorBtn = tk.Button(root, command = parkinglot.regNumByColor, text = "Get Registration # by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
+    regColorBtn = tk.Button(root, command=lambda: parking_ui.show_reg_by_color(reg1_value.get()), text = "Get Registration # by Color", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
     regColorBtn.grid(column=0, row=14,  padx = 4, pady = 4)
 
     reg1_entry = tk.Entry(root, textvariable = reg1_value,  width = 12, font='Arial 12')
     reg1_entry.grid(row=14, column=1,  padx = 4, pady = 4)
 
-    chargeStatusBtn = tk.Button(root, command = parkinglot.chargeStatus, text = "EV Charge Status", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
+    chargeStatusBtn = tk.Button(root, command=parking_ui.show_charge_status, text="EV Charge Status", font="Arial 11", bg='lightblue', fg='black', activebackground="teal", padx=5, pady=5 )
     chargeStatusBtn.grid(column=2, row=14,  padx = 4, pady = 4)
-
-    statusBtn = tk.Button(root, command = parkinglot.status, text = "Current Lot Status", font="Arial 11", bg='PaleGreen1', fg='black', activebackground="PaleGreen3", padx=5, pady=5 )
+    
+    statusBtn = tk.Button(root, command=parking_ui.show_status, text="Current Lot Status", font="Arial 11", bg='PaleGreen1', fg='black', activebackground="PaleGreen3", padx=5, pady=5 )
     statusBtn.grid(column=0, row=15,  padx = 4, pady = 4)
 
     tfield.grid(column=0, row=16, padx = 10, pady = 10, columnspan = 4)
