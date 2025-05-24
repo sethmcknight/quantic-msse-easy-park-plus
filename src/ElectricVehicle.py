@@ -1,6 +1,5 @@
 from typing import Literal
 
-# TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.
 class ElectricVehicle:
     color: str
     registrationNumber: str

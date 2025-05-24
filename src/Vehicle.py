@@ -1,6 +1,5 @@
 from typing import Literal
 
-# TODO: Refactor or remove unused getType() methods and unnecessary inheritance hierarchy. See anti-patterns.md.
 #Vehicle class for use with Parking Lot Manager
 class Vehicle:
     color: str
