@@ -268,11 +268,32 @@ class ParkingLotObserver(ABC):
 class ParkingLot:
     """Class representing a parking lot"""
     
+    _instance: Optional['ParkingLot'] = None
+    
+    def __new__(cls) -> 'ParkingLot':
+        """Ensure only one instance of ParkingLot exists"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
+        """Initialize the parking lot if not already initialized"""
+        if self._initialized:
+            return
+        
         self.slots: List[ParkingSlot] = []
         self.level: int = 0
         self._observers: List[ParkingLotObserver] = []
         self._command_history: List[Command] = []
+        self._initialized = True
+    
+    @classmethod
+    def get_instance(cls) -> 'ParkingLot':
+        """Get the singleton instance of the parking lot"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
     
     def register_observer(self, observer: ParkingLotObserver) -> None:
         """Register an observer to receive updates"""
@@ -410,7 +431,7 @@ class ParkingLot:
 
 # Main App
 def main():
-    parking_lot = ParkingLot()
+    parking_lot = ParkingLot.get_instance()
     
     # Create UI
     from ParkingLotUI import ParkingLotUI

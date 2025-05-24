@@ -1,169 +1,148 @@
 """
 Vehicle Module
 
-This module implements the vehicle hierarchy and factory for the parking lot management system.
-It uses the Factory Pattern to centralize vehicle creation and ensure proper type checking.
+This module implements the vehicle hierarchy and factory for creating vehicles.
+It uses the Factory Pattern for vehicle creation, the Strategy Pattern for parking behavior,
+and the Template Method Pattern for common vehicle operations.
 
 Anti-patterns Removed:
 1. Unnecessary Inheritance
-   - Removed: Redundant getType() methods in subclasses
-   - Solution: Type information stored in factory
-   - Benefit: Reduced code duplication
+   - Removed: Empty subclasses
+   - Solution: Factory Pattern
+   - Benefit: Reduced complexity
 
-2. Type Safety Issues
-   - Removed: Direct instantiation of vehicle classes
-   - Solution: Factory methods with type checking
-   - Benefit: Better type safety and error handling
+2. Direct Instantiation
+   - Removed: Direct class instantiation
+   - Solution: Factory Pattern
+   - Benefit: Centralized creation logic
 
-3. Tight Coupling
-   - Removed: Direct dependencies on concrete vehicle classes
-   - Solution: Factory interface
-   - Benefit: Easier to modify and extend
-
-4. Duplicate Vehicle/ElectricVehicle Structure
-   - Removed: Separate ElectricVehicle hierarchy
-   - Solution: ElectricVehicle as a Vehicle subclass
-   - Benefit: Proper inheritance, reduced code duplication
-
-5. Hard-Coded Behavior
-   - Removed: Fixed parking behavior in vehicle classes
-   - Solution: Strategy pattern for parking behavior
-   - Benefit: Flexible and extensible parking strategies
+3. Code Duplication
+   - Removed: Repeated vehicle operations
+   - Solution: Template Method Pattern
+   - Benefit: DRY code
 
 Design Patterns Implemented:
 1. Factory Pattern
    - Purpose: Centralize vehicle creation
    - Components: VehicleFactory class
-   - Benefit: Encapsulated creation logic, type safety
+   - Benefit: Type-safe creation
 
-2. Property Pattern
-   - Purpose: Encapsulate vehicle attributes
-   - Components: @property decorators
-   - Benefit: Better attribute access control
+2. Strategy Pattern
+   - Purpose: Encapsulate parking behavior
+   - Components: ParkingStrategy interface
+   - Benefit: Flexible parking rules
 
 3. Template Method Pattern
-   - Purpose: Define skeleton of vehicle operations
-   - Components: Abstract Vehicle class with concrete subclasses
-   - Benefit: Code reuse and consistent interface
-
-4. Strategy Pattern
-   - Purpose: Encapsulate parking behavior
-   - Components: ParkingStrategy interface and concrete strategies
-   - Benefit: Flexible and extensible parking behavior
+   - Purpose: Define common vehicle operations
+   - Components: Abstract base class with template methods
+   - Benefit: Reduced code duplication
 
 Usage:
     The VehicleFactory class is the main entry point for creating vehicles.
     It provides type-safe factory methods for each vehicle type.
 
 Example:
-    >>> factory = VehicleFactory()
-    >>> car = factory.create_car("ABC123", "Toyota", "Camry", "Red")
-    >>> print(car.registration_number)  # "ABC123"
-    >>> ev_car = factory.create_electric_car("XYZ789", "Tesla", "Model 3", "White")
-    >>> print(ev_car.charge)  # 0
+    # Create a regular car
+    >>> car = VehicleFactory.create_car("ABC123", "Toyota", "Camry", "Red")
+    >>> print(car.get_info())
+    Type: Car
+    Registration: ABC123
+    Make: Toyota
+    Model: Camry
+    Color: Red
+
+    # Create an electric car
+    >>> ev_car = VehicleFactory.create_electric_car("XYZ789", "Tesla", "Model 3", "Blue")
+    >>> print(ev_car.get_info())
+    Type: Electric Car
+    Registration: XYZ789
+    Make: Tesla
+    Model: Model 3
+    Color: Blue
+    Charge: 0%
+
+    # Check if vehicles can park in different slot types
+    >>> car.can_park_in("standard")  # True
+    >>> ev_car.can_park_in("electric")  # True
+    >>> ev_car.can_park_in("standard")  # True
 """
 
 from dataclasses import dataclass
+from typing import Optional, TypeVar, Protocol
 from abc import ABC, abstractmethod
-from typing import TypeVar
-
-# Type variable for vehicle types
-T = TypeVar('T', bound='Vehicle')
 
 @dataclass
 class VehicleInfo:
-    """Data class to hold vehicle information"""
+    """Data class for vehicle information"""
     registration_number: str
     make: str
     model: str
     color: str
 
-class ParkingStrategy(ABC):
-    """Abstract base class for parking strategies"""
-    
-    @abstractmethod
-    def can_park(self, slot_type: str) -> bool:
-        """Check if the vehicle can park in the given slot type"""
-        pass
-    
-    @abstractmethod
-    def get_slot_type(self) -> str:
-        """Get the preferred slot type for this strategy"""
-        pass
-
-class StandardParkingStrategy(ParkingStrategy):
-    """Strategy for standard vehicles"""
-    
-    def can_park(self, slot_type: str) -> bool:
-        return slot_type == "standard"
-    
-    def get_slot_type(self) -> str:
-        return "standard"
-
-class ElectricParkingStrategy(ParkingStrategy):
-    """Strategy for electric vehicles"""
-    
-    def can_park(self, slot_type: str) -> bool:
-        return slot_type in ["standard", "electric"]
-    
-    def get_slot_type(self) -> str:
-        return "electric"
-
-class MotorcycleParkingStrategy(ParkingStrategy):
-    """Strategy for motorcycles"""
-    
-    def can_park(self, slot_type: str) -> bool:
-        return slot_type in ["standard", "motorcycle"]
-    
-    def get_slot_type(self) -> str:
-        return "motorcycle"
-
 class Vehicle(ABC):
-    """Abstract base class for all vehicles"""
+    """Abstract base class for vehicles"""
     
     def __init__(self, info: VehicleInfo):
         self._info = info
-        self._parking_strategy: ParkingStrategy = StandardParkingStrategy()
-
+        self._parking_strategy: Optional[ParkingStrategy] = None
+    
     @property
     def registration_number(self) -> str:
         return self._info.registration_number
-
+    
     @property
     def make(self) -> str:
         return self._info.make
-
+    
     @property
     def model(self) -> str:
         return self._info.model
-
+    
     @property
     def color(self) -> str:
         return self._info.color
-
-    @property
-    def parking_strategy(self) -> ParkingStrategy:
-        return self._parking_strategy
-
-    @parking_strategy.setter
-    def parking_strategy(self, strategy: ParkingStrategy) -> None:
-        self._parking_strategy = strategy
-
+    
     @abstractmethod
     def get_type(self) -> str:
-        """Return the type of vehicle"""
+        """Get the vehicle type"""
         pass
-
+    
     def can_park_in(self, slot_type: str) -> bool:
         """Check if the vehicle can park in the given slot type"""
-        return self._parking_strategy.can_park(slot_type)
-
-    def get_preferred_slot_type(self) -> str:
-        """Get the preferred slot type for this vehicle"""
-        return self._parking_strategy.get_slot_type()
-
-    def __str__(self) -> str:
-        return f"{self.get_type()}: {self.registration_number} ({self.color} {self.make} {self.model})"
+        if self._parking_strategy:
+            return self._parking_strategy.can_park_in(slot_type)
+        return False
+    
+    def set_parking_strategy(self, strategy: 'ParkingStrategy') -> None:
+        """Set the parking strategy for this vehicle"""
+        self._parking_strategy = strategy
+    
+    # Template methods for common vehicle operations
+    def validate_registration(self) -> bool:
+        """Validate the vehicle registration number"""
+        return len(self.registration_number) >= 3
+    
+    def validate_make_model(self) -> bool:
+        """Validate the vehicle make and model"""
+        return bool(self.make and self.model)
+    
+    def validate_color(self) -> bool:
+        """Validate the vehicle color"""
+        return bool(self.color)
+    
+    def is_valid(self) -> bool:
+        """Template method for vehicle validation"""
+        return (self.validate_registration() and 
+                self.validate_make_model() and 
+                self.validate_color())
+    
+    def get_info(self) -> str:
+        """Template method for getting vehicle information"""
+        return (f"Type: {self.get_type()}\n"
+                f"Registration: {self.registration_number}\n"
+                f"Make: {self.make}\n"
+                f"Model: {self.model}\n"
+                f"Color: {self.color}")
 
 class ElectricVehicle(Vehicle):
     """Base class for electric vehicles"""
@@ -171,165 +150,160 @@ class ElectricVehicle(Vehicle):
     def __init__(self, info: VehicleInfo):
         super().__init__(info)
         self._charge: int = 0
-        self._parking_strategy = ElectricParkingStrategy()
-
+    
     @property
     def charge(self) -> int:
-        """Get the current charge level (0-100)"""
         return self._charge
-
+    
     def set_charge(self, charge: int) -> None:
-        """Set the charge level (0-100)"""
-        if not 0 <= charge <= 100:
-            raise ValueError("Charge must be between 0 and 100")
-        self._charge = charge
-
-    def __str__(self) -> str:
-        return f"{super().__str__()} (Charge: {self._charge}%)"
+        """Set the vehicle's charge level"""
+        self._charge = max(0, min(100, charge))
+    
+    def is_fully_charged(self) -> bool:
+        """Check if the vehicle is fully charged"""
+        return self._charge >= 100
+    
+    def needs_charging(self) -> bool:
+        """Check if the vehicle needs charging"""
+        return self._charge < 20
+    
+    def get_info(self) -> str:
+        """Override template method to include charge information"""
+        return (super().get_info() + 
+                f"\nCharge: {self._charge}%")
 
 class Car(Vehicle):
-    """Concrete class for cars"""
+    """Class representing a car"""
     
     def get_type(self) -> str:
         return "Car"
 
-class ElectricCar(ElectricVehicle):
-    """Concrete class for electric cars"""
-    
-    def get_type(self) -> str:
-        return "Electric Car"
-
 class Truck(Vehicle):
-    """Concrete class for trucks"""
+    """Class representing a truck"""
     
     def get_type(self) -> str:
         return "Truck"
 
-class ElectricTruck(ElectricVehicle):
-    """Concrete class for electric trucks"""
-    
-    def get_type(self) -> str:
-        return "Electric Truck"
-
 class Motorcycle(Vehicle):
-    """Concrete class for motorcycles"""
-    
-    def __init__(self, info: VehicleInfo):
-        super().__init__(info)
-        self._parking_strategy = MotorcycleParkingStrategy()
+    """Class representing a motorcycle"""
     
     def get_type(self) -> str:
         return "Motorcycle"
 
-class ElectricMotorcycle(ElectricVehicle):
-    """Concrete class for electric motorcycles"""
-    
-    def get_type(self) -> str:
-        return "Electric Motorcycle"
-
 class Bus(Vehicle):
-    """Concrete class for buses"""
+    """Class representing a bus"""
     
     def get_type(self) -> str:
         return "Bus"
 
+class ElectricCar(ElectricVehicle):
+    """Class representing an electric car"""
+    
+    def get_type(self) -> str:
+        return "Electric Car"
+
+class ElectricTruck(ElectricVehicle):
+    """Class representing an electric truck"""
+    
+    def get_type(self) -> str:
+        return "Electric Truck"
+
+class ElectricMotorcycle(ElectricVehicle):
+    """Class representing an electric motorcycle"""
+    
+    def get_type(self) -> str:
+        return "Electric Motorcycle"
+
 class ElectricBus(ElectricVehicle):
-    """Concrete class for electric buses"""
+    """Class representing an electric bus"""
     
     def get_type(self) -> str:
         return "Electric Bus"
 
+class ParkingStrategy(Protocol):
+    """Protocol for parking strategies"""
+    
+    def can_park_in(self, slot_type: str) -> bool:
+        """Check if a vehicle can park in the given slot type"""
+        ...
+
+class StandardParkingStrategy:
+    """Strategy for standard vehicles"""
+    
+    def can_park_in(self, slot_type: str) -> bool:
+        return slot_type == "standard"
+
+class ElectricParkingStrategy:
+    """Strategy for electric vehicles"""
+    
+    def can_park_in(self, slot_type: str) -> bool:
+        return slot_type in ("standard", "electric")
+
+class MotorcycleParkingStrategy:
+    """Strategy for motorcycles"""
+    
+    def can_park_in(self, slot_type: str) -> bool:
+        return slot_type == "standard"
+
+T = TypeVar('T', bound=Vehicle)
+
 class VehicleFactory:
-    """Factory class for creating vehicles"""
+    """Factory for creating vehicles"""
     
     @staticmethod
-    def create_vehicle(vehicle_type: str, info: VehicleInfo, is_electric: bool = False) -> Vehicle:
-        """
-        Create a vehicle of the specified type
+    def create_vehicle(vehicle_type: type[T], info: VehicleInfo) -> T:
+        """Create a vehicle of the specified type"""
+        vehicle = vehicle_type(info)
         
-        Args:
-            vehicle_type: Type of vehicle to create ("car", "truck", "motorcycle", "bus")
-            info: Vehicle information
-            is_electric: Whether the vehicle is electric
-            
-        Returns:
-            A new vehicle instance
-            
-        Raises:
-            ValueError: If vehicle_type is invalid
-        """
-        vehicle_type = vehicle_type.lower()
-        
-        if is_electric:
-            if vehicle_type == "car":
-                return ElectricCar(info)
-            elif vehicle_type == "truck":
-                return ElectricTruck(info)
-            elif vehicle_type == "motorcycle":
-                return ElectricMotorcycle(info)
-            elif vehicle_type == "bus":
-                return ElectricBus(info)
-            else:
-                raise ValueError(f"Invalid electric vehicle type: {vehicle_type}")
+        # Set appropriate parking strategy
+        if isinstance(vehicle, ElectricVehicle):
+            vehicle.set_parking_strategy(ElectricParkingStrategy())
+        elif isinstance(vehicle, Motorcycle):
+            vehicle.set_parking_strategy(MotorcycleParkingStrategy())
         else:
-            if vehicle_type == "car":
-                return Car(info)
-            elif vehicle_type == "truck":
-                return Truck(info)
-            elif vehicle_type == "motorcycle":
-                return Motorcycle(info)
-            elif vehicle_type == "bus":
-                return Bus(info)
-            else:
-                raise ValueError(f"Invalid vehicle type: {vehicle_type}")
-
-    @classmethod
-    def create_car(cls, registration_number: str, make: str, model: str, color: str) -> Car:
-        """Create a car with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return Car(info)
-
-    @classmethod
-    def create_electric_car(cls, registration_number: str, make: str, model: str, color: str) -> ElectricCar:
-        """Create an electric car with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return ElectricCar(info)
-
-    @classmethod
-    def create_truck(cls, registration_number: str, make: str, model: str, color: str) -> Truck:
-        """Create a truck with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return Truck(info)
-
-    @classmethod
-    def create_electric_truck(cls, registration_number: str, make: str, model: str, color: str) -> ElectricTruck:
-        """Create an electric truck with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return ElectricTruck(info)
-
-    @classmethod
-    def create_motorcycle(cls, registration_number: str, make: str, model: str, color: str) -> Motorcycle:
-        """Create a motorcycle with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return Motorcycle(info)
-
-    @classmethod
-    def create_electric_motorcycle(cls, registration_number: str, make: str, model: str, color: str) -> ElectricMotorcycle:
-        """Create an electric motorcycle with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return ElectricMotorcycle(info)
-
-    @classmethod
-    def create_bus(cls, registration_number: str, make: str, model: str, color: str) -> Bus:
-        """Create a bus with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return Bus(info)
-
-    @classmethod
-    def create_electric_bus(cls, registration_number: str, make: str, model: str, color: str) -> ElectricBus:
-        """Create an electric bus with the given information"""
-        info = VehicleInfo(registration_number, make, model, color)
-        return ElectricBus(info)
+            vehicle.set_parking_strategy(StandardParkingStrategy())
+        
+        return vehicle
+    
+    @staticmethod
+    def create_car(registration_number: str, make: str, model: str, color: str) -> Car:
+        """Create a car"""
+        return VehicleFactory.create_vehicle(Car, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_truck(registration_number: str, make: str, model: str, color: str) -> Truck:
+        """Create a truck"""
+        return VehicleFactory.create_vehicle(Truck, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_motorcycle(registration_number: str, make: str, model: str, color: str) -> Motorcycle:
+        """Create a motorcycle"""
+        return VehicleFactory.create_vehicle(Motorcycle, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_bus(registration_number: str, make: str, model: str, color: str) -> Bus:
+        """Create a bus"""
+        return VehicleFactory.create_vehicle(Bus, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_electric_car(registration_number: str, make: str, model: str, color: str) -> ElectricCar:
+        """Create an electric car"""
+        return VehicleFactory.create_vehicle(ElectricCar, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_electric_truck(registration_number: str, make: str, model: str, color: str) -> ElectricTruck:
+        """Create an electric truck"""
+        return VehicleFactory.create_vehicle(ElectricTruck, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_electric_motorcycle(registration_number: str, make: str, model: str, color: str) -> ElectricMotorcycle:
+        """Create an electric motorcycle"""
+        return VehicleFactory.create_vehicle(ElectricMotorcycle, VehicleInfo(registration_number, make, model, color))
+    
+    @staticmethod
+    def create_electric_bus(registration_number: str, make: str, model: str, color: str) -> ElectricBus:
+        """Create an electric bus"""
+        return VehicleFactory.create_vehicle(ElectricBus, VehicleInfo(registration_number, make, model, color))
 
 
 
