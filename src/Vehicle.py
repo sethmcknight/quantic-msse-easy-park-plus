@@ -173,6 +173,10 @@ class ElectricVehicle(Vehicle):
                 f"\nCharge: {self._charge}%")
 
 class Car(Vehicle):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str) -> None:
+        super().__init__(registrationNumber, make, model, color)
+
+    def getType(self) -> Literal["Car"]:
     """Class representing a car"""
     
     def get_type(self) -> str:

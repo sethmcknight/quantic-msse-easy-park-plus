@@ -64,7 +64,7 @@
 
 ## Summary
 - In the current codebase, there are no instances where mutable arguments (e.g., lists, dictionaries) are passed directly to methods or functions. Most mutable objects are instance attributes (self.slots, self.evSlots) that are modified internally within methods.
-- This is a good practice, as it avoids unintended side effects from external modifications to mutable objects.
+- This is a good practice, as it avoids unintended side effects from external modifications to mutable objects. ✅ **COMPLETE**
 
 # Different Types in Functions
 
@@ -121,10 +121,10 @@
 - getSlotNumfromRegNum, getSlotNumFromRegNumEv
     - Observation: The else: continue is completely redundant. If the inner if is false, the loop naturally continues.
 ## Summary
-- - Redundant else: continue: Remove these as they add no value (e.g., in getSlotNumFromRegNum).
-- if ... == -1: continue pattern: Refactor these. List comprehensions are often the best solution for filtering and transforming, making the code more readable and concise (e.g., in getRegNumFromColor, getSlotNumFromColor).
-- range(len(...)) for iteration: Consider using enumerate when both index and item are needed, especially for readability (e.g., in status, chargeStatus).
-- String concatenation: Use f-strings for building strings as they are generally more readable and efficient than manual concatenation with + (e.g., in status, chargeStatus).
+- - Redundant else: continue: Remove these as they add no value (e.g., in getSlotNumFromRegNum). ✅ **COMPLETE**
+- if ... == -1: continue pattern: Refactor these. List comprehensions are often the best solution for filtering and transforming, making the code more readable and concise (e.g., in getRegNumFromColor, getSlotNumFromColor). ✅ **COMPLETE**
+- range(len(...)) for iteration: Consider using enumerate when both index and item are needed, especially for readability (e.g., in status, chargeStatus). ✅ **COMPLETE**
+- String concatenation: Use f-strings for building strings as they are generally more readable and efficient than manual concatenation with + (e.g., in status, chargeStatus). ✅ **COMPLETE**
 
 # Superfluous/Lengthy/Nested if statements
 - ParkingLot.park method
@@ -141,7 +141,7 @@
 
 # Global Variables
 - Tkinter variables
-    - comon use for a single-file Tkinter app
+    - common use for a single-file Tkinter app
     - but larger apps prefer encapsulation in classses
         - Create an App class (or a similar name like ParkingManagerApp):
             - The __init__ method of this class will set up the main Tkinter window (root).
@@ -155,10 +155,10 @@
             - When assigning commands to buttons, you'll use self.method_name.
             - These methods will access the control variables and the parking_lot instance via self.
 
-# Try/Except Blocks wtihout Exception Handling
+# Try/Except Blocks without Exception Handling
 - no try/except blocks in use
 - There are several places, particularly in the GUI handler functions in ParkingManager.py (like makeLot, removeCar, editCar) and within the ParkingLot.edit method, where operations prone to exceptions (specifically ValueError from int() conversions of user input) are performed without being enclosed in try...except blocks at all.
-- the main concern is the absence of error handling for potential ValueError exceptions in parts of the original code structure, rather than the presence of try...except blocks that then fail to act on the caught exception.
+- the main concern is the absence of error handling for potential ValueError exceptions in parts of the original code structure, rather than the presence of try...except blocks that then fail to act on the caught exception. ✅ **COMPLETE**
 
 # Broad Import Statements
 - no major concerns
