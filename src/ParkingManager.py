@@ -1,8 +1,8 @@
 import tkinter as tk
-from typing import List, Optional, Union, TypeVar, cast
+from typing import List, Optional, Union
 from src.Vehicle import Vehicle, Car, Motorcycle
 from src.ElectricVehicle import ElectricVehicle, ElectricCar, ElectricBike
-from src.parking_data import ParkingStatus, ChargeStatus, SearchResult, ParkingResult, VehicleInfo, EVChargeInfo
+from src.parking_data import ParkingStatus, ChargeStatus, SearchResult, VehicleInfo, EVChargeInfo
 
 # Type aliases for clarity
 VehicleType = Union[Vehicle, ElectricVehicle]
@@ -134,7 +134,8 @@ class ParkingLot:
             self.evSlots[slotid-1] = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
             return True
         else:
-            self.slots[slotid-1] = Vehicle.Car(registrationNumber, make, model, color)
+            motor_bool = bool(motor)
+            self.slots[slotid-1] = Motorcycle(registrationNumber, make, model, color) if motor_bool else Car(registrationNumber, make, model, color)
             return True
         return False        
 
@@ -352,46 +353,6 @@ class ParkingLot:
 # Main App
 # TODO: Refactor to separate UI and business logic. See anti-patterns.md.             
 def main():
-    def display_search_result(result: SearchResult) -> None:
-        """Display search results in the text field."""
-        tfield.delete("1.0", tk.END)  # Clear previous content
-        
-        if result.error:
-            tfield.insert(tk.INSERT, f"{result.error}\n")
-            return
-            
-        if result.result_type == 'slot':
-            if len(result.items) == 1 and result.is_ev:
-                prefix = "Identified slot (EV): "
-            elif len(result.items) == 1:
-                prefix = "Identified slot: "
-            else:
-                prefix = "Identified slots: "
-        else:  # registration
-            prefix = "Registration Numbers: "
-            
-        output = prefix + ', '.join(result.items) + "\n"
-        tfield.insert(tk.INSERT, output)
-
-    def display_status(status: ParkingStatus) -> None:
-        """Display parking status in the text field."""
-        tfield.insert(tk.INSERT, "Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n")
-        for vehicle in status.regular_vehicles:
-            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.color}\t\t{vehicle.make}\t\t{vehicle.model}\n"
-            tfield.insert(tk.INSERT, output)
-
-        tfield.insert(tk.INSERT, "\nElectric Vehicles\nSlot\tFloor\tReg No.\t\tColor \t\tMake \t\tModel\n")
-        for vehicle in status.ev_vehicles:
-            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.color}\t\t{vehicle.make}\t\t{vehicle.model}\n"
-            tfield.insert(tk.INSERT, output)
-
-    def display_charge_status(charge_status: ChargeStatus) -> None:
-        """Display EV charge status in the text field."""
-        tfield.insert(tk.INSERT, "Electric Vehicle Charge Levels\nSlot\tFloor\tReg No.\t\tCharge %\n")
-        for vehicle in charge_status.vehicles:
-            output = f"{vehicle.slot}\t{vehicle.floor}\t{vehicle.reg_no}\t\t{vehicle.charge}\n"
-            tfield.insert(tk.INSERT, output)
-
     class ParkingLotUI:
         # ParkingLotUI acts as the interface between the UI and the business logic.
         # All UI actions (such as search, status, and charge status display) call methods on ParkingLotUI,
