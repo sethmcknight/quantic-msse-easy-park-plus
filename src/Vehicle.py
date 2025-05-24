@@ -25,6 +25,11 @@ Anti-patterns Removed:
    - Solution: ElectricVehicle as a Vehicle subclass
    - Benefit: Proper inheritance, reduced code duplication
 
+5. Hard-Coded Behavior
+   - Removed: Fixed parking behavior in vehicle classes
+   - Solution: Strategy pattern for parking behavior
+   - Benefit: Flexible and extensible parking strategies
+
 Design Patterns Implemented:
 1. Factory Pattern
    - Purpose: Centralize vehicle creation
@@ -40,6 +45,11 @@ Design Patterns Implemented:
    - Purpose: Define skeleton of vehicle operations
    - Components: Abstract Vehicle class with concrete subclasses
    - Benefit: Code reuse and consistent interface
+
+4. Strategy Pattern
+   - Purpose: Encapsulate parking behavior
+   - Components: ParkingStrategy interface and concrete strategies
+   - Benefit: Flexible and extensible parking behavior
 
 Usage:
     The VehicleFactory class is the main entry point for creating vehicles.
@@ -68,11 +78,52 @@ class VehicleInfo:
     model: str
     color: str
 
+class ParkingStrategy(ABC):
+    """Abstract base class for parking strategies"""
+    
+    @abstractmethod
+    def can_park(self, slot_type: str) -> bool:
+        """Check if the vehicle can park in the given slot type"""
+        pass
+    
+    @abstractmethod
+    def get_slot_type(self) -> str:
+        """Get the preferred slot type for this strategy"""
+        pass
+
+class StandardParkingStrategy(ParkingStrategy):
+    """Strategy for standard vehicles"""
+    
+    def can_park(self, slot_type: str) -> bool:
+        return slot_type == "standard"
+    
+    def get_slot_type(self) -> str:
+        return "standard"
+
+class ElectricParkingStrategy(ParkingStrategy):
+    """Strategy for electric vehicles"""
+    
+    def can_park(self, slot_type: str) -> bool:
+        return slot_type in ["standard", "electric"]
+    
+    def get_slot_type(self) -> str:
+        return "electric"
+
+class MotorcycleParkingStrategy(ParkingStrategy):
+    """Strategy for motorcycles"""
+    
+    def can_park(self, slot_type: str) -> bool:
+        return slot_type in ["standard", "motorcycle"]
+    
+    def get_slot_type(self) -> str:
+        return "motorcycle"
+
 class Vehicle(ABC):
     """Abstract base class for all vehicles"""
     
     def __init__(self, info: VehicleInfo):
         self._info = info
+        self._parking_strategy: ParkingStrategy = StandardParkingStrategy()
 
     @property
     def registration_number(self) -> str:
@@ -90,10 +141,26 @@ class Vehicle(ABC):
     def color(self) -> str:
         return self._info.color
 
+    @property
+    def parking_strategy(self) -> ParkingStrategy:
+        return self._parking_strategy
+
+    @parking_strategy.setter
+    def parking_strategy(self, strategy: ParkingStrategy) -> None:
+        self._parking_strategy = strategy
+
     @abstractmethod
     def get_type(self) -> str:
         """Return the type of vehicle"""
         pass
+
+    def can_park_in(self, slot_type: str) -> bool:
+        """Check if the vehicle can park in the given slot type"""
+        return self._parking_strategy.can_park(slot_type)
+
+    def get_preferred_slot_type(self) -> str:
+        """Get the preferred slot type for this vehicle"""
+        return self._parking_strategy.get_slot_type()
 
     def __str__(self) -> str:
         return f"{self.get_type()}: {self.registration_number} ({self.color} {self.make} {self.model})"
@@ -104,6 +171,7 @@ class ElectricVehicle(Vehicle):
     def __init__(self, info: VehicleInfo):
         super().__init__(info)
         self._charge: int = 0
+        self._parking_strategy = ElectricParkingStrategy()
 
     @property
     def charge(self) -> int:
@@ -145,6 +213,10 @@ class ElectricTruck(ElectricVehicle):
 
 class Motorcycle(Vehicle):
     """Concrete class for motorcycles"""
+    
+    def __init__(self, info: VehicleInfo):
+        super().__init__(info)
+        self._parking_strategy = MotorcycleParkingStrategy()
     
     def get_type(self) -> str:
         return "Motorcycle"
