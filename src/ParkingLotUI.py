@@ -63,7 +63,6 @@ class ParkingLotUI(ParkingLotObserver):
         """Initialize the UI"""
         self.parking_lot = ParkingLot()
         self.parking_lot.register_observer(self)
-        
         # Create main window
         self.root = tk.Tk()
         self.root.title("Parking Lot Management System")
@@ -73,7 +72,6 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Initialize UI state
         self._init_state()
-        
         # Create and layout widgets
         self._create_widgets()
         self._layout_widgets()
@@ -87,41 +85,38 @@ class ParkingLotUI(ParkingLotObserver):
         # Initialize dropdowns
         # self._update_lot_names()
         # self._update_levels()
-    
+
     def _init_state(self):
         """Initialize UI state variables"""
         # Admin tab variables
         self.lot_name_value = tk.StringVar()
-        self.level_value = tk.StringVar()
-        self.num_value = tk.StringVar()
-        self.ev_num_value = tk.StringVar()
-        
+        self.parking_level_value = tk.StringVar()
+        self.regular_slots_value = tk.StringVar()
+        self.electric_vehicle_slots_value = tk.StringVar()
         # Vehicle Operations variables
-        self.reg_value = tk.StringVar()
-        self.make_value = tk.StringVar()
-        self.model_value = tk.StringVar()
-        self.color_value = tk.StringVar()
+        self.registration_number_value = tk.StringVar()
+        self.vehicle_manufacturer_value = tk.StringVar()
+        self.vehicle_model_value = tk.StringVar()
+        self.vehicle_color_value = tk.StringVar()
         self.vehicle_type_value = tk.StringVar(value="Car")
-        self.ev_value = tk.BooleanVar()
+        self.is_electric_value = tk.BooleanVar()
         self.park_lot_value = tk.StringVar()
         self.park_level_value = tk.StringVar()
-        
         # Search tab variables
-        self.search_reg_value = tk.StringVar()
-        self.search_color_value = tk.StringVar()
-        self.search_make_value = tk.StringVar()
-        self.search_model_value = tk.StringVar()
-        self.search_type = tk.StringVar(value="registration")
-        self.search_value = tk.StringVar()
-        
+        self.search_registration_number_value = tk.StringVar()
+        self.search_vehicle_color_value = tk.StringVar()
+        self.search_vehicle_manufacturer_value = tk.StringVar()
+        self.search_vehicle_model_value = tk.StringVar()
+        self.search_type_value = tk.StringVar(value="registration")
+        self.search_value_value = tk.StringVar()
         # Details tab variables
-        self.details_lot_value = tk.StringVar()
-        self.details_level_value = tk.StringVar()
+        self.details_lot_name_value = tk.StringVar()
+        self.details_parking_level_value = tk.StringVar()
     
     def _create_widgets(self):
         """Create UI widgets"""
         # Create notebook for tabs
-        self.notebook = ttk.Notebook(self.root)
+        self.notebook = ttk.Notebook(self.main_window)
         
         # Create tabs
         self.vehicle_tab = ttk.Frame(self.notebook)

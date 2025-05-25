@@ -10,8 +10,8 @@ from typing import Optional
 @dataclass
 class VehicleData:
     """Data class for vehicle information in the UI"""
-    registration: str
-    make: str
+    registration_number: str  # Replaced registration with registration_number
+    manufacturer: str  # Updated from make
     model: str
     color: str
     is_electric: bool
@@ -22,7 +22,7 @@ class SearchCriteria:
     """Data class for search criteria"""
     registration: Optional[str] = None
     color: Optional[str] = None
-    make: Optional[str] = None
+    manufacturer: Optional[str] = None  # Updated from make
     model: Optional[str] = None
     search_type: str = "registration"
 
@@ -32,4 +32,4 @@ class ParkingLotData:
     name: str
     level: int
     regular_slots: int
-    ev_slots: int 
+    electric_vehicle_slots: int

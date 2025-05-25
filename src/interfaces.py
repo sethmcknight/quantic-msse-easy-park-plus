@@ -54,7 +54,7 @@ class ParkingLotInterface(Protocol):
         """Get parking lot status"""
         ...
 
-    def park(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Optional[int]:
+    def park(self, reg: str, manufacturer: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Optional[int]:
         """Park a vehicle"""
         ...
 
@@ -66,8 +66,8 @@ class ParkingLotInterface(Protocol):
         """Get slot numbers by vehicle color"""
         ...
 
-    def get_slots_by_make(self, make: str) -> List[int]:
-        """Get slot numbers by vehicle make"""
+    def get_slots_by_manufacturer(self, manufacturer: str) -> List[int]:
+        """Get slot numbers by vehicle manufacturer"""
         ...
 
     def get_slots_by_model(self, model: str) -> List[int]:
@@ -88,4 +88,4 @@ class Command(Protocol):
 
     def undo(self) -> bool:
         """Undo the command"""
-        ... 
+        ...
