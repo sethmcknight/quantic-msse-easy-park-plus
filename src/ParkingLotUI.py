@@ -46,11 +46,11 @@ Example:
 import tkinter as tk
 from tkinter import ttk
 import logging
-from typing import Dict, Optional, Union, List, Any
+from typing import Dict, Optional, Union
 from Vehicle import Vehicle, ElectricVehicle, Motorcycle
 from ParkingManager import ParkingLot
 from models import VehicleData, SearchCriteria, ParkingLotData
-from interfaces import ParkingLotObserver, ParkingLotInterface
+from interfaces import ParkingLotObserver
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -103,6 +103,8 @@ class ParkingLotUI(ParkingLotObserver):
         self.color_value = tk.StringVar()
         self.vehicle_type_value = tk.StringVar(value="Car")
         self.ev_value = tk.BooleanVar()
+        self.park_lot_value = tk.StringVar()
+        self.park_level_value = tk.StringVar()
         
         # Search tab variables
         self.search_reg_value = tk.StringVar()
@@ -111,6 +113,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.search_model_value = tk.StringVar()
         self.search_type = tk.StringVar(value="registration")
         self.search_value = tk.StringVar()
+        
+        # Details tab variables
+        self.details_lot_value = tk.StringVar()
+        self.details_level_value = tk.StringVar()
     
     def _create_widgets(self):
         """Create UI widgets"""
@@ -121,11 +127,13 @@ class ParkingLotUI(ParkingLotObserver):
         self.vehicle_tab = ttk.Frame(self.notebook)
         self.search_tab = ttk.Frame(self.notebook)
         self.admin_tab = ttk.Frame(self.notebook)
+        self.details_tab = ttk.Frame(self.notebook)
         
         # Add tabs to notebook
         self.notebook.add(self.vehicle_tab, text="Vehicle Operations")
         self.notebook.add(self.search_tab, text="Search")
         self.notebook.add(self.admin_tab, text="Parking Lot Admin")
+        self.notebook.add(self.details_tab, text="Lot Details")
         
         # Park vehicle section
         self.park_frame = self._create_section("Park Vehicle")
