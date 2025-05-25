@@ -85,9 +85,9 @@ class ParkingLotUI(ParkingLotObserver):
         self.parking_lot.register_observer(self)
         
         # Create main window
-        self.root = tk.Tk()
-        self.root.title(self.WINDOW_TITLE)
-        self.root.geometry(self.WINDOW_SIZE)
+        self.main_window = tk.Tk()
+        self.main_window.title(self.WINDOW_TITLE)
+        self.main_window.geometry(self.WINDOW_SIZE)
         
         # Initialize UI state
         self.state = UIState()
@@ -99,7 +99,7 @@ class ParkingLotUI(ParkingLotObserver):
     def _create_widgets(self) -> None:
         """Create all UI widgets"""
         # Main container
-        self.main_frame = ttk.Frame(self.root, padding=self.PADDING)
+        self.main_frame = ttk.Frame(self.main_window, padding=self.PADDING)
         
         # Text display area
         self.text_display = tk.Text(self.main_frame, height=10, width=60)
@@ -112,17 +112,17 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Park vehicle section
         self.park_frame = self._create_section("Park Vehicle")
-        self.reg_entry = self._create_labeled_entry(self.park_frame, "Registration:", self.state.registration_number)
+        self.registration_entry = self._create_labeled_entry(self.park_frame, "Registration:", self.state.registration_number)
         self.make_entry = self._create_labeled_entry(self.park_frame, "Make:", self.state.make)
         self.model_entry = self._create_labeled_entry(self.park_frame, "Model:", self.state.model)
         self.color_entry = self._create_labeled_entry(self.park_frame, "Color:", self.state.color)
-        self.ev_check = self._create_checkbox(self.park_frame, "Electric Vehicle", self.state.is_electric)
-        self.motor_check = self._create_checkbox(self.park_frame, "Motorcycle", self.state.is_motorcycle)
+        self.electric_vehicle_checkbox = self._create_checkbox(self.park_frame, "Electric Vehicle", self.state.is_electric)
+        self.motorcycle_checkbox = self._create_checkbox(self.park_frame, "Motorcycle", self.state.is_motorcycle)
         self.park_button = ttk.Button(self.park_frame, text="Park Vehicle", command=self._park_vehicle)
         
         # Remove vehicle section
         self.remove_frame = self._create_section("Remove Vehicle")
-        self.remove_reg_entry = self._create_labeled_entry(self.remove_frame, "Registration:", "")
+        self.remove_registration_entry = self._create_labeled_entry(self.remove_frame, "Registration:", "")
         self.remove_button = ttk.Button(self.remove_frame, text="Remove Vehicle", command=self._remove_vehicle)
         
     def _create_section(self, title: str) -> ttk.LabelFrame:
@@ -177,23 +177,23 @@ class ParkingLotUI(ParkingLotObserver):
         """Handle park vehicle button click"""
         try:
             # Get vehicle information
-            reg = self.reg_entry.get().strip()
+            registration_number = self.registration_entry.get().strip()
             make = self.make_entry.get().strip()
             model = self.model_entry.get().strip()
             color = self.color_entry.get().strip()
-            is_electric = self.ev_check.instate(['selected'])
-            is_motorcycle = self.motor_check.instate(['selected'])
+            is_electric = self.electric_vehicle_checkbox.instate(['selected'])
+            is_motorcycle = self.motorcycle_checkbox.instate(['selected'])
             
             # Validate input
-            if not all([reg, make, model, color]):
+            if not all([registration_number, make, model, color]):
                 raise ValueError("All fields are required")
                 
             # Park the vehicle
-            self.parking_lot.park(reg, make, model, color, is_electric, is_motorcycle)
+            self.parking_lot.park(registration_number, make, model, color, is_electric, is_motorcycle)
             self._show_message("Vehicle parked successfully")
             
             # Clear input fields
-            self.reg_entry.delete(0, tk.END)
+            self.registration_entry.delete(0, tk.END)
             self.make_entry.delete(0, tk.END)
             self.model_entry.delete(0, tk.END)
             self.color_entry.delete(0, tk.END)
@@ -204,13 +204,13 @@ class ParkingLotUI(ParkingLotObserver):
     def _remove_vehicle(self) -> None:
         """Handle remove vehicle button click"""
         try:
-            reg = self.remove_reg_entry.get().strip()
-            if not reg:
+            registration_number = self.remove_registration_entry.get().strip()
+            if not registration_number:
                 raise ValueError("Registration number is required")
                 
-            self.parking_lot.remove(reg)
+            self.parking_lot.remove(registration_number)
             self._show_message("Vehicle removed successfully")
-            self.remove_reg_entry.delete(0, tk.END)
+            self.remove_registration_entry.delete(0, tk.END)
             
         except ValueError as e:
             messagebox.showerror("Error", str(e))
@@ -226,10 +226,10 @@ class ParkingLotUI(ParkingLotObserver):
         
     def run(self) -> None:
         """Start the UI main loop"""
-        self.root.mainloop()
+        self.main_window.mainloop()
 
 if __name__ == "__main__":
     from ParkingManager import ParkingLot
     parking_lot = ParkingLot()
     ui = ParkingLotUI(parking_lot)
-    ui.run() 
+    ui.run()
