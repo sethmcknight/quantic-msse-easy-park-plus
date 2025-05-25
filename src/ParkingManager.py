@@ -288,12 +288,23 @@ class ParkingLot(ParkingLotInterface):
             return VehicleFactory.create_motorcycle(reg, make, model, color)
         return VehicleFactory.create_car(reg, make, model, color)
 
-    def park(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Optional[int]:
-        """Park a vehicle"""
+    def park(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool, lot_name: str = None, level: int = None) -> Optional[int]:
+        """Park a vehicle in a specific lot and level if provided, otherwise find first available slot"""
         vehicle = self._create_vehicle(reg, make, model, color, is_electric, is_motorcycle)
         
-        for level in self.levels:
-            for i, slot in enumerate(level.slots):
+        # If lot and level are specified, try to park in that specific location
+        if lot_name is not None and level is not None:
+            for level_obj in self.levels:
+                if level_obj.name == lot_name and level_obj.level == level:
+                    for i, slot in enumerate(level_obj.slots):
+                        if slot.is_empty() and slot.park(vehicle):
+                            self.notify_observers(f"Parked {vehicle.get_type()} in slot {i + 1} of {lot_name} level {level}")
+                            return i + 1
+            return None
+        
+        # Otherwise, find first available slot in any lot/level
+        for level_obj in self.levels:
+            for i, slot in enumerate(level_obj.slots):
                 if slot.is_empty() and slot.park(vehicle):
                     self.notify_observers(f"Parked {vehicle.get_type()} in slot {i + 1}")
                     return i + 1

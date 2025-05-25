@@ -19,11 +19,11 @@ To remove debug logging:
 import tkinter as tk
 from tkinter import ttk
 import logging
-from typing import Dict, Optional, Union, List, Any
+from typing import Dict, Optional, Union
 from Vehicle import Vehicle, ElectricVehicle, Motorcycle
 from ParkingManager import ParkingLot
 from models import VehicleData, SearchCriteria, ParkingLotData
-from interfaces import ParkingLotObserver, ParkingLotInterface
+from interfaces import ParkingLotObserver
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -67,6 +67,8 @@ class ParkingLotUI(ParkingLotObserver):
         self.color_value = tk.StringVar()
         self.vehicle_type_value = tk.StringVar(value="Car")
         self.ev_value = tk.BooleanVar()
+        self.park_lot_value = tk.StringVar()
+        self.park_level_value = tk.StringVar()
         
         # Search tab variables
         self.search_reg_value = tk.StringVar()
@@ -75,6 +77,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.search_model_value = tk.StringVar()
         self.search_type = tk.StringVar(value="registration")
         self.search_value = tk.StringVar()
+        
+        # Details tab variables
+        self.details_lot_value = tk.StringVar()
+        self.details_level_value = tk.StringVar()
     
     def _create_widgets(self):
         """Create UI widgets"""
@@ -85,11 +91,13 @@ class ParkingLotUI(ParkingLotObserver):
         self.vehicle_tab = ttk.Frame(self.notebook)
         self.search_tab = ttk.Frame(self.notebook)
         self.admin_tab = ttk.Frame(self.notebook)
+        self.details_tab = ttk.Frame(self.notebook)
         
         # Add tabs to notebook
         self.notebook.add(self.vehicle_tab, text="Vehicle Operations")
         self.notebook.add(self.search_tab, text="Search")
         self.notebook.add(self.admin_tab, text="Parking Lot Admin")
+        self.notebook.add(self.details_tab, text="Lot Details")
         
         # Create vehicle operations frame
         self.vehicle_frame = ttk.LabelFrame(self.vehicle_tab, text="Vehicle Operations")
@@ -103,6 +111,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.admin_frame = ttk.LabelFrame(self.admin_tab, text="Parking Lot Administration")
         self._create_admin_widgets()
         
+        # Create details frame
+        self.details_frame = ttk.LabelFrame(self.details_tab, text="Lot Details")
+        self._create_details_widgets()
+        
         # Create results tree
         self._create_results_tree()
         
@@ -111,6 +123,24 @@ class ParkingLotUI(ParkingLotObserver):
     
     def _create_vehicle_widgets(self):
         """Create widgets for vehicle operations"""
+        # Create lot selection frame
+        self.park_lot_frame = ttk.Frame(self.vehicle_frame)
+        self.park_lot_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        
+        # Create lot selection widgets
+        self.park_lot_label = ttk.Label(self.park_lot_frame, text="Lot Name:")
+        self.park_lot_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.park_lot_value, state="readonly")
+        
+        self.park_level_label = ttk.Label(self.park_lot_frame, text="Level:")
+        self.park_level_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.park_level_value, state="readonly")
+        
+        # Layout lot selection widgets
+        self.park_lot_label.grid(row=0, column=0, padx=5, pady=5)
+        self.park_lot_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.park_level_label.grid(row=0, column=2, padx=5, pady=5)
+        self.park_level_combo.grid(row=0, column=3, padx=5, pady=5)
+        
+        # Create vehicle input widgets
         self.reg_label = ttk.Label(self.vehicle_frame, text="Registration:")
         self.reg_entry = ttk.Entry(self.vehicle_frame, textvariable=self.reg_value)
         self.make_label = ttk.Label(self.vehicle_frame, text="Make:")
@@ -125,6 +155,24 @@ class ParkingLotUI(ParkingLotObserver):
         self.ev_check = ttk.Checkbutton(self.vehicle_frame, text="Electric Vehicle", variable=self.ev_value)
         self.park_button = ttk.Button(self.vehicle_frame, text="Park", command=self._handle_park)
         self.remove_button = ttk.Button(self.vehicle_frame, text="Remove", command=self._handle_remove)
+        
+        # Layout vehicle input widgets
+        self.reg_label.grid(row=1, column=0, padx=5, pady=5)
+        self.reg_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.make_label.grid(row=2, column=0, padx=5, pady=5)
+        self.make_entry.grid(row=2, column=1, padx=5, pady=5)
+        self.model_label.grid(row=3, column=0, padx=5, pady=5)
+        self.model_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.color_label.grid(row=4, column=0, padx=5, pady=5)
+        self.color_entry.grid(row=4, column=1, padx=5, pady=5)
+        self.vehicle_type_label.grid(row=5, column=0, padx=5, pady=5)
+        self.vehicle_type_combo.grid(row=5, column=1, padx=5, pady=5)
+        self.ev_check.grid(row=6, column=0, padx=5, pady=5)
+        self.park_button.grid(row=7, column=0, padx=5, pady=5)
+        self.remove_button.grid(row=7, column=1, padx=5, pady=5)
+        
+        # Update lot names in combo box
+        self._update_park_lot_names()
     
     def _create_search_widgets(self):
         """Create widgets for search operations"""
@@ -152,6 +200,67 @@ class ParkingLotUI(ParkingLotObserver):
         self.ev_num_entry = ttk.Entry(self.admin_frame, textvariable=self.ev_num_value)
         self.create_button = ttk.Button(self.admin_frame, text="Create Parking Lot", command=self._handle_create_lot)
         self.status_button = ttk.Button(self.admin_frame, text="Show Full Status", command=self._handle_show_status)
+        self.show_lots_button = ttk.Button(self.admin_frame, text="Show All Lots", command=self._handle_show_lots)
+        
+        # Create admin results tree
+        self.admin_tree = ttk.Treeview(self.admin_tab, columns=("Lot Name", "Levels", "Regular Capacity", "EV Capacity", "Available Regular", "Available EV"),
+                                     show="headings")
+        self.admin_tree.heading("Lot Name", text="Lot Name")
+        self.admin_tree.heading("Levels", text="Levels")
+        self.admin_tree.heading("Regular Capacity", text="Regular Capacity")
+        self.admin_tree.heading("EV Capacity", text="EV Capacity")
+        self.admin_tree.heading("Available Regular", text="Available Regular")
+        self.admin_tree.heading("Available EV", text="Available EV")
+    
+    def _create_details_widgets(self):
+        """Create widgets for lot details view"""
+        # Create lot selection frame
+        self.details_select_frame = ttk.Frame(self.details_frame)
+        self.details_select_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Create lot selection widgets
+        self.details_lot_label = ttk.Label(self.details_select_frame, text="Lot Name:")
+        self.details_lot_combo = ttk.Combobox(self.details_select_frame, textvariable=self.details_lot_value, state="readonly")
+        
+        self.details_level_label = ttk.Label(self.details_select_frame, text="Level:")
+        self.details_level_combo = ttk.Combobox(self.details_select_frame, textvariable=self.details_level_value, state="readonly")
+        
+        self.details_show_button = ttk.Button(self.details_select_frame, text="Show Details", command=self._handle_show_details)
+        
+        # Layout selection widgets
+        self.details_lot_label.grid(row=0, column=0, padx=5, pady=5)
+        self.details_lot_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.details_level_label.grid(row=0, column=2, padx=5, pady=5)
+        self.details_level_combo.grid(row=0, column=3, padx=5, pady=5)
+        self.details_show_button.grid(row=0, column=4, padx=5, pady=5)
+        
+        # Create details tree
+        self.details_tree = ttk.Treeview(self.details_frame, 
+                                       columns=("Level", "Slot", "Registration", "Make", "Model", "Color", "Slot Type", "Vehicle Type", "Charge Status"),
+                                       show="headings")
+        
+        # Configure tree columns
+        column_widths = {
+            "Level": 60,
+            "Slot": 60,
+            "Registration": 100,
+            "Make": 100,
+            "Model": 100,
+            "Color": 80,
+            "Slot Type": 80,
+            "Vehicle Type": 100,
+            "Charge Status": 80
+        }
+        
+        for col, width in column_widths.items():
+            self.details_tree.heading(col, text=col)
+            self.details_tree.column(col, width=width, anchor="center")
+        
+        # Layout details tree
+        self.details_tree.pack(expand=True, fill="both", padx=5, pady=5)
+        
+        # Update lot names in combo box
+        self._update_details_lot_names()
     
     def _create_results_tree(self):
         """Create the results tree view"""
@@ -169,6 +278,14 @@ class ParkingLotUI(ParkingLotObserver):
     def _handle_park(self):
         """Handle park vehicle button click"""
         try:
+            # Get selected lot and level
+            lot_name = self.park_lot_value.get()
+            level = int(self.park_level_value.get())
+            
+            if not lot_name:
+                self._show_error("Please select a lot")
+                return
+            
             data = VehicleData(
                 registration=self.reg_value.get(),
                 make=self.make_value.get(),
@@ -182,15 +299,21 @@ class ParkingLotUI(ParkingLotObserver):
                 return
             
             slot = self.parking_lot.park(
-                data.registration, data.make, data.model,
-                data.color, data.is_electric, data.is_motorcycle
+                data.registration,
+                data.make,
+                data.model,
+                data.color,
+                data.is_electric,
+                data.is_motorcycle,
+                lot_name,
+                level
             )
             
             if slot is not None:
-                self._show_message(f"Vehicle parked in slot {slot}")
+                self._show_message(f"Vehicle parked in slot {slot} of {lot_name} level {level}")
                 self._clear_park_fields()
             else:
-                self._show_error("No available slots")
+                self._show_error("No available slots in the selected lot and level")
         
         except Exception as e:
             logger.error(f"Error parking vehicle: {e}")
@@ -285,6 +408,10 @@ class ParkingLotUI(ParkingLotObserver):
             self.num_value.set("")
             self.ev_num_value.set("")
             
+            # Update lot names in combo boxes
+            self._update_details_lot_names()
+            self._update_park_lot_names()
+            
         except Exception as e:
             logger.error(f"Error creating parking lot: {e}")
             self._show_error("Error creating parking lot")
@@ -308,6 +435,78 @@ class ParkingLotUI(ParkingLotObserver):
         except Exception as e:
             logger.error(f"Error showing status: {e}")
             self._show_error("Error getting status")
+    
+    def _handle_show_lots(self):
+        """Handle show all lots button click"""
+        try:
+            # Clear previous results
+            self.admin_tree.delete(*self.admin_tree.get_children())
+            
+            # Configure column widths
+            column_widths = {
+                "Lot Name": 150,
+                "Levels": 80,
+                "Regular Capacity": 120,
+                "EV Capacity": 120,
+                "Available Regular": 120,
+                "Available EV": 120
+            }
+            
+            for col, width in column_widths.items():
+                self.admin_tree.column(col, width=width, anchor="center")
+            
+            # Get all lot names
+            lot_names = self.parking_lot.get_lot_names()
+            
+            for lot_name in lot_names:
+                # Get levels for this lot
+                levels = self.parking_lot.get_levels_for_lot(lot_name)
+                
+                # Initialize counters for this lot
+                total_regular_capacity = 0
+                total_ev_capacity = 0
+                occupied_regular = 0
+                occupied_ev = 0
+                
+                for level in levels:
+                    # Get vehicles in this level
+                    vehicles = self.parking_lot.get_vehicles_in_lot(lot_name, level)
+                    
+                    # Count occupied slots by type
+                    for vehicle in vehicles.values():
+                        if isinstance(vehicle, ElectricVehicle):
+                            occupied_ev += 1
+                        else:
+                            occupied_regular += 1
+                    
+                    # Get the level object to determine capacity
+                    level_obj = next((l for l in self.parking_lot.levels if l.level == level and l.name == lot_name), None)
+                    if level_obj:
+                        total_regular_capacity += len(level_obj.regular_slots)
+                        total_ev_capacity += len(level_obj.ev_slots)
+                
+                # Calculate available slots
+                available_regular = total_regular_capacity - occupied_regular
+                available_ev = total_ev_capacity - occupied_ev
+                
+                # Add lot information to tree
+                values = (
+                    lot_name,
+                    len(levels),
+                    total_regular_capacity,
+                    total_ev_capacity,
+                    available_regular,
+                    available_ev
+                )
+                
+                self.admin_tree.insert("", "end", values=values)
+            
+            if not self.admin_tree.get_children():
+                self._show_message("No parking lots found.")
+                
+        except Exception as e:
+            logger.error(f"Error showing lots: {e}")
+            self._show_error("Error showing lots information")
     
     def _validate_vehicle_data(self, data: VehicleData) -> bool:
         """Validate vehicle data"""
@@ -462,19 +661,24 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Layout vehicle frame
         self.vehicle_frame.pack(expand=True, fill="both", padx=5, pady=5)
-        self.reg_label.grid(row=0, column=0, padx=5, pady=5)
-        self.reg_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.make_label.grid(row=1, column=0, padx=5, pady=5)
-        self.make_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.model_label.grid(row=2, column=0, padx=5, pady=5)
-        self.model_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.color_label.grid(row=3, column=0, padx=5, pady=5)
-        self.color_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.vehicle_type_label.grid(row=4, column=0, padx=5, pady=5)
-        self.vehicle_type_combo.grid(row=4, column=1, padx=5, pady=5)
-        self.ev_check.grid(row=5, column=0, padx=5, pady=5)
-        self.park_button.grid(row=6, column=0, padx=5, pady=5)
-        self.remove_button.grid(row=6, column=1, padx=5, pady=5)
+        self.park_lot_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        self.park_lot_label.grid(row=0, column=0, padx=5, pady=5)
+        self.park_lot_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.park_level_label.grid(row=0, column=2, padx=5, pady=5)
+        self.park_level_combo.grid(row=0, column=3, padx=5, pady=5)
+        self.reg_label.grid(row=1, column=0, padx=5, pady=5)
+        self.reg_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.make_label.grid(row=2, column=0, padx=5, pady=5)
+        self.make_entry.grid(row=2, column=1, padx=5, pady=5)
+        self.model_label.grid(row=3, column=0, padx=5, pady=5)
+        self.model_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.color_label.grid(row=4, column=0, padx=5, pady=5)
+        self.color_entry.grid(row=4, column=1, padx=5, pady=5)
+        self.vehicle_type_label.grid(row=5, column=0, padx=5, pady=5)
+        self.vehicle_type_combo.grid(row=5, column=1, padx=5, pady=5)
+        self.ev_check.grid(row=6, column=0, padx=5, pady=5)
+        self.park_button.grid(row=7, column=0, padx=5, pady=5)
+        self.remove_button.grid(row=7, column=1, padx=5, pady=5)
         
         # Layout search frame
         self.search_frame.pack(expand=True, fill="both", padx=5, pady=5)
@@ -501,9 +705,16 @@ class ParkingLotUI(ParkingLotObserver):
         self.ev_num_entry.grid(row=3, column=1, padx=5, pady=5)
         self.create_button.grid(row=4, column=0, padx=5, pady=5)
         self.status_button.grid(row=4, column=1, padx=5, pady=5)
+        self.show_lots_button.grid(row=4, column=2, padx=5, pady=5)
+        
+        # Layout details frame
+        self.details_frame.pack(expand=True, fill="both", padx=5, pady=5)
         
         # Layout results tree
         self.results_tree.pack(expand=True, fill="both", padx=5, pady=5)
+        
+        # Layout admin tree
+        self.admin_tree.pack(expand=True, fill="both", padx=5, pady=5)
         
         # Layout message area
         self.message_area.pack(expand=True, fill="both", padx=5, pady=5)
@@ -543,5 +754,96 @@ class ParkingLotUI(ParkingLotObserver):
     def create_lot(self):
         """Create a new parking lot"""
         self._handle_create_lot()
+
+    def _update_details_lot_names(self):
+        """Update the lot names in the details combo box"""
+        lot_names = self.parking_lot.get_lot_names()
+        self.details_lot_combo['values'] = lot_names
+        if lot_names:
+            self.details_lot_combo.set(lot_names[0])
+            self._update_details_levels()
+
+    def _update_details_levels(self):
+        """Update the levels in the details combo box based on selected lot"""
+        lot_name = self.details_lot_value.get()
+        if lot_name:
+            levels = self.parking_lot.get_levels_for_lot(lot_name)
+            self.details_level_combo['values'] = levels
+            if levels:
+                self.details_level_combo.set(levels[0])
+
+    def _handle_show_details(self):
+        """Handle show details button click"""
+        try:
+            # Clear previous results
+            self.details_tree.delete(*self.details_tree.get_children())
+            
+            # Get selected lot and level
+            lot_name = self.details_lot_value.get()
+            level = int(self.details_level_value.get())
+            
+            if not lot_name:
+                self._show_error("Please select a lot")
+                return
+            
+            # Get vehicles in the lot
+            vehicles = self.parking_lot.get_vehicles_in_lot(lot_name, level)
+            
+            # Add vehicles to tree
+            for slot, vehicle in vehicles.items():
+                if isinstance(vehicle, Vehicle):
+                    reg = vehicle.registration_number
+                    make = vehicle.make
+                    model = vehicle.model
+                    color = vehicle.color
+                    is_ev = isinstance(vehicle, ElectricVehicle)
+                    is_motorcycle = isinstance(vehicle, Motorcycle)
+                    charge_status = f"{vehicle.charge}%" if isinstance(vehicle, ElectricVehicle) else "N/A"
+                    
+                    vehicle_type = (
+                        "EV Motorcycle" if is_ev and is_motorcycle else
+                        "EV" if is_ev else
+                        "Motorcycle" if is_motorcycle else "Standard"
+                    )
+                    
+                    slot_type = "EV" if is_ev else "Standard"
+                    
+                    values = (
+                        level,
+                        slot,
+                        reg,
+                        make,
+                        model,
+                        color,
+                        slot_type,
+                        vehicle_type,
+                        charge_status
+                    )
+                    
+                    self.details_tree.insert("", "end", values=values)
+            
+            if not self.details_tree.get_children():
+                self._show_message("No vehicles found in the selected lot and level.")
+                
+        except Exception as e:
+            logger.error(f"Error showing details: {e}")
+            self._show_error("Error showing lot details")
+
+    def _update_park_lot_names(self):
+        """Update the lot names in the park combo box"""
+        lot_names = self.parking_lot.get_lot_names()
+        self.park_lot_combo['values'] = lot_names
+        if lot_names:
+            self.park_lot_combo.set(lot_names[0])
+            self._update_park_levels()
+
+    def _update_park_levels(self):
+        """Update the levels in the park combo box based on selected lot"""
+        lot_name = self.park_lot_value.get()
+        if lot_name:
+            levels = self.parking_lot.get_levels_for_lot(lot_name)
+            self.park_level_combo['values'] = levels
+            if levels:
+                self.park_level_combo.set(levels[0])
 
     
