@@ -1,4 +1,5 @@
-# TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.
+# TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.  
+# this class is a duplicate of the Vehicle class and has been merged into it.  Keeping temporarily for reference.
 class ElectricVehicle:
     color: str
     registrationNumber: str
