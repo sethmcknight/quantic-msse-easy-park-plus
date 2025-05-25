@@ -27,6 +27,7 @@ class ElectricVehicle:
         return self.registrationNumber
 
     def setCharge(self, charge: int) -> None:
+        """Set the charge level for the electric vehicle (unused, kept for future extensibility)."""
         self.charge = charge
 
     def getCharge(self) -> int:
@@ -37,6 +38,7 @@ class ElectricCar(ElectricVehicle):
         super().__init__(registrationNumber, make, model, color)
 
     def getType(self) -> Literal["Car"]:
+        """Return the type of the vehicle (unused, kept for future extensibility)."""
         return "Car"
 
 class ElectricBike(ElectricVehicle):
@@ -44,4 +46,5 @@ class ElectricBike(ElectricVehicle):
         super().__init__(registrationNumber, make, model, color)
 
     def getType(self) -> Literal["Motorcycle"]:
+        """Return the type of the vehicle (unused, kept for future extensibility)."""
         return "Motorcycle"
