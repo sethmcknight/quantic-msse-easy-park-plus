@@ -180,72 +180,6 @@ class EmptyState(ParkingSlotState):
     
     def get_vehicle(self) -> Optional[Vehicle.Vehicle]:
         return None
-
-    def getEmptyLevel(self):
-        # TODO: Remove unused method. See anti-patterns.md.
-        if (self.numOfOccupiedEvSlots == 0 and self.numOfOccupiedSlots == 0):
-            return self.level
-
-    def _create_ev_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool) -> ElectricVehicle:
-        """Create an electric vehicle instance"""
-        if motor:
-            return ElectricBike(registrationNumber, make, model, color)
-        else:
-            return ElectricCar(registrationNumber, make, model, color)
-
-    def _create_regular_vehicle(self, registrationNumber: str, make: str, model: str, color: str, motor: bool) -> Vehicle:
-        """Create a regular vehicle instance"""
-        if motor:
-            return Motorcycle(registrationNumber, make, model, color)
-        else:
-            return Car(registrationNumber, make, model, color)
-
-    def park(self, registrationNumber: str, make: str, model: str, color: str, ev: int, motor: int) -> int:
-        """Park a vehicle and return its slot number"""
-        ev_bool = bool(ev)
-        motor_bool = bool(motor)
-
-        if ev_bool:
-            if self.numOfOccupiedEvSlots >= self.evCapacity:
-                return -1
-            slot_index = self.getEmptyEvSlot()
-            if slot_index is None:
-                return -1
-            vehicle = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
-            self.evSlots[slot_index] = vehicle
-            self.numOfOccupiedEvSlots += 1
-            return slot_index + 1
-        else:
-            if self.numOfOccupiedSlots >= self.capacity:
-                return -1  # Regular lot is full
-            slot_index = self.getEmptySlot()
-            if slot_index is None:
-                return -1  # No available regular slot
-            vehicle = self._create_regular_vehicle(registrationNumber, make, model, color, motor_bool)
-            self.slots[slot_index] = vehicle
-            self.numOfOccupiedSlots += 1
-            return slot_index + 1  # Return 1-based slot ID
-
-    def leave(self, slotid: int, ev: int):
-        if (ev == 1):
-            if self.numOfOccupiedEvSlots > 0 and self.evSlots[slotid-1] is not None:
-                self.evSlots[slotid-1] = None
-                self.numOfOccupiedEvSlots = self.numOfOccupiedEvSlots - 1
-                return True
-            else:
-                return False
-        else:
-            if self.numOfOccupiedSlots > 0 and self.slots[slotid-1] is not None:
-                self.slots[slotid-1] = None
-                self.numOfOccupiedSlots = self.numOfOccupiedSlots - 1
-                return True
-            else:
-                return False
-
-    def edit(self, slotid: int, registrationNumber: str, make: str, model: str, color: str, ev: int, motor: int) -> bool:
-        if ev == 1:
-            motor_bool = bool(motor)
-            self.evSlots[slotid-1] = self._create_ev_vehicle(registrationNumber, make, model, color, motor_bool)
 class OccupiedState(ParkingSlotState):
     """State for an occupied parking slot"""
     
@@ -280,9 +214,6 @@ class ReservedState(ParkingSlotState):
         if self.can_park(vehicle):
             self._vehicle = vehicle
             return True
-        else:
-            motor_bool = bool(motor)
-            self.slots[slotid-1] = Motorcycle(registrationNumber, make, model, color) if motor_bool else Car(registrationNumber, make, model, color)
         return False
     
     def leave(self) -> Optional[Vehicle.Vehicle]:

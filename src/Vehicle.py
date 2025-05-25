@@ -68,8 +68,9 @@ Example:
 """
 
 from dataclasses import dataclass
-from typing import Optional, TypeVar, Protocol
+from typing import Optional, TypeVar, Protocol, Literal
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 @dataclass
 class VehicleInfo:
@@ -173,17 +174,20 @@ class ElectricVehicle(Vehicle):
                 f"\nCharge: {self._charge}%")
 
 class Car(Vehicle):
-    def __init__(self, registrationNumber: str, make: str, model: str, color: str) -> None:
-        super().__init__(registrationNumber, make, model, color)
-
-    def getType(self) -> Literal["Car"]:
     """Class representing a car"""
     
-    def get_type(self) -> str:
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+
+    def get_type(self) -> Literal["Car"]:
+        """Return the type of this vehicle"""
         return "Car"
 
 class Truck(Vehicle):
     """Class representing a truck"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Truck"
@@ -191,11 +195,17 @@ class Truck(Vehicle):
 class Motorcycle(Vehicle):
     """Class representing a motorcycle"""
     
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+    
     def get_type(self) -> str:
         return "Motorcycle"
 
 class Bus(Vehicle):
     """Class representing a bus"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Bus"
@@ -203,11 +213,17 @@ class Bus(Vehicle):
 class ElectricCar(ElectricVehicle):
     """Class representing an electric car"""
     
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+    
     def get_type(self) -> str:
         return "Electric Car"
 
 class ElectricTruck(ElectricVehicle):
     """Class representing an electric truck"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Electric Truck"
@@ -215,11 +231,17 @@ class ElectricTruck(ElectricVehicle):
 class ElectricMotorcycle(ElectricVehicle):
     """Class representing an electric motorcycle"""
     
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+    
     def get_type(self) -> str:
         return "Electric Motorcycle"
 
 class ElectricBus(ElectricVehicle):
     """Class representing an electric bus"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Electric Bus"

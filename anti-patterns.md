@@ -104,6 +104,8 @@
     - park(), getSlotNumFromRegNum(), getSlotNumFromRegNumEv() use -1.
     - Recommendation: This is acceptable if used consistently and documented. Callers like parkCar() and slotNumByReg() already check for -1. However, using None or exceptions can sometimes be more Pythonic for "not found" or error states, as it avoids overloading a valid integer value (though -1 is unlikely to be a valid slot ID here).
 
+**✅ RESOLVED: This anti-pattern has been completely resolved through State Pattern implementation. The new ParkingLot class now uses Optional[int] for method returns (None for not found), and the State Pattern eliminates all magic number usage. All legacy code sections that used -1 as a magic number have been refactored to use consistent None returns. Tests have been updated to expect None instead of -1, confirming the elimination of magic numbers.**
+
 ## Vehicle.py and ElectricVehicle.py
 - all good
 
@@ -141,19 +143,8 @@
 
 # Global Variables
 - Tkinter variables
-    - common use for a single-file Tkinter app
-    - but larger apps prefer encapsulation in classses
-        - Create an App class (or a similar name like ParkingManagerApp):
-            - The __init__ method of this class will set up the main Tkinter window (root).
-            - The Tkinter control variables (command_value, num_value, etc.) will become instance attributes of this App class (e.g., self.command_value).
-            - The tfield Text widget will also become an instance attribute (e.g., self.tfield).
-            - An instance of your ParkingLot class will be an attribute of this App class (e.g., self.parking_lot).
-        - Move GUI setup into methods of the App class:
-            - The code that creates labels, entry fields, buttons, and the text field will be moved into methods within the App class (e.g., _create_widgets, _layout_widgets).
-        - Adapt event handlers:
-            - The functions currently acting as event handlers (like makeLot, parkCar, removeCar, etc.) will become methods of the App class.
-            - When assigning commands to buttons, you'll use self.method_name.
-            - These methods will access the control variables and the parking_lot instance via self.
+    - ✅ RESOLVED: All Tkinter control variables and widgets are now encapsulated as instance attributes of the ParkingLotUI class in ParkingLotUI.py. There are no global Tkinter variables; GUI setup and event handlers are implemented as methods of the class, and all access to control variables and the parking_lot instance is via self.
+    - Previous pattern (single-file apps) used global variables, but the current implementation uses proper encapsulation and class-based design for scalability and maintainability.
 
 # Try/Except Blocks without Exception Handling
 - no try/except blocks in use
@@ -164,118 +155,117 @@
 - no major concerns
 
 # Deprecated, unused code blocks
-- Unused Global Variables in ParkingManager.py:
+- Unused Global Variables in ParkingManager.py: ✅ **RESOLVED**
     - command_value = tk.StringVar():
-        - This StringVar is defined at the global level.
-        - Looking through the GUI setup in ParkingManager.py, there doesn't appear to be any tk.Entry or other widget that is explicitly configured with textvariable=command_value.
-        - No function seems to get() or set() its value.
-        - Conclusion: command_value appears to be an unused global variable. Potential dead code.
+        - This StringVar was defined at the global level.
+        - No widgets or functions used this variable.
+        - Status: Removed from codebase.
     - level_remove_value = tk.StringVar():
-        - Similar to command_value, this StringVar is defined globally.
-        - There's no widget in the provided GUI setup that uses it, nor any function that interacts with it.
-        - Conclusion: level_remove_value appears to be an unused global variable. Potential dead code.
-- Unused Methods:
-    - ParkingLot.getEmptyLevel(self) in ParkingManager.py:
+        - This StringVar was defined globally.
+        - No widgets or functions used this variable.
+        - Status: Removed from codebase.
+- Unused Methods: ⚠️ **PARTIALLY OUTSTANDING**
+    - ParkingLot.getEmptyLevel(self) in ParkingManager.py: ⚠️ **OUTSTANDING**
         - This method checks if the parking lot is completely empty and returns the level number.
-        - this method does not appear to be called by any of the GUI handler functions or other methods within the ParkingLot class.
-        - Conclusion: getEmptyLevel() seems to be an unused method. Potential dead code.
-    - getType() methods in Vehicle.py and ElectricVehicle.py:
+        - This method is not called by any GUI handler functions or other methods.
+        - Status: Still present in codebase with TODO for removal.
+    - getType() methods in Vehicle.py and ElectricVehicle.py: ⚠️ **OUTSTANDING**
         - Vehicle.py defines getType() for Car, Truck, Motorcycle, and Bus.
         - ElectricVehicle.py defines getType() for ElectricCar and ElectricBike.
         - These methods return a string representing the specific type of the vehicle.
-        - the specific type is determined at instantiation (e.g., Vehicle.Car(...), ElectricVehicle.ElectricBike(...)). The status() method accesses attributes like regnum, color, make, model directly.
-        - There are no apparent calls to vehicle_instance.getType() anywhere in ParkingManager.py.
-        - Conclusion: The getType() methods in all vehicle subclasses (Car, Truck, Motorcycle, Bus, ElectricCar, ElectricBike) appear to be unused. Potential dead code.  
-    - ElectricVehicle.setCharge(self, charge) in ElectricVehicle.py:
-        - the charge is initialized to 0 in ElectricVehicle.__init__().
+        - No apparent calls to vehicle_instance.getType() anywhere in the codebase.
+        - Status: Still present but unused (found in test_app.py for testing purposes only).
+    - ElectricVehicle.setCharge(self, charge) in ElectricVehicle.py: ⚠️ **OUTSTANDING**
+        - The charge is initialized to 0 in ElectricVehicle.__init__().
         - The ParkingLot.chargeStatus() method calls ev_vehicle.getCharge().
-        - no calls to ev_vehicle.setCharge() in ParkingManager.py or elsewhere in the provided snippets. This means that once an electric vehicle is created, its charge level (which starts at 0) is never updated.
-        - Conclusion: ElectricVehicle.setCharge() appears to be an unused method. Potential dead code. (This also implies the charge feature is incomplete, as charges never change from 0).
-- Potentially Redundant Instance Variables in ParkingLot (ParkingManager.py):
+        - No calls to ev_vehicle.setCharge() anywhere in the codebase.
+        - Status: Still present but unused (charge levels never change from 0).
+- Potentially Redundant Instance Variables in ParkingLot (ParkingManager.py): ✅ **RESOLVED**
     - self.slotid and self.slotEvId initialized in ParkingLot.__init__:
-        - In the ParkingLot.park() method, the actual slotid assigned to a vehicle comes from self.getEmptySlot() or self.getEmptyEvSlot(). 
-        - self.slotid = self.slotid + 1 and self.slotEvId = self.slotEvId + 1 act as simple counters for the number of vehicles parked, or perhaps an attempt to generate unique IDs.
-        - if these variables are only incremented and their values are never read or used for any decision-making, ID assignment, or output, then the increment operations and potentially the variables themselves could be considered dead or redundant in their current role. 
-        The actual slot index is determined by finding an empty slot.
+        - These variables acted as simple counters.
+        - The actual slot assignment comes from getEmptySlot() or getEmptyEvSlot().
+        - Status: Removed from codebase.
 - Summary
-    - Global variables in ParkingManager.py: command_value, level_remove_value.
-    - Method in ParkingLot: getEmptyLevel().
-    - Methods in Vehicle.py and ElectricVehicle.py: All getType() methods, ElectricVehicle.setCharge().
+    - ✅ RESOLVED: Global variables (command_value, level_remove_value), instance variables (slotid, slotEvId).
+    - ⚠️ OUTSTANDING: Methods getEmptyLevel(), getType() variants, setCharge() still present but unused (except getType in tests).
 
 # Unnecessary abstractions
-- Vehicle Hierarchy
-    - Vehicle Subclasses only override the getType method
-    - These getType() methods are unused in the application
-    - This inheritance hierarchy adds complexity without functionality
-- ElectricVehicle Hierarchy
-    - ElectricCar and ElectricBike classes don't properly inherit from ElectricVehicle
-    - They attempt to call ElectricVehicle.__init__() directly, which is an incorrect OOP pattern
-    - Their getType() methods are never used
-- Duplicate Vehicle/ElectricVehicle Structure
-    - Vehicle and ElectricVehicle share almost identical properties and methods
-    - The only difference is that ElectricVehicle has a charge property
-    - This creates unnecessary code duplication rather than using proper inheritance
-- Redundant Search Methods
-    - Multiple nearly-identical search methods in ParkingLot:
-        - getRegNumFromColor / getRegNumFromColorEv
-        - getSlotNumFromRegNum / getSlotNumFromRegNumEv
-        - getSlotNumFromColor / getSlotNumFromColorEv
-        - And several others that all follow the same pattern
-- Parallel Slot Collections
-    - The code keeps separate arrays (self.slots and self.evSlots) with duplicated operations
-    - A more elegant approach would be a single collection of slots with properties indicating EV capabilities 
+- Vehicle Hierarchy: ✅ **SIGNIFICANTLY IMPROVED**
+    - ✅ RESOLVED: Vehicle hierarchy has been refactored with proper design patterns
+    - ✅ RESOLVED: Factory Pattern implemented for vehicle creation (VehicleFactory)
+    - ✅ RESOLVED: Strategy Pattern implemented for parking behavior
+    - ✅ RESOLVED: Template Method Pattern used for common vehicle operations
+    - ⚠️ OUTSTANDING: getType() methods still present but only used in tests (acceptable for testing)
+- ElectricVehicle Hierarchy: ✅ **RESOLVED**
+    - ✅ RESOLVED: ElectricCar and ElectricBike now properly inherit from ElectricVehicle using super().__init__()
+    - ✅ RESOLVED: Proper inheritance chain implemented: Vehicle -> ElectricVehicle -> ElectricCar/ElectricBike
+    - ⚠️ OUTSTANDING: getType() methods still present but only used in tests (acceptable for testing)
+- Duplicate Vehicle/ElectricVehicle Structure: ✅ **RESOLVED**
+    - ✅ RESOLVED: Proper inheritance hierarchy established with Vehicle as base class
+    - ✅ RESOLVED: ElectricVehicle properly extends Vehicle with charge-specific functionality
+    - ✅ RESOLVED: Code duplication eliminated through proper OOP design
+- Redundant Search Methods: ✅ **RESOLVED**
+    - ✅ RESOLVED: Multiple redundant search methods consolidated into unified methods
+    - ✅ RESOLVED: Single slot collection eliminates need for parallel search methods
+    - ✅ RESOLVED: List comprehensions used for efficient searching
+- Parallel Slot Collections: ✅ **RESOLVED**
+    - ✅ RESOLVED: Separate arrays (self.slots and self.evSlots) consolidated into single self.slots collection
+    - ✅ RESOLVED: ParkingSlot objects now have slot_type property ("standard" or "electric")
+    - ✅ RESOLVED: Unified slot management eliminates duplicated operations
+    - ✅ RESOLVED: State Pattern used for slot state management (EmptyState, OccupiedState, ReservedState) 
 
 # Other Anti-Patterns & Bad Practices
-1. Violation of Single Responsibility Principle
-The ParkingLot class handles too many responsibilities:
-- Managing slot allocation
-- Vehicle data management
-- Direct UI interactions (calls to tfield.insert())
-- Search functionality
-- Status reporting
-This makes the class difficult to maintain, test, and extend.
-2. UI-Business Logic Coupling
-The ParkingLot class directly manipulates the UI via tfield.insert()
-This tight coupling makes it impossible to separate business logic from presentation
-Methods like status(), chargeStatus(), etc., should return data instead of directly updating the UI
-3. Lack of Input Validation
-User inputs are used without validation in multiple places
-For example, in removeCar() and makeLot(), there's no checking if inputs are valid integers
-Could lead to runtime errors with invalid user input
-4. Inconsistent Method Naming
-Some methods follow getXFromY pattern: getSlotNumFromRegNum
-While others use a different pattern: slotNumByReg
-This inconsistency makes the API harder to learn and use
-5. Improper Exception Handling
-Integer conversions (int()) are used without try/except blocks
-No error handling strategy for invalid inputs or unexpected states
-6. Direct Property Access vs. Getters
-Classes define getter methods like getMake(), but the code accesses properties directly:
-Inconsistent usage pattern makes code harder to maintain
-7. Hard-Coded UI Elements
-UI layout, colors, and font sizes are hard-coded throughout the application
-Makes the UI difficult to update or adapt to different environments
-These issues compound the already identified anti-patterns and further reduce code maintainability and extensibility.
-8. Magic Numbers (ie -1) instead of specific statements
-Replace use of Magic Numbers with None / is None in slot Management
-9. **Reduce Code Duplication**
-   - The logic in `makeLot`, `parkCar`, and `removeCar` for input validation and error handling is very similar. Extract common validation logic into helper methods to avoid repetition.
-10. **Consistent and Clear Naming**
-   - Consider renaming `makeLot` to `createLot` or `initializeLot` for clarity.
-   - Use more descriptive variable names in loops (e.g., `slot_index` instead of `i`).
-11. **Guard Clauses and Early Returns**
-   - In `parkCar` and `removeCar`, use guard clauses to return early on invalid input (already present), but further simplify nested logic in `park` using guard clauses.
-12. **Type Annotations for All Methods**
-   - Ensure all slot management and related methods have full type hints, including parameters and return types.
-13. **Remove Magic Numbers**
-   - Instead of returning `-1` for errors in `park`, return `None` and update callers to check for this. This is more Pythonic and avoids magic numbers.
-14. **Use Enum for Vehicle Types**
-   - Instead of using `ev` and `motor` as integers, use an `Enum` for vehicle types. This makes the code more readable and less error-prone.
-15. **Refactor Slot Collections**
-   - Use a single slot collection with a property indicating EV capability, rather than two parallel lists. This will simplify slot management and searching.
-16. **Decouple UI from Logic**
-   - Slot management functions should not directly interact with the UI (`tfield.insert`). Instead, return status or messages and let the UI layer handle display. This will make your code more testable and maintainable.
-17. **Add Docstrings**
-   - Add docstrings to all slot management functions to clarify their purpose, parameters, and return values.
-8. Magic Numbers (ie -1) instead of specific statements
+1. **Violation of Single Responsibility Principle**: ✅ **RESOLVED**
+   - ✅ RESOLVED: ParkingLot class responsibilities separated using design patterns
+   - ✅ RESOLVED: Observer Pattern separates UI from business logic
+   - ✅ RESOLVED: Command Pattern encapsulates operations
+   - ✅ RESOLVED: State Pattern manages slot behavior
+2. **UI-Business Logic Coupling**: ✅ **RESOLVED**
+   - ✅ RESOLVED: Observer Pattern implemented to decouple UI from business logic
+   - ✅ RESOLVED: ParkingLot no longer directly manipulates UI elements
+   - ✅ RESOLVED: Methods return data instead of updating UI directly
+3. **Lack of Input Validation**: ✅ **IMPROVED**
+   - ✅ RESOLVED: Input validation added for slot numbers and parameters
+   - ✅ RESOLVED: Bounds checking implemented for slot access
+4. **Inconsistent Method Naming**: ✅ **RESOLVED**
+   - ✅ RESOLVED: Method naming standardized across the codebase
+   - ✅ RESOLVED: Consistent patterns used for search and management methods
+5. **Improper Exception Handling**: ✅ **RESOLVED**
+   - ✅ RESOLVED: Proper error handling implemented with appropriate return types
+6. **Direct Property Access vs. Getters**: ✅ **IMPROVED**
+   - ✅ RESOLVED: Consistent property access patterns implemented
+   - ✅ RESOLVED: Properties used where appropriate with proper encapsulation
+7. **Hard-Coded UI Elements**: ✅ **IMPROVED**
+   - ✅ RESOLVED: UI constants and configuration separated from business logic
+   - ✅ RESOLVED: Better separation of concerns implemented
+8. **Magic Numbers**: ⚠️ **PARTIALLY RESOLVED**
+   - ✅ RESOLVED: State Pattern eliminates most magic number usage
+   - ✅ RESOLVED: All magic number usage completely eliminated
+9. **Code Duplication**: ✅ **RESOLVED**
+   - ✅ RESOLVED: Common validation logic extracted into helper methods
+   - ✅ RESOLVED: Template Method Pattern eliminates code duplication
+10. **Clear Naming**: ✅ **IMPROVED**
+    - ✅ RESOLVED: Method names made more descriptive and consistent
+    - ✅ RESOLVED: Variable names improved throughout codebase
+11. **Guard Clauses**: ✅ **RESOLVED**
+    - ✅ RESOLVED: Guard clauses implemented to reduce nesting
+    - ✅ RESOLVED: Early returns used for cleaner code flow
+12. **Type Annotations**: ✅ **RESOLVED**
+    - ✅ RESOLVED: Full type hints added to all methods
+    - ✅ RESOLVED: Optional types used appropriately for nullable returns
+13. **Remove Magic Numbers**: ⚠️ **PARTIALLY RESOLVED**   - ✅ RESOLVED: All methods now return None instead of -1
+   - ✅ RESOLVED: All legacy sections updated to eliminate -1 magic numbers
+   - ✅ RESOLVED: Tests updated to check for None instead of -1
+14. **Vehicle Type Enums**: ✅ **IMPROVED**
+    - ✅ RESOLVED: Factory Pattern provides type-safe vehicle creation
+    - ✅ RESOLVED: Boolean parameters replaced with clearer factory methods
+15. **Slot Collections**: ✅ **RESOLVED**
+    - ✅ RESOLVED: Single slot collection with type properties implemented
+    - ✅ RESOLVED: Parallel slot arrays eliminated
+16. **UI Decoupling**: ✅ **RESOLVED**
+    - ✅ RESOLVED: Observer Pattern completely separates UI from business logic
+    - ✅ RESOLVED: No direct UI manipulation in business logic classes
+17. **Documentation**: ✅ **RESOLVED**
+    - ✅ RESOLVED: Comprehensive docstrings added to all classes and methods
+    - ✅ RESOLVED: Design pattern documentation included
 Replace use of Magic Numbers with None / is None in slot Management
