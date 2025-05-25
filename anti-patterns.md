@@ -1,56 +1,9 @@
 # Variable Names
-## ParkingManager.py
-- 'root' for the main Tkinter window?
-    - this is a common convention but could be more descriptive
-- short variable names
-    - ev_value
-    - num_value
-    - make_value
-    - model_value
-    - color_value
-    - reg_value
-    - level_value
-    - ev_car_value
-    - ev_car2_value
-    - slot1_value
-    - slot2_value
-    - reg1_value
-    - slot_value
-    - ev_motor_value
-    - level_remove_value
-    - tfield (text field for a confirmation message)
-- local variables
-    - consider being explicit in for loops instead of i for the iterator
-    - ParkingLot init method
-        - slotid
-        - slotEvId
-    - park Method
-        - ev
-        - motor
-    - createParkingLot method
-        - capacity
-        - evcapacity
-        - level
-    - vehicle in multiple methods
-        - used in different ways
-        - clarify how it is being used
-
-## Vehicle.py
-- regnum
-- make
-- model
-- color
-
-## ElectricVehicle.py
-- charge
-- regnum
-- make
-- model
-- color
+#
+# ✅ RESOLVED: All ambiguous, abbreviated, or unclear variable names in UI, business logic, and vehicle classes have been refactored to use descriptive, consistent, and meaningful names. All widget references and usages in ParkingLotUI, Vehicle, and related classes now follow the new naming conventions. See project-plan.md for details.
 
 # Comments
-- basically non-existent
-- a few headers that provide almost not additional value
+- Robust comments added
 
 # Passing Mutable Arguments
 

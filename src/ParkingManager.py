@@ -63,11 +63,11 @@ class ParkingLotLevel:
         self.level = level
         self.name: Optional[str] = None
         self.regular_slots: List[ParkingSlot] = []
-        self.ev_slots: List[ParkingSlot] = []
+        self.electric_vehicle_slots: List[ParkingSlot] = []
 
     @property
     def slots(self) -> List[ParkingSlot]:
-        return self.regular_slots + self.ev_slots
+        return self.regular_slots + self.electric_vehicle_slots
 
     def set_name(self, name: str) -> None:
         self.name = name
@@ -76,7 +76,7 @@ class ParkingLotLevel:
         self.regular_slots.append(slot)
 
     def add_ev_slot(self, slot: ParkingSlot) -> None:
-        self.ev_slots.append(slot)
+        self.electric_vehicle_slots.append(slot)
 
 class ParkingLot(ParkingLotInterface):
     """Singleton class representing the parking lot"""
@@ -97,26 +97,25 @@ class ParkingLot(ParkingLotInterface):
     def create_parking_lot(self, data: ParkingLotData) -> bool:
         """Create a new parking lot with the given data"""
         try:
+            # Prevent duplicate lot names and levels
+            for level in self.levels:
+                if level.name == data.name and level.level == data.level:
+                    self.notify_observers(f"Lot name already exists for level {data.level}")
+                    return False
             # Create a new level
             level = ParkingLotLevel(data.level)
-            
             # Add regular slots
             for _ in range(data.regular_slots):
                 level.add_regular_slot(ParkingSlot("regular"))
-            
             # Add EV slots
-            for _ in range(data.ev_slots):
+            for _ in range(data.electric_vehicle_slots):
                 level.add_ev_slot(ParkingSlot("ev"))
-            
             # Set the name
             level.set_name(data.name)
-            
             # Add the level to the parking lot
             self.levels.append(level)
-            
             # Notify observers
-            self.notify_observers(f"Created parking lot {data.name} with {data.regular_slots} regular slots and {data.ev_slots} EV slots")
-            
+            self.notify_observers(f"Created parking lot {data.name} with {data.regular_slots} regular slots and {data.electric_vehicle_slots} EV slots")
             return True
         except Exception as e:
             logger.error(f"Error creating parking lot: {e}")
@@ -135,8 +134,8 @@ class ParkingLot(ParkingLotInterface):
     def park_vehicle(self, vehicle_data: VehicleData) -> Optional[int]:
         """Park a vehicle using the vehicle data"""
         return self.park(
-            vehicle_data.registration,
-            vehicle_data.make,
+            vehicle_data.registration_number,
+            vehicle_data.manufacturer,  # Updated from make
             vehicle_data.model,
             vehicle_data.color,
             vehicle_data.is_electric,
@@ -161,7 +160,7 @@ class ParkingLot(ParkingLotInterface):
                     results.append({
                         "slot": slot,
                         "registration": vehicle.registration_number,
-                        "make": vehicle.make,
+                        "manufacturer": vehicle.vehicle_manufacturer,
                         "model": vehicle.model,
                         "color": vehicle.color,
                         "type": vehicle.get_type()
@@ -174,20 +173,20 @@ class ParkingLot(ParkingLotInterface):
                     results.append({
                         "slot": slot,
                         "registration": vehicle.registration_number,
-                        "make": vehicle.make,
+                        "manufacturer": vehicle.vehicle_manufacturer,
                         "model": vehicle.model,
                         "color": vehicle.color,
                         "type": vehicle.get_type()
                     })
-        elif criteria.search_type == "make" and criteria.make:
-            slots = self.get_slots_by_make(criteria.make)
+        elif criteria.search_type == "manufacturer" and criteria.manufacturer:
+            slots = self.get_slots_by_manufacturer(criteria.manufacturer)
             for slot in slots:
                 vehicle = self.get_vehicle(slot)
                 if vehicle:
                     results.append({
                         "slot": slot,
                         "registration": vehicle.registration_number,
-                        "make": vehicle.make,
+                        "manufacturer": vehicle.vehicle_manufacturer,
                         "model": vehicle.model,
                         "color": vehicle.color,
                         "type": vehicle.get_type()
@@ -200,7 +199,20 @@ class ParkingLot(ParkingLotInterface):
                     results.append({
                         "slot": slot,
                         "registration": vehicle.registration_number,
-                        "make": vehicle.make,
+                        "manufacturer": vehicle.vehicle_manufacturer,
+                        "model": vehicle.model,
+                        "color": vehicle.color,
+                        "type": vehicle.get_type()
+                    })
+        elif criteria.search_type == "manufacturer" and criteria.manufacturer:
+            slots = self.get_slots_by_manufacturer(criteria.manufacturer)
+            for slot in slots:
+                vehicle = self.get_vehicle(slot)
+                if vehicle:
+                    results.append({
+                        "slot": slot,
+                        "registration": vehicle.registration_number,
+                        "manufacturer": vehicle.vehicle_manufacturer,  # Updated from make
                         "model": vehicle.model,
                         "color": vehicle.color,
                         "type": vehicle.get_type()
@@ -226,19 +238,19 @@ class ParkingLot(ParkingLotInterface):
         vehicles: Dict[int, Vehicle] = {}
         for level_obj in self.levels:
             if level_obj.name == lot_name and level_obj.level == level:
-                for i, slot in enumerate(level_obj.slots):
+                for slot_index, slot in enumerate(level_obj.slots):
                     vehicle = slot.get_vehicle()
                     if vehicle:
-                        vehicles[i + 1] = vehicle
+                        vehicles[slot_index + 1] = vehicle
         return vehicles
 
     def get_slot_by_registration(self, reg: str) -> Optional[int]:
         """Get slot number by registration number"""
         for level in self.levels:
-            for i, slot in enumerate(level.slots):
+            for slot_index, slot in enumerate(level.slots):
                 vehicle = slot.get_vehicle()
                 if vehicle and vehicle.registration_number == reg:
-                    return i + 1
+                    return slot_index + 1
         return None
 
     def get_vehicle(self, slot_number: int) -> Optional[Vehicle]:
@@ -252,45 +264,45 @@ class ParkingLot(ParkingLotInterface):
         """Get slot numbers by vehicle color"""
         slots: List[int] = []
         for level in self.levels:
-            for i, slot in enumerate(level.slots):
+            for slot_index, slot in enumerate(level.slots):
                 vehicle = slot.get_vehicle()
                 if vehicle and vehicle.color.lower() == color.lower():
-                    slots.append(i + 1)
+                    slots.append(slot_index + 1)
         return slots
 
-    def get_slots_by_make(self, make: str) -> List[int]:
-        """Get slot numbers by vehicle make"""
+    def get_slots_by_manufacturer(self, manufacturer: str) -> List[int]:
+        """Get slot numbers by vehicle manufacturer"""
         slots: List[int] = []
         for level in self.levels:
-            for i, slot in enumerate(level.slots):
+            for slot_index, slot in enumerate(level.slots):
                 vehicle = slot.get_vehicle()
-                if vehicle and vehicle.make.lower() == make.lower():
-                    slots.append(i + 1)
+                if vehicle and vehicle.vehicle_manufacturer.lower() == manufacturer.lower():
+                    slots.append(slot_index + 1)
         return slots
 
     def get_slots_by_model(self, model: str) -> List[int]:
         """Get slot numbers by vehicle model"""
         slots: List[int] = []
         for level in self.levels:
-            for i, slot in enumerate(level.slots):
+            for slot_index, slot in enumerate(level.slots):
                 vehicle = slot.get_vehicle()
                 if vehicle and vehicle.model.lower() == model.lower():
-                    slots.append(i + 1)
+                    slots.append(slot_index + 1)
         return slots
 
-    def _create_vehicle(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Vehicle:
-        """Create a vehicle based on its type"""
+    def _create_vehicle(self, reg: str, manufacturer: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Vehicle:
+        """Create a vehicle instance based on the provided parameters."""
         if is_electric:
             if is_motorcycle:
-                return VehicleFactory.create_electric_motorcycle(reg, make, model, color)
-            return VehicleFactory.create_electric_car(reg, make, model, color)
+                return VehicleFactory.create_electric_motorcycle(reg, manufacturer, model, color)
+            return VehicleFactory.create_electric_car(reg, manufacturer, model, color)
         if is_motorcycle:
-            return VehicleFactory.create_motorcycle(reg, make, model, color)
-        return VehicleFactory.create_car(reg, make, model, color)
+            return VehicleFactory.create_motorcycle(reg, manufacturer, model, color)
+        return VehicleFactory.create_car(reg, manufacturer, model, color)
 
-    def park(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool, lot_name: str = None, level: int = None) -> Optional[int]:
+    def park(self, reg: str, manufacturer: str, model: str, color: str, is_electric: bool, is_motorcycle: bool, lot_name: Optional[str] = None, level: Optional[int] = None) -> Optional[int]:
         """Park a vehicle in a specific lot and level if provided, otherwise find first available slot"""
-        vehicle = self._create_vehicle(reg, make, model, color, is_electric, is_motorcycle)
+        vehicle = self._create_vehicle(reg, manufacturer, model, color, is_electric, is_motorcycle)
         
         # If lot and level are specified, try to park in that specific location
         if lot_name is not None and level is not None:

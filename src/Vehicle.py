@@ -47,24 +47,24 @@ Example:
     >>> print(car.get_info())
     Type: Car
     Registration: ABC123
-    Make: Toyota
+    Manufacturer: Toyota
     Model: Camry
     Color: Red
 
     # Create an electric car
-    >>> ev_car = VehicleFactory.create_electric_car("XYZ789", "Tesla", "Model 3", "Blue")
-    >>> print(ev_car.get_info())
+    >>> electric_vehicle_car = VehicleFactory.create_electric_car("XYZ789", "Tesla", "Model 3", "Blue")
+    >>> print(electric_vehicle_car.get_info())
     Type: Electric Car
     Registration: XYZ789
-    Make: Tesla
+    Manufacturer: Tesla
     Model: Model 3
     Color: Blue
-    Charge: 0%
+    Battery Charge: 0%
 
     # Check if vehicles can park in different slot types
     >>> car.can_park_in("standard")  # True
-    >>> ev_car.can_park_in("electric")  # True
-    >>> ev_car.can_park_in("standard")  # True
+    >>> electric_vehicle_car.can_park_in("electric")  # True
+    >>> electric_vehicle_car.can_park_in("standard")  # True
 """
 
 from dataclasses import dataclass
@@ -76,10 +76,10 @@ T = TypeVar('T', bound='Vehicle')
 @dataclass
 class VehicleInfo:
     """Data class for vehicle information"""
-    registration_number: str
-    make: str
-    model: str
-    color: str
+    registration_number: Optional[str]  # Made optional
+    vehicle_manufacturer: str
+    vehicle_model: str
+    vehicle_color: str
 
 class ParkingStrategy(Protocol):
     """Protocol for parking strategies"""
@@ -115,22 +115,23 @@ class Vehicle(ABC):
     def __init__(self, info: VehicleInfo):
         self._info = info
         self._parking_strategy: Optional[ParkingStrategy] = None
+        self.current_battery_charge: Optional[int] = None  # Renamed to avoid conflict
     
     @property
-    def registration_number(self) -> str:
+    def registration_number(self) -> Optional[str]:  # Updated to match VehicleInfo
         return self._info.registration_number
     
     @property
-    def make(self) -> str:
-        return self._info.make
+    def vehicle_manufacturer(self) -> str:
+        return self._info.vehicle_manufacturer
     
     @property
     def model(self) -> str:
-        return self._info.model
+        return self._info.vehicle_model
     
     @property
     def color(self) -> str:
-        return self._info.color
+        return self._info.vehicle_color
     
     @abstractmethod
     def get_type(self) -> str:
@@ -150,12 +151,12 @@ class Vehicle(ABC):
     # Template methods for common vehicle operations
     def validate_registration(self) -> bool:
         """Validate the vehicle registration number"""
-        return len(self.registration_number) >= 3
+        return len(self.registration_number) >= 3 if self.registration_number is not None else False
     
-    def validate_make_model(self) -> bool:
-        """Validate the vehicle make and model"""
-        return bool(self.make and self.model)
-    
+    def validate_manufacturer_model(self) -> bool:
+        """Validate the vehicle manufacturer and model"""
+        return bool(self.vehicle_manufacturer and self.model)
+
     def validate_color(self) -> bool:
         """Validate the vehicle color"""
         return bool(self.color)
@@ -163,42 +164,42 @@ class Vehicle(ABC):
     def is_valid(self) -> bool:
         """Template method for vehicle validation"""
         return (self.validate_registration() and 
-                self.validate_make_model() and 
+                self.validate_manufacturer_model() and 
                 self.validate_color())
     
     def get_info(self) -> str:
         """Template method for getting vehicle information"""
-        return f"{self.registration_number} {self.make} {self.model} {self.color} {self.get_type()}"
+        return f"{self.registration_number} {self.vehicle_manufacturer} {self.model} {self.color} {self.get_type()}"
 
 class ElectricVehicle(Vehicle):
     """Base class for electric vehicles"""
     
     def __init__(self, info: VehicleInfo):
         super().__init__(info)
-        self._charge: int = 0
+        self._battery_charge_level: int = 0
         self.set_parking_strategy(ElectricParkingStrategy())
     
     @property
-    def charge(self) -> int:
-        return self._charge
+    def battery_charge_level(self) -> int:
+        return self._battery_charge_level
     
-    def set_charge(self, charge: int) -> None:
+    def set_battery_charge_level(self, charge: int) -> None:
         """Set the vehicle's charge level"""
-        self._charge = max(0, min(100, charge))
+        self._battery_charge_level = max(0, min(100, charge))
     
     def is_fully_charged(self) -> bool:
         """Check if the vehicle is fully charged"""
-        return self._charge >= 100
+        return self._battery_charge_level >= 100
     
     def needs_charging(self) -> bool:
         """Check if the vehicle needs charging"""
-        return self._charge < 20
+        return self._battery_charge_level < 20
     
     def get_type(self) -> str:
         return "EV Car"
 
     def get_info(self) -> str:
-        return f"{self.registration_number} {self.make} {self.model} {self.color} {self.get_type()}"
+        return f"{self.registration_number} {self.vehicle_manufacturer} {self.model} {self.color} {self.get_type()}"
 
 class Car(Vehicle):
     """Class representing a car"""
@@ -273,44 +274,44 @@ class VehicleFactory:
         return vehicle_type(info)
     
     @staticmethod
-    def create_car(registration_number: str, make: str, model: str, color: str) -> Car:
+    def create_car(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> Car:
         """Create a car"""
-        return Car(VehicleInfo(registration_number, make, model, color))
-    
+        return Car(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
+
     @staticmethod
-    def create_truck(registration_number: str, make: str, model: str, color: str) -> Truck:
+    def create_truck(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> Truck:
         """Create a truck"""
-        return Truck(VehicleInfo(registration_number, make, model, color))
+        return Truck(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
     
     @staticmethod
-    def create_motorcycle(registration_number: str, make: str, model: str, color: str) -> Motorcycle:
+    def create_motorcycle(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> Motorcycle:
         """Create a motorcycle"""
-        return Motorcycle(VehicleInfo(registration_number, make, model, color))
+        return Motorcycle(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
     
     @staticmethod
-    def create_bus(registration_number: str, make: str, model: str, color: str) -> Bus:
+    def create_bus(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> Bus:
         """Create a bus"""
-        return Bus(VehicleInfo(registration_number, make, model, color))
-    
+        return Bus(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
+
     @staticmethod
-    def create_electric_car(registration_number: str, make: str, model: str, color: str) -> ElectricCar:
+    def create_electric_car(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> ElectricCar:
         """Create an electric car"""
-        return ElectricCar(VehicleInfo(registration_number, make, model, color))
+        return ElectricCar(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
     
     @staticmethod
-    def create_electric_truck(registration_number: str, make: str, model: str, color: str) -> ElectricTruck:
+    def create_electric_truck(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> ElectricTruck:
         """Create an electric truck"""
-        return ElectricTruck(VehicleInfo(registration_number, make, model, color))
+        return ElectricTruck(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
     
     @staticmethod
-    def create_electric_motorcycle(registration_number: str, make: str, model: str, color: str) -> ElectricMotorcycle:
+    def create_electric_motorcycle(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> ElectricMotorcycle:
         """Create an electric motorcycle"""
-        return ElectricMotorcycle(VehicleInfo(registration_number, make, model, color))
-    
+        return ElectricMotorcycle(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
+
     @staticmethod
-    def create_electric_bus(registration_number: str, make: str, model: str, color: str) -> ElectricBus:
+    def create_electric_bus(registration_number: str, vehicle_manufacturer: str, vehicle_model: str, vehicle_color: str) -> ElectricBus:
         """Create an electric bus"""
-        return ElectricBus(VehicleInfo(registration_number, make, model, color))
+        return ElectricBus(VehicleInfo(registration_number, vehicle_manufacturer, vehicle_model, vehicle_color))
 
 
 
