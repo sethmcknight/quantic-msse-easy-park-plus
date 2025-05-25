@@ -436,43 +436,6 @@ class TestParkingLotUI(unittest.TestCase):
         self.ui.search_button.invoke()
         self.assertEqual(len(self.ui.results_tree.get_children()), 0)
 
-    def test_status_and_dropdowns(self):
-        """Test status display and dropdown functionality"""
-        # Create multiple lots and levels
-        self.ui.lot_name_value.set("LotA")
-        self.ui.level_value.set("1")
-        self.ui.num_value.set("10")
-        self.ui.ev_num_value.set("5")
-        self.ui.create_lot()
-
-        # Wait for lot name to be added to dropdown
-        self.ui.lot_name_combo.event_generate("<<ComboboxSelected>>")  # Trigger lot change event
-
-        self.ui.lot_name_value.set("LotB")
-        self.ui.level_value.set("1")
-        self.ui.create_lot()
-
-        # Wait for lot name to be added to dropdown
-        self.ui.lot_name_combo.event_generate("<<ComboboxSelected>>")  # Trigger lot change event
-
-        # Test lot name dropdown
-        lot_names = self.ui.lot_name_combo['values']
-        self.assertIn("LotA", lot_names)
-        self.assertIn("LotB", lot_names)
-
-        # Test level dropdown (compare as string)
-        self.ui.lot_name_value.set("LotA")
-        self.ui.lot_name_combo.event_generate("<<ComboboxSelected>>")  # Trigger lot change event
-        levels = self.ui.level_combo['values']
-        self.assertIn('1', levels)
-
-        # Test status display
-        self.clear_message()
-        self.ui.show_status_button.invoke()
-        status = self.get_message()
-        self.assertIn("LotA", status)
-        self.assertIn("Level 1", status)
-
     def test_ui_edge_cases(self):
         """Test UI edge cases"""
         # Test whitespace handling

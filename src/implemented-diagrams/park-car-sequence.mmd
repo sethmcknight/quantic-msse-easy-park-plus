@@ -1,0 +1,35 @@
+sequenceDiagram
+    participant User
+    participant UI as ParkingLotUI
+    participant PL as ParkingLot
+    participant Command as ParkCommand
+    participant State as ParkingSlotState
+    participant Factory as VehicleFactory
+    participant Observer as ParkingLotObserver
+
+    User->>UI: Enters vehicle info and clicks "Park"
+    UI->>UI: Validates input data
+    UI->>Factory: create_vehicle(reg, make, model, color, is_electric, is_motorcycle)
+    Factory-->>UI: Returns Vehicle instance
+    
+    UI->>Command: new ParkCommand(PL, vehicle_data)
+    Command->>PL: park(vehicle_data)
+    
+    PL->>PL: _find_available_slot(vehicle)
+    alt Slot Available
+        PL->>State: can_park(vehicle)
+        State-->>PL: true
+        PL->>State: park(vehicle)
+        State-->>PL: success
+        
+        PL->>Observer: notify_observers("Vehicle parked")
+        Observer-->>UI: update("Vehicle parked")
+        
+        Command-->>PL: slot_number
+        PL-->>UI: slot_number
+        UI-->>User: Show confirmation
+    else No Slot Available
+        PL-->>Command: None
+        Command-->>UI: None
+        UI-->>User: Show "No available slots" error
+    end 

@@ -1,0 +1,134 @@
+classDiagram
+    %% Command Pattern
+    class Command {
+        <<interface>>
+        +execute()
+        +undo()
+    }
+    
+    class ParkCommand {
+        -parking_lot: ParkingLot
+        -vehicle_data: VehicleData
+        +execute()
+        +undo()
+    }
+    
+    class CreateParkingLotCommand {
+        -parking_lot: ParkingLot
+        -capacity: int
+        -ev_capacity: int
+        -level: int
+        +execute()
+        +undo()
+    }
+    
+    %% State Pattern
+    class ParkingSlotState {
+        <<interface>>
+        +can_park(vehicle)
+        +park(vehicle)
+        +leave()
+        +get_vehicle()
+    }
+    
+    class EmptyState {
+        +can_park(vehicle)
+        +park(vehicle)
+        +leave()
+        +get_vehicle()
+    }
+    
+    class OccupiedState {
+        -vehicle: Vehicle
+        +can_park(vehicle)
+        +park(vehicle)
+        +leave()
+        +get_vehicle()
+    }
+    
+    %% Observer Pattern
+    class ParkingLotObserver {
+        <<interface>>
+        +update(message)
+    }
+    
+    class ParkingLotUI {
+        -parking_lot: ParkingLot
+        +update(message)
+        +_handle_park()
+        +_handle_remove()
+        +_handle_search()
+    }
+    
+    %% Factory Pattern
+    class VehicleFactory {
+        +create_car()
+        +create_truck()
+        +create_motorcycle()
+        +create_bus()
+        +create_electric_car()
+        +create_electric_motorcycle()
+    }
+    
+    %% Composite Pattern
+    class ParkingLotComponent {
+        <<interface>>
+        +get_level()
+        +get_slots()
+        +get_available_slots()
+        +get_occupied_slots()
+        +get_status()
+    }
+    
+    class MultiLevelParkingLot {
+        -levels: List[SingleLevelParkingLot]
+        -name: str
+        +get_level()
+        +get_slots()
+        +add_level()
+        +set_name()
+    }
+    
+    class SingleLevelParkingLot {
+        -level: int
+        -regular_slots: List[ParkingSlot]
+        -ev_slots: List[ParkingSlot]
+        +get_level()
+        +get_slots()
+        +add_regular_slots()
+        +add_ev_slots()
+    }
+    
+    %% Singleton Pattern
+    class ParkingLot {
+        -_instance: ParkingLot
+        -levels: List[SingleLevelParkingLot]
+        -observers: List[ParkingLotObserver]
+        -command_history: List[Command]
+        +get_instance()
+        +create_parking_lot()
+        +park()
+        +leave()
+        +notify_observers()
+    }
+    
+    %% Relationships
+    Command <|.. ParkCommand
+    Command <|.. CreateParkingLotCommand
+    
+    ParkingSlotState <|.. EmptyState
+    ParkingSlotState <|.. OccupiedState
+    
+    ParkingLotObserver <|.. ParkingLotUI
+    
+    ParkingLotComponent <|.. MultiLevelParkingLot
+    ParkingLotComponent <|.. SingleLevelParkingLot
+    
+    MultiLevelParkingLot o-- SingleLevelParkingLot
+    SingleLevelParkingLot o-- ParkingSlot
+    
+    ParkingLot o-- Command
+    ParkingLot o-- ParkingLotObserver
+    ParkingLot o-- MultiLevelParkingLot
+    
+    ParkingLot ..> VehicleFactory : uses 

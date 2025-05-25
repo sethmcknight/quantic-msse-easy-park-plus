@@ -46,119 +46,22 @@ Example:
 import tkinter as tk
 from tkinter import ttk
 import logging
-from typing import List, Dict, Optional, Any, Protocol, Union
-from dataclasses import dataclass
+from typing import Dict, Optional, Union, List, Any
 from Vehicle import Vehicle, ElectricVehicle, Motorcycle
-from ParkingManager import ParkingLotObserver
+from ParkingManager import ParkingLot
+from models import VehicleData, SearchCriteria, ParkingLotData
+from interfaces import ParkingLotObserver, ParkingLotInterface
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@dataclass
-class VehicleData:
-    """Data class for vehicle information in the UI"""
-    registration: str
-    make: str
-    model: str
-    color: str
-    is_electric: bool
-    is_motorcycle: bool
-
-@dataclass
-class SearchCriteria:
-    """Data class for search criteria"""
-    registration: Optional[str] = None
-    color: Optional[str] = None
-    make: Optional[str] = None
-    model: Optional[str] = None
-    search_type: str = "registration"
-
-@dataclass
-class ParkingLotData:
-    """Data class for parking lot information"""
-    name: str
-    level: int
-    regular_slots: int
-    ev_slots: int
-
-class ParkingLotInterface(Protocol):
-    """Protocol defining the interface for parking lot operations"""
-    
-    def create_parking_lot(self, data: ParkingLotData) -> None:
-        """Create a new parking lot"""
-        ...
-    
-    def park_vehicle(self, data: VehicleData) -> Optional[int]:
-        """Park a vehicle"""
-        ...
-    
-    def remove_vehicle(self, slot_number: int) -> bool:
-        """Remove a vehicle"""
-        ...
-    
-    def search_vehicles(self, criteria: SearchCriteria) -> List[Dict[str, Any]]:
-        """Search for vehicles"""
-        ...
-    
-    def get_status(self) -> str:
-        """Get parking lot status"""
-        ...
-    
-    def get_lot_names(self) -> List[str]:
-        """Get all parking lot names"""
-        ...
-    
-    def get_levels_for_lot(self, lot_name: str) -> List[int]:
-        """Get levels for a lot"""
-        ...
-    
-    def register_observer(self, observer: ParkingLotObserver) -> None:
-        """Register an observer"""
-        ...
-    
-    def get_slot_by_registration(self, reg: str) -> Optional[int]:
-        """Get slot number by registration number"""
-        ...
-    
-    def get_vehicle(self, slot_number: int) -> Optional[Vehicle]:
-        """Get vehicle by slot number"""
-        ...
-    
-    def set_name(self, name: str) -> None:
-        """Set the name of the parking lot"""
-        ...
-    
-    def park(self, reg: str, make: str, model: str, color: str, is_electric: bool, is_motorcycle: bool) -> Optional[int]:
-        """Park a vehicle"""
-        ...
-    
-    def leave(self, slot_number: int) -> bool:
-        """Remove a vehicle from a slot"""
-        ...
-    
-    def get_slots_by_color(self, color: str) -> List[int]:
-        """Get slot numbers by vehicle color"""
-        ...
-    
-    def get_slots_by_make(self, make: str) -> List[int]:
-        """Get slot numbers by vehicle make"""
-        ...
-    
-    def get_slots_by_model(self, model: str) -> List[int]:
-        """Get slot numbers by vehicle model"""
-        ...
-    
-    def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Vehicle]:
-        """Get all vehicles in a specific lot and level"""
-        ...
-
 class ParkingLotUI(ParkingLotObserver):
     """Class representing the parking lot UI"""
     
-    def __init__(self, parking_lot: ParkingLotInterface):
+    def __init__(self):
         """Initialize the UI"""
-        self.parking_lot = parking_lot
+        self.parking_lot = ParkingLot()
         self.parking_lot.register_observer(self)
         
         # Create main window
@@ -182,14 +85,16 @@ class ParkingLotUI(ParkingLotObserver):
         self._bind_events()
         
         # Initialize dropdowns
-        self._update_lot_names()
-        self._update_levels()
+        # self._update_lot_names()
+        # self._update_levels()
     
     def _init_state(self):
         """Initialize UI state variables"""
-        # Persistent Lot Name and Level dropdowns
+        # Admin tab variables
         self.lot_name_value = tk.StringVar()
         self.level_value = tk.StringVar()
+        self.num_value = tk.StringVar()
+        self.ev_num_value = tk.StringVar()
         
         # Vehicle Operations variables
         self.reg_value = tk.StringVar()
@@ -206,22 +111,9 @@ class ParkingLotUI(ParkingLotObserver):
         self.search_model_value = tk.StringVar()
         self.search_type = tk.StringVar(value="registration")
         self.search_value = tk.StringVar()
-        
-        # Admin tab variables
-        self.num_value = tk.StringVar()
-        self.ev_num_value = tk.StringVar()
     
     def _create_widgets(self):
         """Create UI widgets"""
-        # Create top frame for persistent dropdowns
-        self.top_frame = ttk.Frame(self.root)
-        
-        # Create persistent dropdowns
-        self.lot_name_label = ttk.Label(self.top_frame, text="Lot Name:")
-        self.lot_name_combo = ttk.Combobox(self.top_frame, textvariable=self.lot_name_value, state="readonly")
-        self.level_label = ttk.Label(self.top_frame, text="Level:")
-        self.level_combo = ttk.Combobox(self.top_frame, textvariable=self.level_value, state="readonly")
-        
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.root)
         
