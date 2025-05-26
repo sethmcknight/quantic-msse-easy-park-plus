@@ -1,0 +1,105 @@
+classDiagram
+    class ChargingSession {
+        -ChargingSessionId charging_session_id
+        -ChargerId charger_id
+        -VehicleRegistration vehicle_registration
+        -VisitId visit_id
+        -TimeRange session_time_range
+        -Energy energy_consumed
+        -ChargingSessionStatus current_status
+        -GracePeriodInfo grace_period_info
+        -Duration idle_time_accrued
+        -ConnectorType connector_type_used
+        +start_charging_session(charger_id, vehicle_registration, visit_id, plug_in_time, connector_type)
+        +record_energy_delivery(kilowatt_hours_delivered_increment, current_power_output_kilowatt)
+        +charging_delivery_completed(charge_complete_time)
+        +track_idle_time(current_time)
+        +complete_charging_session(unplug_time)
+        +report_session_fault(fault_code, description, fault_time)
+    }
+
+    class Charger {
+        -ChargerId charger_id
+        -Location physical_location
+        -ChargerHardwareInfo charger_hardware_info
+        -ChargerCapabilities charger_capabilities
+        -ChargerOperationalStatus current_operational_status
+        -Timestamp last_heartbeat_timestamp
+        -ChargingSessionId current_session_id
+        +update_operational_status(new_status)
+        +handle_maintenance_event()
+        +report_fault(fault_code)
+    }
+
+    class ChargerHardwareInfo {
+        -String vendor
+        -String model
+        -String serial_number
+        -String firmware_version
+    }
+
+    class ChargerCapabilities {
+        -ChargerType charger_type
+        -List~ConnectorType~ supported_connector_types
+        -Power max_power_output_kilowatt
+    }
+
+    class Energy {
+        -Decimal value
+        -String unit
+    }
+
+    class Power {
+        -Decimal value
+        -String unit
+    }
+
+    class GracePeriodInfo {
+        -Duration grace_period_duration
+        -DateTime grace_period_ends_at
+        -Boolean is_active
+    }
+
+    class ChargingSessionStatus {
+        <<enumeration>>
+        Requested
+        PluggedIn_WaitingForVehicle
+        ChargingInProgress
+        ChargingComplete_GracePeriodActive
+        ChargingComplete_IdleDetected
+        Unplugged_SessionEnded
+        Faulted
+        Cancelled
+    }
+
+    class ChargerOperationalStatus {
+        <<enumeration>>
+        Available
+        Preparing
+        Charging
+        SuspendedElectricVehicle
+        SuspendedElectricVehicleSupplyEquipment
+        Finishing
+        Reserved
+        Unavailable_Faulted
+        Unavailable_Maintenance
+        Unavailable_Offline
+    }
+
+    class ConnectorType {
+        <<enumeration>>
+        J1772
+        CCSCombo1
+        CCSCombo2
+        CHAdeMO
+        TeslaNACS
+    }
+
+    ChargingSession ||--|| ChargingSessionId : has
+    ChargingSession ||--|| ChargingSessionStatus : has
+    ChargingSession ||--|| Energy : consumes
+    ChargingSession ||--|| GracePeriodInfo : has
+    ChargingSession }|--|| Charger : uses
+    Charger ||--|| ChargerHardwareInfo : has
+    Charger ||--|| ChargerCapabilities : has
+    Charger ||--|| ChargerOperationalStatus : has

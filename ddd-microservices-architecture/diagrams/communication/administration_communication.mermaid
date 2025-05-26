@@ -1,0 +1,26 @@
+graph TD
+    Admin[Administration Service]
+    ParkingOps[Parking Operations Service]
+    EVCharging[EV Charging Service]
+    Billing[Billing Service]
+    Reservations[Reservation Service]
+    Incident[Incident & Enforcement Service]
+    Customer[Customer Service]
+    Analytics[Analytics Service]
+    Gateway[API Gateway]
+
+    Gateway --> Admin
+    Admin -->|Policy Updates| ParkingOps
+    Admin -->|Charger Config| EVCharging
+    Admin -->|Lot Policies| Billing
+    Admin -->|Slot Config| Reservations
+    Admin -->|Incident Policies| Incident
+    Admin -->|Customer Policies| Customer
+    Admin -->|Admin Events| Analytics
+    Admin -.->|Events| ParkingOps
+    Admin -.->|Events| EVCharging
+    Admin -.->|Events| Billing
+    Admin -.->|Events| Reservations
+    Admin -.->|Events| Incident
+    Admin -.->|Events| Customer
+    Admin -.->|Events| Analytics

@@ -1,0 +1,140 @@
+classDiagram
+    class Bill {
+        -BillId bill_id
+        -CustomerId customer_id
+        -List~BillableItemLink~ related_items
+        -List~LineItem~ line_items
+        -Money total_amount
+        -Money amount_due
+        -BillStatus status
+        -Date due_date
+        -List~PaymentRecord~ payments_received
+        +generate_bill_for_visit(visit_id, active_pricing_rules)
+        +generate_bill_for_charging_session(session_id, active_pricing_rules)
+        +generate_monthly_passholder_bill(customer_id, pass_details, usage_data, active_pricing_rules)
+        +apply_payment_to_bill(payment_amount, payment_method_id, transaction_id)
+        +issue_refund(amount, reason)
+        +mark_as_paid()
+        +mark_as_overdue()
+        +void_bill(reason)
+        +apply_adaptive_rate_adjustment(adjustment_details_event)
+    }
+
+    class PricingRuleSet {
+        -RuleSetId rule_set_id
+        -String name
+        -List~PricingCondition~ conditions
+        -List~RateDefinition~ rates
+        -List~LotId~ applicable_lot_ids
+        -TimeRange validity_period
+        -TriggerTypeEnum trigger_type
+        -Integer priority
+        +evaluate_conditions(context_data)
+        +calculate_rate(billing_context)
+        +apply_adaptive_pricing(demand_data)
+    }
+
+    class LineItem {
+        -String description
+        -Decimal quantity
+        -Money unit_price
+        -Money sub_total
+        -TaxInfo tax_applied
+    }
+
+    class Money {
+        -Decimal amount
+        -String currency_code
+        +add(other_money)
+        +multiply(factor)
+        +format_display()
+    }
+
+    class PaymentRecord {
+        -PaymentId payment_id
+        -DateTime payment_timestamp
+        -Money amount_paid
+        -String payment_method_used
+        -String external_transaction_id
+    }
+
+    class PricingCondition {
+        -String attribute
+        -OperatorEnum operator
+        -String value
+        +evaluate(context_data)
+    }
+
+    class RateDefinition {
+        -RateTypeEnum rate_type
+        -Money amount
+        -Decimal tier_threshold
+        -String basis
+        +calculate_charge(usage_data)
+        +apply_multiplier(factor)
+    }
+
+    class BillStatus {
+        <<enumeration>>
+        Draft
+        Issued_AwaitingPayment
+        PartiallyPaid
+        PaidInFull
+        Overdue
+        Voided
+        Refunded
+    }
+
+    class TriggerTypeEnum {
+        <<enumeration>>
+        TimeBased
+        DemandBased
+        EventDriven
+    }
+
+    class RateTypeEnum {
+        <<enumeration>>
+        PerHour
+        PerMinute
+        FlatFee
+        PerKilowattHour
+        Tiered
+        Multiplier
+    }
+
+    class OperatorEnum {
+        <<enumeration>>
+        EQUALS
+        GREATER_THAN
+        IN_RANGE
+        LESS_THAN
+    }
+
+    class BillableItemLink {
+        -BillableItemType item_type
+        -String item_id
+    }
+
+    class BillableItemType {
+        <<enumeration>>
+        Visit
+        ChargingSession
+        PassSubscription
+    }
+
+    class TaxInfo {
+        -String tax_type
+        -Decimal tax_rate_percentage
+        -Money tax_amount
+    }
+
+    Bill ||--|| BillId : has
+    Bill ||--|| BillStatus : has
+    Bill ||--|| Money : has_total
+    Bill ||--o{ LineItem : contains
+    Bill ||--o{ PaymentRecord : has
+    Bill ||--o{ BillableItemLink : links_to
+    PricingRuleSet ||--o{ PricingCondition : has
+    PricingRuleSet ||--o{ RateDefinition : has
+    PricingRuleSet ||--|| TriggerTypeEnum : has
+    LineItem ||

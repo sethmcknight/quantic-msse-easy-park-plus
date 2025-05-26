@@ -1,0 +1,19 @@
+graph TD
+    Admin((System Admin))
+    Staff((Parking Staff))
+
+    subgraph "Administration"
+        UC1[Configure Lot Settings]
+        UC2[Manage Slot Status]
+        UC3[Set Pricing Rules]
+        UC4[Manage User Accounts]
+        UC5[Generate Reports]
+    end
+
+    Admin --> UC1
+    Admin --> UC2
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5
+    Staff --> UC2
+    Staff --> UC5

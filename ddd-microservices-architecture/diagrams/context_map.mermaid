@@ -1,0 +1,143 @@
+graph TB
+    %% Define the bounded contexts
+    PO["`**Parking Operations**
+    Core Domain
+    Manages real-time vehicle lifecycle
+    Visit • Slot • Occupancy`"]
+    
+    EV["`**EV Charging**
+    Core Domain
+    Manages charging sessions
+    ChargingSession • Charger`"]
+    
+    RES["`**Reservations**
+    Supporting Domain
+    Pre-booking management
+    Reservation • TimeWindow`"]
+    
+    CUST["`**Customer**
+    Supporting Domain
+    Identity & profiles
+    Customer • PassholderInfo`"]
+    
+    VEH["`**Vehicle**
+    Supporting Domain
+    Vehicle registry
+    Vehicle • VehicleDetails`"]
+    
+    BILL["`**Pricing & Billing**
+    Core Domain
+    Financial calculations
+    Bill • PricingRuleSet`"]
+    
+    ADMIN["`**Administration**
+    Supporting Domain
+    Static configuration
+    Lot • SlotConfiguration`"]
+    
+    INC["`**Incident & Enforcement**
+    Supporting Domain
+    Violations & towing
+    IncidentReport • TowJob`"]
+    
+    ANA["`**Analytics & Reporting**
+    Generic Domain
+    Data aggregation
+    Reports • Dashboards`"]
+
+    %% Customer-Supplier relationships (upstream -> downstream)
+    ADMIN -->|"`**Customer-Supplier**
+    Configuration Data
+    *SlotMarkedUnderMaintenance*
+    *LotPolicyUpdated*`"| PO
+    
+    ADMIN -->|"`**Customer-Supplier**
+    Charger Configuration
+    *ChargerMaintenanceStatusChanged*`"| EV
+    
+    ADMIN -->|"`**Customer-Supplier**
+    Lot Policies
+    *EVChargingPolicyUpdated*`"| BILL
+    
+    VEH -->|"`**Customer-Supplier**
+    Vehicle Status Updates
+    *VehicleBannedForUnpaidFees*
+    *VehicleBannedForEnforcement*`"| PO
+    
+    BILL -->|"`**Customer-Supplier**
+    Payment Status
+    *BillOverdue*
+    *PaymentReceived*`"| VEH
+    
+    INC -->|"`**Customer-Supplier**
+    Enforcement Actions
+    *FineIssuedForVehicle*`"| VEH
+    
+    %% Shared Kernel relationships
+    PO -.->|"`**Shared Kernel**
+    VehicleRegistration
+    Location • SlotId`"| EV
+    
+    %% Conformist relationships (downstream conforms to upstream)
+    RES -->|"`**Conformist**
+    Slot Availability
+    Query Only`"| PO
+    
+    %% Anti-Corruption Layer relationships
+    PO -->|"`**ACL**
+    Visit Events
+    *VisitStarted*
+    *VisitCompleted*`"| BILL
+    
+    EV -->|"`**ACL**
+    Charging Events
+    *ChargingSessionCompleted*
+    *IdleTimeExceeded*`"| BILL
+    
+    RES -->|"`**ACL**
+    Reservation Events
+    *ReservationFulfilled*
+    *ReservationExpired*`"| PO
+    
+    CUST -->|"`**ACL**
+    Customer Data
+    *PassholderStatusChanged*`"| BILL
+    
+    %% Analytics as downstream conformist to all operational contexts
+    PO -->|"`**Open Host Service**
+    Operational Data
+    Read-Only Events`"| ANA
+    
+    EV -->|"`**Open Host Service**
+    Charging Data
+    Read-Only Events`"| ANA
+    
+    BILL -->|"`**Open Host Service**
+    Financial Data
+    Read-Only Events`"| ANA
+    
+    INC -->|"`**Open Host Service**
+    Incident Data
+    Read-Only Events`"| ANA
+    
+    CUST -->|"`**Open Host Service**
+    Customer Data
+    Read-Only Events`"| ANA
+    
+    RES -->|"`**Open Host Service**
+    Reservation Data
+    Read-Only Events`"| ANA
+
+    %% Partnership relationships
+    PO <-->|"`**Partnership**
+    Bidirectional Integration
+    Visit ↔ ChargingSession`"| EV
+
+    %% Styling
+    classDef coreContext fill:#ff6b6b,stroke:#d63031,stroke-width:3px,color:#fff
+    classDef supportingContext fill:#4ecdc4,stroke:#00b894,stroke-width:2px,color:#fff
+    classDef genericContext fill:#a29bfe,stroke:#6c5ce7,stroke-width:2px,color:#fff
+    
+    class PO,EV,BILL coreContext
+    class RES,CUST,VEH,ADMIN,INC supportingContext
+    class ANA genericContext

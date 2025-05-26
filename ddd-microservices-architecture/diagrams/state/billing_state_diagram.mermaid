@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Generated : Bill created
+    Generated --> Due : Awaiting payment
+    Due --> Paid : Payment received
+    Due --> Overdue : Payment deadline missed
+    Overdue --> Paid : Late payment received
+    Generated --> Voided : Bill cancelled/voided
+    Due --> Voided : Bill cancelled/voided
+    Overdue --> Voided : Bill cancelled/voided
+    Paid --> [*]
+    Voided --> [*]
+    note right of Overdue
+        Late fees may apply
+    end note

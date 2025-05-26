@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> Requested : Reservation initiated
+    Requested --> Tentative : Slot held, awaiting confirmation
+    Tentative --> Confirmed : Payment received / confirmed
+    Tentative --> Cancelled : Cancelled by user/system
+    Requested --> Cancelled : Cancelled by user/system
+    Confirmed --> Fulfilled : Vehicle arrives and checks in
+    Confirmed --> Cancelled : Cancelled before fulfillment
+    Confirmed --> Expired : No show / time window elapsed
+    Fulfilled --> [*]
+    Cancelled --> [*]
+    Expired --> [*]
+    note right of Tentative
+        Slot is held for a limited time
+        before confirmation or cancellation
+    end note
+    note right of Confirmed
+        Reservation is active and awaiting fulfillment
+    end note

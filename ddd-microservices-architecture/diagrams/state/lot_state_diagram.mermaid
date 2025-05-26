@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> EmptyLot: System initialized
+    EmptyLot: No vehicles parked
+
+    EmptyLot --> PartiallyFull: Park vehicle
+    PartiallyFull --> Full: Park vehicle
+    PartiallyFull --> EmptyLot: Remove vehicle
+    Full --> PartiallyFull: Remove vehicle
+
+    PartiallyFull: Some slots occupied
+    Full: All slots occupied
+
+    PartiallyFull --> Maintenance: Enter maintenance mode
+    Full --> Maintenance: Enter maintenance mode
+    EmptyLot --> Maintenance: Enter maintenance mode
+
+    Maintenance --> EmptyLot: Reset lot
+    Maintenance --> PartiallyFull: Restore previous state

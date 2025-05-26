@@ -1,0 +1,51 @@
+classDiagram
+    class IncidentReport {
+        -IncidentId incident_id
+        -VehicleRegistration vehicle_registration
+        -TimeStamp incident_time
+        -IncidentType type
+        -String description
+        -IncidentStatus status
+        +file_incident(vehicle_registration, type, description)
+        +update_incident_status(new_status)
+    }
+
+    class TowJob {
+        -TowJobId tow_job_id
+        -IncidentId linked_incident_id
+        -VehicleRegistration vehicle_registration
+        -TowStatus status
+        +assign_tow_job(incident_id, vehicle_registration)
+        +update_tow_status(new_status)
+    }
+
+    class IncidentType {
+        <<enumeration>>
+        ParkingViolation
+        UnauthorizedEntry
+        DamageReport
+    }
+
+    class IncidentStatus {
+        <<enumeration>>
+        Open
+        InProgress
+        Resolved
+        Closed
+    }
+
+    class TowStatus {
+        <<enumeration>>
+        Pending
+        Assigned
+        Completed
+    }
+
+    IncidentReport ||--|| IncidentId : has
+    IncidentReport ||--|| VehicleRegistration : involves
+    IncidentReport ||--|| IncidentType : categorized_as
+    IncidentReport ||--|| IncidentStatus : has
+    TowJob ||--|| TowJobId : has
+    TowJob ||--|| IncidentId : linked_to
+    TowJob ||--|| VehicleRegistration : involves
+    TowJob ||--|| TowStatus : has

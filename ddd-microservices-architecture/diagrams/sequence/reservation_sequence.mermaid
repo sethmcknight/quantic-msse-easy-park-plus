@@ -1,0 +1,50 @@
+sequenceDiagram
+    participant C as Customer
+    participant RS as Reservation Service
+    participant AS as Administration Service
+    participant CS as Customer Service
+    participant BS as Billing Service
+    participant PO as Parking Operations
+
+    C->>RS: Request reservation
+    RS->>CS: Validate customer
+    CS-->>RS: Customer validation result
+
+    alt Customer not found/invalid
+        RS-->>C: Registration required
+    else Customer valid
+        RS->>AS: Check slot availability
+        AS->>AS: Query available slots for time window
+        AS-->>RS: Available slots/chargers
+
+        alt No availability
+            RS-->>C: No slots available
+        else Slots available
+            RS->>RS: Create tentative reservation
+            RS->>BS: Calculate reservation fee (if any)
+            BS-->>RS: Fee calculation
+
+            RS->>CS: Process payment (if required)
+            CS-->>RS: Payment confirmation
+
+            RS->>RS: Confirm reservation
+            RS->>AS: Reserve slot/charger
+            AS->>AS: Update slot status to Reserved
+            AS-->>RS: Reservation confirmed
+
+            RS-->>C: Reservation confirmation with code
+
+            Note over RS: Reservation status: Confirmed
+        end
+    end
+
+    Note right of RS: Later, when vehicle arrives...
+
+    PO->>RS: Check reservation for vehicle
+    RS-->>PO: Reservation details
+    PO->>RS: Mark reservation as fulfilled
+    RS->>RS: Update reservation status
+    RS->>AS: Release reserved slot for assignment
+    AS-->>RS: Acknowledgment
+
+    Note over RS: Reservation status: Fulfilled

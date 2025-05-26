@@ -1,0 +1,30 @@
+classDiagram
+    class Reservation {
+        -ReservationId reservation_id
+        -CustomerId customer_id
+        -TimeWindow time_window
+        -SlotId reserved_slot_id
+        -ReservationStatus status
+        +create_reservation(customer_id, time_window, slot_id)
+        +modify_reservation(new_time_window, new_slot_id)
+        +cancel_reservation()
+    }
+
+    class TimeWindow {
+        -DateTime start_time
+        -DateTime end_time
+    }
+
+    class ReservationStatus {
+        <<enumeration>>
+        Pending
+        Confirmed
+        Cancelled
+        Fulfilled
+    }
+
+    Reservation ||--|| ReservationId : has
+    Reservation ||--|| CustomerId : belongs_to
+    Reservation ||--|| TimeWindow : has
+    Reservation ||--|| SlotId : reserves
+    Reservation ||--|| ReservationStatus : has
