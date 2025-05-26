@@ -1,0 +1,88 @@
+classDiagram
+    %% Core Domains
+    class Visit {
+        visit_id
+        vehicle_registration
+        time_range
+        assigned_slot_id
+        current_status
+    }
+    class ChargingSession {
+        charging_session_id
+        charger_id
+        vehicle_registration
+        session_time_range
+        energy_consumed
+        current_status
+    }
+    class Bill {
+        bill_id
+        customer_id
+        total_amount
+        status
+    }
+    class Reservation {
+        reservation_id
+        customer_id
+        time_window
+        reserved_slot_id
+        status
+    }
+    class Customer {
+        customer_id
+        profile
+        account_status
+    }
+    class Vehicle {
+        vehicle_id
+        plate_number
+        status
+    }
+    class IncidentReport {
+        incident_id
+        vehicle_registration
+        type
+        status
+    }
+    class Lot {
+        lot_id
+        name
+        location
+    }
+    class Report {
+        report_id
+        title
+        type
+        generated_time
+    }
+
+    %% Relationships
+    Visit --> Vehicle : for
+    Visit --> Reservation : may_link
+    Visit --> ChargingSession : may_link
+    ChargingSession --> Vehicle : for
+    ChargingSession --> Bill : generates
+    Reservation --> Customer : for
+    Reservation --> Bill : may_generate
+    Bill --> Customer : for
+    Bill --> Visit : for
+    Bill --> ChargingSession : for
+    Customer --> Vehicle : owns
+    IncidentReport --> Vehicle : involves
+    Lot --> Visit : contains
+    Lot --> ChargingSession : contains
+    Report --> Lot : aggregates
+    Report --> Bill : aggregates
+    Report --> IncidentReport : aggregates
+    Lot --> Reservation : contains
+    Lot --> ChargingSession : contains
+    Lot --> IncidentReport : contains
+    Customer --> Reservation : makes
+    Customer --> Bill : pays
+    Customer --> IncidentReport : may_be_involved
+    Vehicle --> Reservation : may_be_linked
+    Vehicle --> IncidentReport : may_be_involved
+    Vehicle --> ChargingSession : may_use
+    Vehicle --> Visit : participates
+    Lot --> SlotConfiguration : configures
+    %% Add more as needed for clarity

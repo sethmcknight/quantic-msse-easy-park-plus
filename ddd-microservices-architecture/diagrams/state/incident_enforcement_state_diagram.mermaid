@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Reported : Incident created
+    Reported --> InProgress : Assigned to staff / investigation started
+    InProgress --> Resolved : Issue addressed
+    InProgress --> Closed : Closed without resolution
+    Reported --> Closed : Invalid or duplicate
+    Resolved --> Closed : Case closed after resolution
+    Closed --> [*]
+    note right of InProgress
+        Staff may update status or add notes
+    end note
+    note right of Resolved
+        Awaiting final review or closure
+    end note

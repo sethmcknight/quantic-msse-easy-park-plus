@@ -1,0 +1,99 @@
+graph TD
+    subgraph "Frontend Layer"
+        MobileApp[Mobile App]
+        WebPortal[Web Portal]
+        StaffPortal[Staff Portal]
+        AdminPortal[Admin Portal]
+    end
+
+    subgraph "API Gateway"
+        Gateway[API Gateway / Load Balancer]
+    end
+
+    subgraph "Core Services"
+        ParkingOps[Parking Operations Service]
+        EVCharging[EV Charging Service]
+        Reservations[Reservation Service]
+        Customer[Customer Service]
+        Vehicle[Vehicle Service]
+        Billing[Pricing & Billing Service]
+        Admin[Administration Service]
+        Incident[Incident & Enforcement Service]
+        Analytics[Analytics & Reporting Service]
+    end
+
+    subgraph "External Systems"
+        CameraSystem[Camera System]
+        SensorNetwork[Sensor Network]
+        ChargerHW[Charger Hardware]
+        PaymentGW[Payment Gateway]
+        TowingAPI[Towing API]
+    end
+
+    subgraph "Data Layer"
+        EventStore[(Event Store)]
+        ReadDB[(Read Databases)]
+        Cache[(Cache Layer)]
+    end
+
+    %% Frontend to Gateway
+    MobileApp -->|HTTPS/REST| Gateway
+    WebPortal -->|HTTPS/REST| Gateway
+    StaffPortal -->|HTTPS/REST| Gateway
+    AdminPortal -->|HTTPS/REST| Gateway
+
+    %% Gateway to Services
+    Gateway --> ParkingOps
+    Gateway --> EVCharging
+    Gateway --> Reservations
+    Gateway --> Customer
+    Gateway --> Vehicle
+    Gateway --> Billing
+    Gateway --> Admin
+    Gateway --> Incident
+    Gateway --> Analytics
+    
+    %% Inter-service Communication (Event-driven)
+    ParkingOps -.->|Events| EVCharging
+    ParkingOps -.->|Events| Billing
+    ParkingOps -.->|Events| Analytics
+    EVCharging -.->|Events| Billing
+    EVCharging -.->|Events| Analytics
+    Reservations -.->|Events| ParkingOps
+    Customer -.->|Events| Billing
+    Vehicle -.->|Events| ParkingOps
+    Billing -.->|Events| Vehicle
+    Admin -.->|Events| ParkingOps
+    Admin -.->|Events| EVCharging
+    Incident -.->|Events| Vehicle
+    Incident -.->|Events| Billing
+
+    %% External System Integration
+    CameraSystem -->|Vehicle Detection| ParkingOps
+    SensorNetwork -->|Occupancy Data| ParkingOps
+    ChargerHW -->|Session Data| EVCharging
+    Billing -->|Payment Processing| PaymentGW
+    Incident -->|Tow Requests| TowingAPI
+
+    %% Data Storage
+    ParkingOps --> EventStore
+    EVCharging --> EventStore
+    Reservations --> EventStore
+    Customer --> EventStore
+    Vehicle --> EventStore
+    Billing --> EventStore
+    Admin --> EventStore
+    Incident --> EventStore
+    
+    Analytics --> ReadDB
+    Gateway --> Cache
+    
+    classDef service fill:#e1f5fe
+    classDef external fill:#fff3e0
+    classDef data fill:#f3e5f5
+    classDef frontend fill:#e8f5e8
+    
+    class ParkingOps,EVCharging,Reservations,Customer,Vehicle,Billing,Admin,Incident,Analytics service
+    class PaymentGW,TowingAPI,CameraSystem,SensorNetwork,ChargerHW external
+    class EventStore,ReadDB,Cache data
+    class MobileApp,WebPortal,StaffPortal,AdminPortal frontend

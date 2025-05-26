@@ -1,0 +1,20 @@
+graph TD
+    EVCharging[EV Charging Service]
+    ParkingOps[Parking Operations Service]
+    Billing[Billing Service]
+    Admin[Administration Service]
+    ChargerHW[Charger Hardware]
+    Analytics[Analytics Service]
+    Gateway[API Gateway]
+    Customer[Customer Service]
+
+    Gateway --> EVCharging
+    EVCharging -->|Get Visit| ParkingOps
+    EVCharging -->|Get Policies| Admin
+    EVCharging -->|Session Data| ChargerHW
+    EVCharging -->|Session Events| Billing
+    EVCharging -->|Session Events| Analytics
+    EVCharging -->|Customer Lookup| Customer
+    ChargerHW -->|Session Data| EVCharging
+    EVCharging -.->|Events| Billing
+    EVCharging -.->|Events| Analytics

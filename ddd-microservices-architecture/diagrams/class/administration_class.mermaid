@@ -1,0 +1,43 @@
+classDiagram
+    class Lot {
+        -LotId lot_id
+        -String name
+        -Location location
+        -List~SlotConfiguration~ slot_configurations
+        +update_lot_details(new_name, new_location)
+        +add_slot_configuration(slot_configuration)
+        +remove_slot_configuration(slot_id)
+    }
+
+    class SlotConfiguration {
+        -SlotId slot_id
+        -SlotType type
+        -SlotStatus status
+        +update_slot_status(new_status)
+    }
+
+    class Location {
+        -String address
+        -GeoCoordinates coordinates
+    }
+
+    class SlotType {
+        <<enumeration>>
+        Regular
+        EVCharging
+        Handicapped
+    }
+
+    class SlotStatus {
+        <<enumeration>>
+        Available
+        Occupied
+        OutOfService
+    }
+
+    Lot ||--|| LotId : has
+    Lot ||--|| Location : located_at
+    Lot ||--o{ SlotConfiguration : contains
+    SlotConfiguration ||--|| SlotId : has
+    SlotConfiguration ||--|| SlotType : has
+    SlotConfiguration ||--|| SlotStatus : has

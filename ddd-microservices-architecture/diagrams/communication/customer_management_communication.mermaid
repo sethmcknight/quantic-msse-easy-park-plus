@@ -1,0 +1,17 @@
+graph TD
+    Customer[Customer Service]
+    Billing[Billing Service]
+    Reservations[Reservation Service]
+    ParkingOps[Parking Operations Service]
+    Admin[Administration Service]
+    Analytics[Analytics Service]
+    Gateway[API Gateway]
+
+    Gateway --> Customer
+    Customer -->|Profile Events| Billing
+    Customer -->|Reservation Events| Reservations
+    Customer -->|Visit Events| ParkingOps
+    Customer -->|Policy Lookup| Admin
+    Customer -->|Customer Events| Analytics
+    Customer -.->|Events| Billing
+    Customer -.->|Events| Analytics

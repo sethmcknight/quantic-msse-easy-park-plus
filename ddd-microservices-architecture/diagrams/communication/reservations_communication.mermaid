@@ -1,0 +1,18 @@
+graph TD
+    Reservations[Reservation Service]
+    ParkingOps[Parking Operations Service]
+    Billing[Billing Service]
+    Admin[Administration Service]
+    Customer[Customer Service]
+    Analytics[Analytics Service]
+    Gateway[API Gateway]
+
+    Gateway --> Reservations
+    Reservations -->|Slot Availability| Admin
+    Reservations -->|Customer Validation| Customer
+    Reservations -->|Slot Assignment| ParkingOps
+    Reservations -->|Reservation Events| Billing
+    Reservations -->|Reservation Events| Analytics
+    Reservations -.->|Events| ParkingOps
+    Reservations -.->|Events| Billing
+    Reservations -.->|Events| Analytics

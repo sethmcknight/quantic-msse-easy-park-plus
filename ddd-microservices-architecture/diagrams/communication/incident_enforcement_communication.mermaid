@@ -1,0 +1,20 @@
+graph TD
+    Incident[Incident & Enforcement Service]
+    ParkingOps[Parking Operations Service]
+    Vehicle[Vehicle Service]
+    Billing[Billing Service]
+    TowingAPI[Towing API]
+    Admin[Administration Service]
+    Analytics[Analytics Service]
+    Gateway[API Gateway]
+
+    Gateway --> Incident
+    Incident -->|Violation Events| ParkingOps
+    Incident -->|Vehicle Lookup| Vehicle
+    Incident -->|Fine Events| Billing
+    Incident -->|Tow Requests| TowingAPI
+    Incident -->|Policy Lookup| Admin
+    Incident -->|Incident Events| Analytics
+    Incident -.->|Events| Vehicle
+    Incident -.->|Events| Billing
+    Incident -.->|Events| Analytics

@@ -1,0 +1,33 @@
+stateDiagram-v2
+    [*] --> PendingEntry : Vehicle approaches gate
+    
+    PendingEntry --> ActiveInLot : Vehicle enters, slot assigned
+    PendingEntry --> Cancelled : Entry denied/cancelled
+    
+    ActiveInLot --> AwaitingPayment : Vehicle exits, bill generated
+    ActiveInLot --> Cancelled : Visit cancelled by system
+    
+    AwaitingPayment --> PaymentConfirmed : Payment successful
+    AwaitingPayment --> Cancelled : Payment failed/timeout
+    
+    PaymentConfirmed --> Exited : Exit gate opens
+    PaymentConfirmed --> Cancelled : Exit timeout/error
+    
+    Exited --> Completed : Visit finalized
+    
+    Completed --> [*]
+    Cancelled --> [*]
+    
+    note right of ActiveInLot
+        During this state:
+        - Slot status updates
+        - Charging session may occur
+        - Grace period tracking
+    end note
+    
+    note right of AwaitingPayment
+        Bill calculation includes:
+        - Parking fees
+        - EV charging costs
+        - Applicable discounts
+    end note
