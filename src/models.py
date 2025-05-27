@@ -12,8 +12,6 @@ class SlotType(Enum):
     """Types of parking slots"""
     REGULAR = auto()
     ELECTRIC = auto()
-    MOTORCYCLE = auto()
-    EV_MOTORCYCLE = auto()
 
 class VehicleType(Enum):
     """Types of vehicles"""
@@ -52,8 +50,6 @@ class ParkingLevelData:
     level_number: int
     regular_slots: int
     electric_slots: int
-    motorcycle_slots: int
-    ev_motorcycle_slots: int
     
     def __post_init__(self):
         """Validate level data"""
@@ -63,10 +59,6 @@ class ParkingLevelData:
             raise ValueError("Number of regular slots cannot be negative")
         if self.electric_slots < 0:
             raise ValueError("Number of electric slots cannot be negative")
-        if self.motorcycle_slots < 0:
-            raise ValueError("Number of motorcycle slots cannot be negative")
-        if self.ev_motorcycle_slots < 0:
-            raise ValueError("Number of EV motorcycle slots cannot be negative")
 
 @dataclass
 class ParkingLotData:

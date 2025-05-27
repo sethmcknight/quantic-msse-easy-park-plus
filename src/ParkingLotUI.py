@@ -195,6 +195,7 @@ class ParkingLotUI(ParkingLotObserver):
         self.electric_vehicle_num_entry = ttk.Entry(self.admin_frame, textvariable=self.electric_vehicle_slots_value)
         self.create_button = ttk.Button(self.admin_frame, text="Create Parking Lot", command=self._handle_create_lot)
         self.show_lots_button = ttk.Button(self.admin_frame, text="Show All Lots", command=self._handle_show_lots)
+        self.load_sample_button = ttk.Button(self.admin_frame, text="Load Sample Data", command=self._handle_load_sample_data)
         
         # Create admin results tree
         self.admin_tree = ttk.Treeview(self.admin_tab, columns=("Lot Name", "Levels", "Regular Capacity", "EV Capacity", "Available Regular", "Available EV"),
@@ -368,9 +369,7 @@ class ParkingLotUI(ParkingLotObserver):
             level_data = ParkingLevelData(
                 level_number=level,
                 regular_slots=regular_slots,
-                electric_slots=electric_slots,
-                motorcycle_slots=0,  # Default to 0 for now
-                ev_motorcycle_slots=0  # Default to 0 for now
+                electric_slots=electric_slots
             )
             # Create lot data
             lot_data = ParkingLotData(
@@ -398,111 +397,106 @@ class ParkingLotUI(ParkingLotObserver):
             self._show_error(str(e))
     
     def _handle_show_status(self):
-        """Handle show status button click"""
+        """Handle showing the full status of the parking lot"""
         try:
-            # Get lot name
-            lot_name = self.park_lot_value.get()
-            logger.debug(f"[DEBUG] Showing status for lot: {lot_name}")
+            lot_name = self.lot_name_value.get()
+            if not lot_name:
+                self.show_error("Please select a lot")
+                return
             
-            # Get status
+            logger.debug(f"[DEBUG] Showing status for lot: {lot_name}")
             statuses = self.parking_manager.get_lot_status(lot_name)
             logger.debug(f"[DEBUG] Retrieved {len(statuses)} status entries")
             
-            # Clear tree
+            # Clear previous results
             self.admin_tree.delete(*self.admin_tree.get_children())
             logger.debug("[DEBUG] Cleared admin tree")
             
-            # Add statuses to tree
+            # Add each status to the tree
             for status in statuses:
                 logger.debug(f"[DEBUG] Processing status: level={status.level}, slot={status.slot}, is_occupied={status.is_occupied}")
-                if status.vehicle is not None:
-                    logger.debug(f"[DEBUG] Adding vehicle to tree: {status.vehicle.registration_number}")
-                    values = (
-                        f"Level {status.level}",
-                        f"Slot {status.slot}",
-                        status.vehicle.registration_number,
-                        status.vehicle.manufacturer,
-                        status.vehicle.model,
-                        status.vehicle.color,
-                        "EV" if status.vehicle.is_electric else "Standard",
-                        "Motorcycle" if status.vehicle.is_motorcycle else "Standard",
-                        f"{status.vehicle.charge}%" if status.vehicle.is_electric else "N/A"
-                    )
-                    self.admin_tree.insert("", "end", values=values)
-                else:
+                
+                if not status.is_occupied:
                     logger.debug("[DEBUG] No vehicle in this slot")
+                    continue
+                
+                if status.vehicle is None:
+                    continue
+                
+                logger.debug(f"[DEBUG] Adding vehicle to tree: {status.vehicle.registration_number}")
+                self.admin_tree.insert("", "end", values=(
+                    status.lot_name,
+                    status.level,
+                    status.slot,
+                    status.vehicle.registration_number,
+                    status.vehicle.manufacturer,
+                    status.vehicle.model,
+                    status.vehicle.color,
+                    "Yes" if status.vehicle.is_electric else "No",
+                    "Yes" if status.vehicle.is_motorcycle else "No",
+                    status.vehicle.vehicle_type.value,
+                    "N/A"  # Charge status is not available in VehicleData
+                ))
             
-            # Show message
-            self._show_message(f"Showing status for lot {lot_name}")
-            logger.debug("[DEBUG] Status display complete")
+            # Switch to admin tab to show results
+            self.notebook.select(self.admin_tab)
             
-        except ValueError as e:
-            logger.error(f"[DEBUG] Error showing status: {e}")
-            self._show_error(str(e))
-    
-    def _handle_show_lots(self):
-        """Handle show lots button click"""
+        except Exception as e:
+            logger.error(f"Error showing status: {e}")
+            self.show_error(f"Error showing status: {str(e)}")
+
+    def _handle_show_lots(self) -> None:
+        """Handle showing all parking lots"""
         try:
-            logger.debug("[DEBUG] Starting show lots operation")
-            # Clear tree
+            logger.debug("[DEBUG] Showing all lots")
+            lots = self.parking_manager.get_lot_names()
+            logger.debug(f"[DEBUG] Retrieved {len(lots)} lots")
+            
+            # Clear previous results
             self.admin_tree.delete(*self.admin_tree.get_children())
             logger.debug("[DEBUG] Cleared admin tree")
             
-            # Get all lot names
-            lot_names = self.parking_manager.get_lot_names()
-            logger.debug(f"[DEBUG] Retrieved {len(lot_names)} lots: {lot_names}")
-            
-            for lot_name in lot_names:
+            # Add each lot to the tree
+            for lot_name in lots:
                 logger.debug(f"[DEBUG] Processing lot: {lot_name}")
-                # Get levels for this lot
                 levels = self.parking_manager.get_levels_for_lot(lot_name)
-                logger.debug(f"[DEBUG] Lot {lot_name} has {len(levels)} levels: {levels}")
+                logger.debug(f"[DEBUG] Found {len(levels)} levels")
                 
-                # Initialize counters for this lot
-                total_regular = 0
-                total_ev = 0
-                available_regular = 0
-                available_ev = 0
+                # Get lot status
+                statuses = self.parking_manager.get_lot_status(lot_name)
                 
-                for level in levels:
-                    logger.debug(f"[DEBUG] Processing level {level} in lot {lot_name}")
-                    # Get status for this level
-                    statuses = self.parking_manager.get_lot_status(lot_name)
-                    logger.debug(f"[DEBUG] Retrieved {len(statuses)} status entries for level {level}")
-                    
-                    # Count slots by type
-                    for status in statuses:
-                        if status.level == level:
-                            logger.debug(f"[DEBUG] Processing status: slot={status.slot}, type={status.slot_type}, occupied={status.is_occupied}")
-                            if status.slot_type == SlotType.REGULAR:
-                                total_regular += 1
-                                if not status.is_occupied:
-                                    available_regular += 1
-                            elif status.slot_type == SlotType.ELECTRIC:
-                                total_ev += 1
-                                if not status.is_occupied:
-                                    available_ev += 1
+                # Calculate aggregations
+                total_regular_capacity = 0
+                total_ev_capacity = 0
+                total_available_regular = 0
+                total_available_ev = 0
                 
-                logger.debug(f"[DEBUG] Lot {lot_name} summary: regular={total_regular}, ev={total_ev}, avail_reg={available_regular}, avail_ev={available_ev}")
-                # Add lot info to tree
-                values = (
+                for status in statuses:
+                    if status.slot_type == SlotType.REGULAR:
+                        total_regular_capacity += 1
+                        if not status.is_occupied:
+                            total_available_regular += 1
+                    elif status.slot_type == SlotType.ELECTRIC:
+                        total_ev_capacity += 1
+                        if not status.is_occupied:
+                            total_available_ev += 1
+                
+                logger.debug(f"[DEBUG] Adding lot {lot_name} to tree with aggregations")
+                self.admin_tree.insert("", "end", values=(
                     lot_name,
                     len(levels),
-                    total_regular,
-                    total_ev,
-                    available_regular,
-                    available_ev
-                )
-                logger.debug(f"[DEBUG] Inserting lot info into tree: {values}")
-                self.admin_tree.insert("", "end", values=values)
+                    total_regular_capacity,
+                    total_ev_capacity,
+                    total_available_regular,
+                    total_available_ev
+                ))
             
-            # Show message
-            self._show_message("Showing all parking lots")
-            logger.debug("[DEBUG] Show lots operation complete")
+            # Switch to admin tab to show results
+            self.notebook.select(self.admin_tab)
             
-        except ValueError as e:
-            logger.error(f"[DEBUG] Error showing lots: {e}")
-            self._show_error(str(e))
+        except Exception as e:
+            logger.error(f"Error showing lots: {e}")
+            self._show_error(f"Error showing lots: {str(e)}")
     
     def _validate_vehicle_data(self, data: VehicleData) -> bool:
         """Validate vehicle data"""
@@ -533,12 +527,6 @@ class ParkingLotUI(ParkingLotObserver):
                 return False
             if level.electric_slots < 0:
                 self._show_error("Please enter valid numbers for electric slots")
-                return False
-            if level.motorcycle_slots < 0:
-                self._show_error("Please enter valid numbers for motorcycle slots")
-                return False
-            if level.ev_motorcycle_slots < 0:
-                self._show_error("Please enter valid numbers for EV motorcycle slots")
                 return False
         
         return True
@@ -698,6 +686,7 @@ class ParkingLotUI(ParkingLotObserver):
         self.electric_vehicle_num_entry.grid(row=3, column=1, padx=5, pady=5)
         self.create_button.grid(row=4, column=0, padx=5, pady=5)
         self.show_lots_button.grid(row=4, column=1, padx=5, pady=5)
+        self.load_sample_button.grid(row=4, column=2, padx=5, pady=5)
         
         # Layout details frame
         self.details_frame.pack(expand=True, fill="both", padx=5, pady=5)
@@ -836,7 +825,14 @@ class ParkingLotUI(ParkingLotObserver):
                     "Motorcycle" if status.vehicle and status.vehicle.is_motorcycle else
                     "Standard" if status.vehicle else "N/A"
                 )
-                charge_status = f"{status.vehicle.charge}%" if status.vehicle and status.vehicle.is_electric else "N/A"
+                
+                # Handle charge status
+                charge_status = "N/A"
+                if status.vehicle and status.vehicle.is_electric:
+                    if status.is_charging:
+                        charge_status = "Charging"
+                    else:
+                        charge_status = "Not Charging"
                 
                 values = (
                     level,
@@ -879,4 +875,142 @@ class ParkingLotUI(ParkingLotObserver):
             elif self.vehicle_type_value.get() == "Bus":
                 return VehicleType.BUS
             return VehicleType.CAR
+
+    def _handle_load_sample_data(self):
+        """Handle loading sample data button click"""
+        try:
+            # Create Downtown Parking Lot
+            downtown_lot = ParkingLotData(
+                name="Downtown",
+                levels=[
+                    ParkingLevelData(
+                        level_number=1,
+                        regular_slots=15,  # Combined regular slots for cars and motorcycles
+                        electric_slots=7   # Combined electric slots for cars and motorcycles
+                    ),
+                    ParkingLevelData(
+                        level_number=2,
+                        regular_slots=20,  # Combined regular slots for cars and motorcycles
+                        electric_slots=10  # Combined electric slots for cars and motorcycles
+                    )
+                ]
+            )
+            self.parking_manager.create_lot(downtown_lot)
+
+            # Create Airport Parking Lot
+            airport_lot = ParkingLotData(
+                name="Airport",
+                levels=[
+                    ParkingLevelData(
+                        level_number=1,
+                        regular_slots=25,  # Combined regular slots for cars and motorcycles
+                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                    ),
+                    ParkingLevelData(
+                        level_number=2,
+                        regular_slots=25,  # Combined regular slots for cars and motorcycles
+                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                    ),
+                    ParkingLevelData(
+                        level_number=3,
+                        regular_slots=25,  # Combined regular slots for cars and motorcycles
+                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                    )
+                ]
+            )
+            self.parking_manager.create_lot(airport_lot)
+
+            # Park some sample vehicles in Downtown
+            sample_vehicles = [
+                VehicleData(
+                    registration_number="ABC123",
+                    manufacturer="Toyota",
+                    model="Camry",
+                    color="Red",
+                    is_electric=False,
+                    is_motorcycle=False,
+                    vehicle_type=VehicleType.CAR
+                ),
+                VehicleData(
+                    registration_number="XYZ789",
+                    manufacturer="Tesla",
+                    model="Model 3",
+                    color="Black",
+                    is_electric=True,
+                    is_motorcycle=False,
+                    vehicle_type=VehicleType.ELECTRIC_CAR
+                ),
+                VehicleData(
+                    registration_number="MOTO456",
+                    manufacturer="Honda",
+                    model="CBR",
+                    color="Blue",
+                    is_electric=False,
+                    is_motorcycle=True,
+                    vehicle_type=VehicleType.MOTORCYCLE
+                ),
+                VehicleData(
+                    registration_number="EVBIKE1",
+                    manufacturer="Zero",
+                    model="SR",
+                    color="White",
+                    is_electric=True,
+                    is_motorcycle=True,
+                    vehicle_type=VehicleType.ELECTRIC_MOTORCYCLE
+                )
+            ]
+
+            # Park vehicles in Downtown lot
+            for vehicle in sample_vehicles:
+                slot = self.parking_manager.park_vehicle("Downtown", 1, vehicle)
+                if slot is not None:
+                    logger.debug(f"[DEBUG] Parked vehicle {vehicle.registration_number} in slot {slot}")
+                else:
+                    logger.error(f"[DEBUG] Failed to park vehicle {vehicle.registration_number}")
+
+            # Park some vehicles in Airport lot
+            airport_vehicles = [
+                VehicleData(
+                    registration_number="AIR001",
+                    manufacturer="Ford",
+                    model="F-150",
+                    color="Silver",
+                    is_electric=False,
+                    is_motorcycle=False,
+                    vehicle_type=VehicleType.TRUCK
+                ),
+                VehicleData(
+                    registration_number="AIR002",
+                    manufacturer="Mercedes",
+                    model="Sprinter",
+                    color="White",
+                    is_electric=False,
+                    is_motorcycle=False,
+                    vehicle_type=VehicleType.BUS
+                )
+            ]
+
+            # Park vehicles in Airport lot
+            for vehicle in airport_vehicles:
+                slot = self.parking_manager.park_vehicle("Airport", 1, vehicle)
+                if slot is not None:
+                    logger.debug(f"[DEBUG] Parked vehicle {vehicle.registration_number} in slot {slot}")
+                else:
+                    logger.error(f"[DEBUG] Failed to park vehicle {vehicle.registration_number}")
+
+            # Update UI
+            self._update_park_lot_names()
+            self._update_park_levels()
+            self._update_details_lot_names()
+            self._update_details_levels()
+            
+            # Show success message
+            self._show_message("Sample data loaded successfully")
+            
+            # Refresh the lots display
+            self._handle_show_lots()
+            
+        except Exception as e:
+            logger.error(f"Error loading sample data: {e}")
+            self._show_error(f"Error loading sample data: {str(e)}")
 
