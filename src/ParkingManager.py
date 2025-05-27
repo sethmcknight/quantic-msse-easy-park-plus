@@ -65,7 +65,7 @@ To remove debug logging:
 """
 
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from models import (
     VehicleData, ParkingLotData, ParkingLevelData,
     SearchCriteria, ParkingStatus, SlotType, VehicleType
@@ -114,13 +114,9 @@ class ParkingSlot:
             return False
         
         if self.slot_type == SlotType.REGULAR:
-            return not vehicle.is_electric and not vehicle.is_motorcycle
-        elif self.slot_type == SlotType.ELECTRIC:
-            return vehicle.is_electric and not vehicle.is_motorcycle
-        elif self.slot_type == SlotType.MOTORCYCLE:
-            return not vehicle.is_electric and vehicle.is_motorcycle
-        else:  # EV_MOTORCYCLE
-            return vehicle.is_electric and vehicle.is_motorcycle
+            return not vehicle.is_electric
+        else:  # ELECTRIC
+            return vehicle.is_electric
     
     def park(self, vehicle: Vehicle) -> None:
         """Park a vehicle in this slot
@@ -164,14 +160,6 @@ class ParkingLevel:
         # Create electric slots
         for _ in range(level_data.electric_slots):
             self.slots.append(ParkingSlot(SlotType.ELECTRIC))
-        
-        # Create motorcycle slots
-        for _ in range(level_data.motorcycle_slots):
-            self.slots.append(ParkingSlot(SlotType.MOTORCYCLE))
-        
-        # Create EV motorcycle slots
-        for _ in range(level_data.ev_motorcycle_slots):
-            self.slots.append(ParkingSlot(SlotType.EV_MOTORCYCLE))
     
     def get_available_slot(self, vehicle: Vehicle) -> Optional[int]:
         """Get an available slot for a vehicle
@@ -182,8 +170,16 @@ class ParkingLevel:
         Returns:
             Optional[int]: The slot number if available
         """
+        # For electric vehicles, try electric slots first
+        if vehicle.is_electric:
+            for i, slot in enumerate(self.slots):
+                if slot.slot_type == SlotType.ELECTRIC and slot.is_available():
+                    return i
+            return None  # No electric slots available
+        
+        # For non-electric vehicles, try regular slots
         for i, slot in enumerate(self.slots):
-            if slot.can_park(vehicle):
+            if slot.slot_type == SlotType.REGULAR and slot.is_available():
                 return i
         return None
     
@@ -256,11 +252,29 @@ class ParkingLot:
         """
         self.name = lot_data.name
         self.levels: List[ParkingLevel] = []
-        self.observers: Set[ParkingLotObserver] = set()
+        self.observers: List[ParkingLotObserver] = []
         
-        # Create levels
+        # Create initial levels
         for level_data in lot_data.levels:
             self.levels.append(ParkingLevel(level_data))
+    
+    def add_level(self, level_data: ParkingLevelData) -> bool:
+        """Add a new level to the parking lot
+        
+        Args:
+            level_data: The level configuration
+            
+        Returns:
+            bool: True if the level was added successfully
+        """
+        # Check if level number already exists
+        if any(level.level_number == level_data.level_number for level in self.levels):
+            return False
+        
+        # Add the new level
+        self.levels.append(ParkingLevel(level_data))
+        self.notify_observers(f"Added level {level_data.level_number} to lot {self.name}")
+        return True
     
     def register_observer(self, observer: ParkingLotObserver) -> None:
         """Register an observer
@@ -268,7 +282,7 @@ class ParkingLot:
         Args:
             observer: The observer to register
         """
-        self.observers.add(observer)
+        self.observers.append(observer)
     
     def unregister_observer(self, observer: ParkingLotObserver) -> None:
         """Unregister an observer
@@ -276,7 +290,7 @@ class ParkingLot:
         Args:
             observer: The observer to unregister
         """
-        self.observers.discard(observer)
+        self.observers.remove(observer)
     
     def notify_observers(self, message: str) -> None:
         """Notify all observers
@@ -357,6 +371,9 @@ class ParkingLotManagerImpl(ParkingLotManager):
             bool: True if the lot was created successfully
         """
         if lot_data.name in self.lots:
+            # If lot exists, try to add the new level
+            if len(lot_data.levels) == 1:
+                return self.lots[lot_data.name].add_level(lot_data.levels[0])
             return False
         
         self.lots[lot_data.name] = ParkingLot(lot_data)
