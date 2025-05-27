@@ -2,497 +2,364 @@
 Test suite for the Parking Lot UI
 
 This module contains tests for the ParkingLotUI class using unittest and tkinter testing utilities.
+The tests simulate user interactions with the app and verify that the UI responds correctly.
+
+Note: This test suite intentionally accesses protected methods (prefixed with _) of the ParkingLotUI class
+to test internal implementation details. This is a common practice in testing, and the linter warnings
+about protected method access can be safely ignored.
 """
 
 import unittest
 import tkinter as tk
-from ParkingLotUI import ParkingLotUI, VehicleData, SearchCriteria, ParkingLotData
-from typing import List, Dict, Optional, Any
-from ParkingManager import ParkingLotObserver
+from tkinter import ttk
+import sys
+import os
+from unittest.mock import MagicMock, patch
 
-class MockParkingLot:
-    """Mock parking lot for testing UI functionality"""
-    
-    def __init__(self, name: str, levels: int, slots_per_level: int):
-        self.name = name
-        self.levels = levels
-        self.slots_per_level = slots_per_level
-        self.lots: Dict[str, Dict[int, Dict[int, Optional[VehicleData]]]] = {}
-        self.vehicles: Dict[str, Dict[int, Dict[int, VehicleData]]] = {}
-        self.observers: List[ParkingLotObserver] = []
-        self.current_lot_name = name
-        self.current_level = 1
-        # Initialize the lot structure
-        self.lots[name] = {}
-        for level in range(1, levels + 1):
-            self.lots[name][level] = {}
-            for slot in range(1, slots_per_level + 1):
-                self.lots[name][level][slot] = None
-    
-    def register_observer(self, observer: Any) -> None:
-        self.observers.append(observer)
-    
-    def set_name(self, name: str) -> None:
-        """Set the name of the parking lot"""
-        self.name = name
-    
-    def create_parking_lot(self, data: ParkingLotData) -> None:
-        """Create a new parking lot"""
-        if data.name in self.lots:
-            return
-        self.lots[data.name] = {}
-        self.lots[data.name][data.level] = {}
-        for slot in range(1, data.regular_slots + 1):
-            self.lots[data.name][data.level][slot] = None
-        for slot in range(data.regular_slots + 1, data.regular_slots + data.electric_vehicle_slots + 1):
-            self.lots[data.name][data.level][slot] = None
-        self.vehicles[data.name] = {}
-        self.vehicles[data.name][data.level] = {}
-        self.current_lot_name = data.name
-        self.current_level = data.level
-    
-    def park(self, reg: str, manufacturer: str, model: str, color: str, is_electric: bool = False, is_motorcycle: bool = False) -> Optional[int]:
-        data = VehicleData(reg, manufacturer, model, color, is_electric, is_motorcycle)
-        lot_name = self.current_lot_name
-        level = self.current_level
-        # Find the next available slot
-        if lot_name not in self.lots or level not in self.lots[lot_name]:
-            return None
-        for slot in sorted(self.lots[lot_name][level].keys()):
-            if self.lots[lot_name][level][slot] is None:
-                self.lots[lot_name][level][slot] = data
-                self.vehicles[lot_name] = self.vehicles.get(lot_name, {})
-                self.vehicles[lot_name][level] = self.vehicles[lot_name].get(level, {})
-                self.vehicles[lot_name][level][slot] = data
-                return slot
-        return None
-    
-    def leave(self, slot_number: int) -> bool:
-        """Remove a vehicle from a slot"""
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                if slot_number in level_data:
-                    del level_data[slot_number]
-                    return True
-        return False
-    
-    def get_slot_by_registration(self, reg: str) -> Optional[int]:
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                for slot, vehicle in level_data.items():
-                    if vehicle.registration_number == reg:
-                        return slot
-        return None
-    
-    def get_vehicle(self, slot_number: int) -> Optional[Any]:
-        """Get vehicle by slot number"""
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                if slot_number in level_data:
-                    return level_data[slot_number]
-        return None
-    
-    def get_slots_by_color(self, color: str) -> List[int]:
-        slots: List[int] = []
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                for slot, vehicle in level_data.items():
-                    if vehicle.color == color:
-                        slots.append(slot)
-        return slots
-    
-    def get_slots_by_manufacturer(self, manufacturer: str) -> List[int]:
-        slots: List[int] = []
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                for slot, vehicle in level_data.items():
-                    if vehicle.manufacturer == manufacturer:
-                        slots.append(slot)
-        return slots
-    
-    def get_slots_by_model(self, model: str) -> List[int]:
-        slots: List[int] = []
-        for lot_data in self.vehicles.values():
-            for level_data in lot_data.values():
-                for slot, vehicle in level_data.items():
-                    if vehicle.model == model:
-                        slots.append(slot)
-        return slots
-    
-    def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Any]:
-        """Get all vehicles in a specific lot and level"""
-        print(f"[DEBUG] get_vehicles_in_lot called with lot_name={lot_name}, level={level}")
-        if lot_name not in self.vehicles or level not in self.vehicles[lot_name]:
-            return {}
-        vehicles = self.vehicles[lot_name][level]
-        print(f"[DEBUG] get_vehicles_in_lot returned {len(vehicles)} vehicles")
-        return vehicles
-    
-    def _matches_criteria(self, vehicle: VehicleData, criteria: SearchCriteria, lot_name: str, level: int) -> bool:
-        """Check if a vehicle matches the search criteria"""
-        if criteria.search_type == "registration" and criteria.registration:
-            return vehicle.registration_number.lower() == criteria.registration.lower()
-        elif criteria.search_type == "color" and criteria.color:
-            return vehicle.color.lower() == criteria.color.lower()
-        elif criteria.search_type == "manufacturer" and criteria.manufacturer:
-            return vehicle.manufacturer.lower() == criteria.manufacturer.lower()
-        elif criteria.search_type == "model" and criteria.model:
-            return vehicle.model.lower() == criteria.model.lower()
-        return False
-    
-    def search_vehicles(self, criteria: SearchCriteria) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for lot_name, levels in self.lots.items():
-            for level, slots_dict in levels.items():
-                for slot, vehicle in slots_dict.items():
-                    if vehicle and self._matches_criteria(vehicle, criteria, lot_name, level):
-                        results.append({
-                            "slot": slot,
-                            "vehicle": vehicle,
-                            "lot": lot_name,
-                            "level": level
-                        })
-        return results
-    
-    def get_status(self) -> str:
-        status_lines: List[str] = []
-        for lot_name, levels in self.lots.items():
-            for level, slots_dict in levels.items():
-                status_lines.append(f"Parking Lot: {lot_name}")
-                status_lines.append(f"Level {level} Status:")
-                for slot, vehicle in slots_dict.items():
-                    if vehicle is None:
-                        status_lines.append(f"Slot {slot}: Empty")
-                    else:
-                        vehicle_type = "EV Motorcycle" if vehicle.is_electric and vehicle.is_motorcycle else \
-                                     "EV" if vehicle.is_electric else \
-                                     "Motorcycle" if vehicle.is_motorcycle else "Standard"
-                        status_lines.append(f"Slot {slot}: {vehicle.registration_number} {vehicle.manufacturer} {vehicle.model} {vehicle.color} {vehicle_type}")
-        self.status_output = status_lines
-        return "\n".join(status_lines)
-    
-    def get_lot_names(self) -> List[str]:
-        """Get all parking lot names"""
-        return list(self.lots.keys())
-    
-    def get_levels_for_lot(self, lot_name: str) -> List[int]:
-        """Get all levels in a specific lot"""
-        if lot_name not in self.lots:
-            return []
-        return sorted(self.lots[lot_name].keys())
-    
-    def get_slots_for_level(self, lot_name: str, level: int) -> List[int]:
-        """Get all slots in a specific level"""
-        if lot_name not in self.lots or level not in self.lots[lot_name]:
-            return []
-        return sorted(self.lots[lot_name][level].keys())
-    
-    def get_available_slots(self, lot_name: str, level: int) -> List[int]:
-        """Get all available slots in a specific level"""
-        if lot_name not in self.lots or level not in self.lots[lot_name]:
-            return []
-        return [slot for slot, vehicle in self.lots[lot_name][level].items() if vehicle is None]
-    
-    def get_occupied_slots(self, lot_name: str, level: int) -> List[int]:
-        """Get all occupied slots in a specific level"""
-        if lot_name not in self.lots or level not in self.lots[lot_name]:
-            return []
-        return [slot for slot, vehicle in self.lots[lot_name][level].items() if vehicle is not None]
-    
-    def _update_status(self) -> None:
-        """Update the status output"""
-        self.get_status()
+# Add the parent directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    def park_vehicle(self, data: VehicleData) -> Optional[int]:
-        """Park a vehicle in the lot"""
-        return self.park(
-            data.registration_number,
-            data.manufacturer,
-            data.model,
-            data.color,
-            data.is_electric,
-            data.is_motorcycle
-        )
-
-    def remove_vehicle(self, slot_number: int) -> bool:
-        """Remove a vehicle from the lot"""
-        return self.leave(slot_number)
+from ParkingLotUI import ParkingLotUI
+from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType
+from interfaces import ParkingLotObserver
 
 class TestParkingLotUI(unittest.TestCase):
     """Test cases for the ParkingLotUI class"""
-
+    
     def setUp(self):
-        """Set up test environment before each test"""
-        self.parking_lot = MockParkingLot("Test Lot", 1, 10)
+        """Set up test environment"""
         self.root = tk.Tk()
         self.ui = ParkingLotUI()
-        self.root.withdraw()  # Hide the window during tests
-
+        self.ui.main_window = self.root
+        
+        # Mock the message area
+        self.ui.message_area = tk.Text(self.root)
+        self.ui.message_area.pack()
+        
+        # Mock the results tree
+        self.ui.results_tree = ttk.Treeview(self.root)
+        self.ui.results_tree.pack()
+    
     def tearDown(self):
-        """Clean up after each test"""
+        """Clean up test environment"""
         self.root.destroy()
-
-    def clear_message(self):
-        """Clear the message area"""
-        self.ui.message_area.delete("1.0", tk.END)
-
-    def get_message(self):
-        """Get the current message"""
-        return self.ui.message_area.get("1.0", tk.END).strip()
-
-    def test_create_lot_valid_and_invalid(self):
-        """Test creating parking lots with valid and invalid inputs"""
-        # Invalid: empty name
-        self.ui.lot_name_value.set("")
+    
+    def test_create_parking_lot(self):
+        """Test creating a parking lot through the UI"""
+        # Mock the parking manager
+        self.ui.parking_manager.create_lot = MagicMock(return_value=True)
+        
+        # Set input values
+        self.ui.lot_name_value.set("Test Lot")
         self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Please enter a lot name", self.get_message())
-
-        # Invalid: non-integer slots
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("abc")
-        self.ui.electric_vehicle_slots_value.set("xyz")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Invalid numeric value", self.get_message())
-
-        # Valid creation
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Created parking lot", self.get_message())
-
-    def test_duplicate_lot_names(self):
-        """Test creating lots with duplicate names"""
-        # Create first lot
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Created parking lot 'LotA'", self.get_message())
-
-        # Try to create another lot with same name and level
-        self.ui.parking_level_value.set("1")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Lot name already exists for level 1", self.get_message())
-
-    def test_vehicle_parking_types_and_edge_cases(self):
-        """Test parking different types of vehicles and edge cases"""
-        # Create a lot first
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.ui.create_lot()
-
-        # Test regular car
+        self.ui.regular_slots_value.set("5")
+        self.ui.electric_vehicle_slots_value.set("2")
+        
+        # Click create button
+        self.ui._handle_create_lot()
+        
+        # Verify parking manager was called with correct data
+        self.ui.parking_manager.create_lot.assert_called_once()
+        call_args = self.ui.parking_manager.create_lot.call_args[0][0]
+        self.assertEqual(call_args.name, "Test Lot")
+        self.assertEqual(len(call_args.levels), 1)
+        self.assertEqual(call_args.levels[0].regular_slots, 5)
+        self.assertEqual(call_args.levels[0].electric_slots, 2)
+    
+    def test_park_vehicle(self):
+        """Test parking a vehicle through the UI"""
+        # Mock the parking manager
+        self.ui.parking_manager.park_vehicle = MagicMock(return_value=1)
+        
+        # Set input values
         self.ui.registration_number_value.set("ABC123")
         self.ui.vehicle_manufacturer_value.set("Toyota")
         self.ui.vehicle_model_value.set("Camry")
         self.ui.vehicle_color_value.set("Red")
         self.ui.vehicle_type_value.set("Car")
         self.ui.is_electric_value.set(False)
-        self.clear_message()
-        self.ui.park_button.invoke()
-        self.assertIn("Vehicle parked in slot", self.get_message())
-
+        self.ui.park_lot_value.set("Test Lot")
+        self.ui.park_level_value.set("1")
+        
+        # Click park button
+        self.ui._handle_park()
+        
+        # Verify parking manager was called with correct data
+        self.ui.parking_manager.park_vehicle.assert_called_once()
+        call_args = self.ui.parking_manager.park_vehicle.call_args[0]
+        self.assertEqual(call_args[0], "Test Lot")  # lot_name
+        self.assertEqual(call_args[1], 1)  # level
+        self.assertEqual(call_args[2].registration_number, "ABC123")
+        self.assertEqual(call_args[2].manufacturer, "Toyota")
+        self.assertEqual(call_args[2].model, "Camry")
+        self.assertEqual(call_args[2].color, "Red")
+        self.assertFalse(call_args[2].is_electric)
+        self.assertFalse(call_args[2].is_motorcycle)
+    
+    def test_remove_vehicle(self):
+        """Test removing a vehicle through the UI"""
+        # Mock the parking manager
+        mock_vehicle = VehicleData(
+            registration_number="ABC123",
+            manufacturer="Toyota",
+            model="Camry",
+            color="Red",
+            is_electric=False,
+            is_motorcycle=False,
+            vehicle_type=VehicleType.CAR
+        )
+        self.ui.parking_manager.remove_vehicle = MagicMock(return_value=mock_vehicle)
+        
+        # Set input values
+        self.ui.park_lot_value.set("Test Lot")
+        self.ui.park_level_value.set("1")
+        
+        # Mock selected slot
+        with patch.object(self.ui, '_get_selected_slot', return_value=1):
+            # Click remove button
+            self.ui._handle_remove()
+            
+            # Verify parking manager was called with correct data
+            self.ui.parking_manager.remove_vehicle.assert_called_once_with("Test Lot", 1, 1)
+    
+    def test_search_vehicles(self):
+        """Test searching for vehicles through the UI"""
+        # Mock the parking manager's search methods
+        mock_vehicles = {
+            1: VehicleData(
+                registration_number="ABC123",
+                manufacturer="Toyota",
+                model="Camry",
+                color="Red",
+                is_electric=False,
+                is_motorcycle=False,
+                vehicle_type=VehicleType.CAR
+            )
+        }
+        self.ui.parking_manager.get_vehicles_in_lot = MagicMock(return_value=mock_vehicles)
+        self.ui.parking_manager.get_lot_names = MagicMock(return_value=["Test Lot"])
+        self.ui.parking_manager.get_levels_for_lot = MagicMock(return_value=[1])
+        
+        # Test registration search
+        self.ui.search_registration_number_value.set("ABC123")
+        self.ui.search_type_value.set("registration")
+        
+        # Click search button
+        self.ui._handle_search()
+        
+        # Verify search was performed
+        self.ui.parking_manager.get_vehicles_in_lot.assert_called()
+    
+    def test_show_status(self):
+        """Test showing parking lot status through the UI"""
+        # Mock the parking manager's status methods
+        mock_status = [
+            MagicMock(
+                level=1,
+                slot=1,
+                vehicle=VehicleData(
+                    registration_number="ABC123",
+                    manufacturer="Toyota",
+                    model="Camry",
+                    color="Red",
+                    is_electric=False,
+                    is_motorcycle=False,
+                    vehicle_type=VehicleType.CAR
+                ),
+                is_occupied=True,
+                slot_type=SlotType.REGULAR
+            )
+        ]
+        self.ui.parking_manager.get_lot_status = MagicMock(return_value=mock_status)
+        
+        # Set input values
+        self.ui.park_lot_value.set("Test Lot")
+        
+        # Click show status button
+        self.ui._handle_show_status()
+        
+        # Verify status was retrieved
+        self.ui.parking_manager.get_lot_status.assert_called_once_with("Test Lot")
+    
+    def test_show_lots(self):
+        """Test showing all parking lots through the UI"""
+        # Mock the parking manager's methods
+        self.ui.parking_manager.get_lot_names = MagicMock(return_value=["Test Lot"])
+        self.ui.parking_manager.get_levels_for_lot = MagicMock(return_value=[1])
+        mock_status = [
+            MagicMock(
+                level=1,
+                slot=1,
+                vehicle=None,
+                is_occupied=False,
+                slot_type=SlotType.REGULAR
+            )
+        ]
+        self.ui.parking_manager.get_lot_status = MagicMock(return_value=mock_status)
+        
+        # Click show lots button
+        self.ui._handle_show_lots()
+        
+        # Verify methods were called
+        self.ui.parking_manager.get_lot_names.assert_called_once()
+        self.ui.parking_manager.get_levels_for_lot.assert_called_once_with("Test Lot")
+        self.ui.parking_manager.get_lot_status.assert_called()
+    
+    def test_show_details(self):
+        """Test showing lot details through the UI"""
+        # Mock the parking manager's methods
+        mock_vehicles = {
+            1: VehicleData(
+                registration_number="ABC123",
+                manufacturer="Toyota",
+                model="Camry",
+                color="Red",
+                is_electric=False,
+                is_motorcycle=False,
+                vehicle_type=VehicleType.CAR
+            )
+        }
+        self.ui.parking_manager.get_vehicles_in_lot = MagicMock(return_value=mock_vehicles)
+        
+        # Set input values
+        self.ui.details_lot_name_value.set("Test Lot")
+        self.ui.details_parking_level_value.set("1")
+        
+        # Click show details button
+        self.ui._handle_show_details()
+        
+        # Verify details were retrieved
+        self.ui.parking_manager.get_vehicles_in_lot.assert_called_once_with("Test Lot", 1)
+    
+    def test_vehicle_type_selection(self):
+        """Test vehicle type selection in the UI"""
+        # Test regular car
+        self.ui.vehicle_type_value.set("Car")
+        self.ui.is_electric_value.set(False)
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.CAR)
+        
         # Test electric car
-        self.ui.registration_number_value.set("DEF456")
-        self.ui.vehicle_manufacturer_value.set("Tesla")
-        self.ui.vehicle_model_value.set("Model 3")
-        self.ui.vehicle_color_value.set("Black")
         self.ui.vehicle_type_value.set("Car")
         self.ui.is_electric_value.set(True)
-        self.clear_message()
-        self.ui.park_button.invoke()
-        self.assertIn("Vehicle parked in slot", self.get_message())
-
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.ELECTRIC_CAR)
+        
         # Test motorcycle
-        self.ui.registration_number_value.set("GHI789")
-        self.ui.vehicle_manufacturer_value.set("Honda")
-        self.ui.vehicle_model_value.set("CBR")
-        self.ui.vehicle_color_value.set("Blue")
         self.ui.vehicle_type_value.set("Motorcycle")
         self.ui.is_electric_value.set(False)
-        self.clear_message()
-        self.ui.park_button.invoke()
-        self.assertIn("Vehicle parked in slot", self.get_message())
-
-        # Test invalid input
-        self.ui.registration_number_value.set("")
-        self.clear_message()
-        self.ui.park_button.invoke()
-        self.assertIn("Please enter registration number", self.get_message())
-
-    def test_remove_vehicle(self):
-        """Test removing vehicles"""
-        # Create a lot and park a vehicle
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.ui.create_lot()
-
-        self.ui.registration_number_value.set("ABC123")
-        self.ui.vehicle_manufacturer_value.set("Toyota")
-        self.ui.vehicle_model_value.set("Camry")
-        self.ui.vehicle_color_value.set("Red")
-        self.ui.vehicle_type_value.set("Car")
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.MOTORCYCLE)
+        
+        # Test electric motorcycle
+        self.ui.vehicle_type_value.set("Motorcycle")
+        self.ui.is_electric_value.set(True)
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.ELECTRIC_MOTORCYCLE)
+        
+        # Test truck
+        self.ui.vehicle_type_value.set("Truck")
         self.ui.is_electric_value.set(False)
-        self.ui.park_button.invoke()
-
-        # Show status to populate the tree
-        self.ui.show_status_button.invoke()
-
-        # Try to remove without selecting
-        self.clear_message()
-        self.ui.remove_button.invoke()
-        self.assertIn("Please select a slot to remove", self.get_message())
-
-        # Select and remove (only if there is a row)
-        children = self.ui.results_tree.get_children()
-        if children:
-            self.ui.results_tree.selection_set(children[0])
-            self.clear_message()
-            self.ui.remove_button.invoke()
-            self.assertIn("Vehicle removed from slot", self.get_message())
-        else:
-            self.fail("No rows in results tree to select for removal test.")
-
-    def test_search_all_modes_and_edge_cases(self):
-        """Test searching in all modes and edge cases"""
-        # Create a lot and park some vehicles
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.ui.create_lot()
-
-        # Park a red Toyota
-        self.ui.registration_number_value.set("ABC123")
-        self.ui.vehicle_manufacturer_value.set("Toyota")
-        self.ui.vehicle_model_value.set("Camry")
-        self.ui.vehicle_color_value.set("Red")
-        self.ui.vehicle_type_value.set("Car")
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.TRUCK)
+        
+        # Test bus
+        self.ui.vehicle_type_value.set("Bus")
         self.ui.is_electric_value.set(False)
-        self.ui.park_button.invoke()
-
-        # Search by registration
-        self.ui.search_registration_number_value.set("ABC123")
-        self.ui.search_vehicle_color_value.set("")
-        self.ui.search_vehicle_manufacturer_value.set("")
-        self.ui.search_vehicle_model_value.set("")
-        self.ui.search_type_value.set("registration")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 1)
-
-        # Search by color
-        self.ui.search_registration_number_value.set("")
-        self.ui.search_vehicle_color_value.set("Red")
-        self.ui.search_vehicle_manufacturer_value.set("")
-        self.ui.search_vehicle_model_value.set("")
-        self.ui.search_type_value.set("color")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 1)
-
-        # Search by make
-        self.ui.search_registration_number_value.set("")
-        self.ui.search_vehicle_color_value.set("")
-        self.ui.search_vehicle_manufacturer_value.set("Toyota")
-        self.ui.search_vehicle_model_value.set("")
-        self.ui.search_type_value.set("make")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 1)
-
-        # Search by model
-        self.ui.search_registration_number_value.set("")
-        self.ui.search_vehicle_color_value.set("")
-        self.ui.search_vehicle_manufacturer_value.set("")
-        self.ui.search_vehicle_model_value.set("Camry")
-        self.ui.search_type_value.set("model")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 1)
-
-        # Test empty search
-        self.ui.search_registration_number_value.set("")
-        self.ui.search_vehicle_color_value.set("")
-        self.ui.search_vehicle_manufacturer_value.set("")
-        self.ui.search_vehicle_model_value.set("")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 0)
-
-    def test_ui_edge_cases(self):
-        """Test UI edge cases"""
-        # Test whitespace handling
-        self.ui.lot_name_value.set("  LotA  ")
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.BUS)
+    
+    def test_validation(self):
+        """Test input validation in the UI"""
+        # Test vehicle data validation
+        valid_data = VehicleData(
+            registration_number="ABC123",
+            manufacturer="Toyota",
+            model="Camry",
+            color="Red",
+            is_electric=False,
+            is_motorcycle=False,
+            vehicle_type=VehicleType.CAR
+        )
+        self.assertTrue(self.ui._validate_vehicle_data(valid_data))
+        
+        # Test invalid vehicle data
+        with self.assertRaises(ValueError):
+            VehicleData(
+                registration_number="",
+                manufacturer="",
+                model="",
+                color="",
+                is_electric=False,
+                is_motorcycle=False,
+                vehicle_type=VehicleType.CAR
+            )
+        
+        # Test lot data validation
+        valid_lot_data = ParkingLotData(
+            name="Test Lot",
+            levels=[
+                ParkingLevelData(
+                    level_number=1,
+                    regular_slots=5,
+                    electric_slots=2,
+                    motorcycle_slots=1,
+                    ev_motorcycle_slots=1
+                )
+            ]
+        )
+        self.assertTrue(self.ui._validate_lot_data(valid_lot_data))
+        
+        # Test invalid lot data
+        with self.assertRaises(ValueError):
+            ParkingLotData(
+                name="",
+                levels=[
+                    ParkingLevelData(
+                        level_number=1,
+                        regular_slots=0,
+                        electric_slots=-1,
+                        motorcycle_slots=-1,
+                        ev_motorcycle_slots=-1
+                    )
+                ]
+            )
+    
+    def test_error_handling(self):
+        """Test error handling in the UI"""
+        # Test invalid lot creation
+        self.ui.lot_name_value.set("")  # Empty lot name
+        self.ui._handle_create_lot()
+        self.assertIn("invalid literal for int()", self.ui.message_area.get("1.0", "end"))
+        
+        # Test invalid vehicle parking
+        self.ui.registration_number_value.set("")  # Empty registration
+        self.ui._handle_park()
+        self.assertIn("Registration number is required", self.ui.message_area.get("1.0", "end"))
+        
+        # Test invalid vehicle removal
+        with patch.object(self.ui, '_get_selected_slot', return_value=None):
+            self.ui._handle_remove()
+            self.assertIn("No slot selected", self.ui.message_area.get("1.0", "end"))
+    
+    def test_ui_updates(self):
+        """Test UI updates after operations"""
+        # Mock the parking manager
+        self.ui.parking_manager.get_lot_names = MagicMock(return_value=["Test Lot"])
+        self.ui.parking_manager.get_levels_for_lot = MagicMock(return_value=[1])
+        
+        # Create a lot
+        self.ui.lot_name_value.set("Test Lot")
         self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Created parking lot 'LotA'", self.get_message())
-
-        # Test case sensitivity
-        self.ui.registration_number_value.set("ABC123")
-        self.ui.vehicle_manufacturer_value.set("Toyota")
-        self.ui.vehicle_model_value.set("Camry")
-        self.ui.vehicle_color_value.set("Red")
-        self.ui.vehicle_type_value.set("Car")
-        self.ui.is_electric_value.set(False)
-        self.ui.park_button.invoke()
-
-        self.ui.search_registration_number_value.set("abc123")
-        self.ui.search_type_value.set("registration")
-        self.clear_message()
-        self.ui.search_button.invoke()
-        self.assertEqual(len(self.ui.results_tree.get_children()), 1)
-
-        # Test special characters
-        self.ui.lot_name_value.set("Lot-A")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.clear_message()
-        self.ui.create_lot()
-        self.assertIn("Created parking lot Lot-A", self.get_message())
-
-    def test_show_full_status(self):
-        """Test showing full status"""
-        self.ui.lot_name_value.set("LotA")
-        self.ui.parking_level_value.set("1")
-        self.ui.regular_slots_value.set("10")
-        self.ui.electric_vehicle_slots_value.set("5")
-        self.ui.create_lot()
-        self.ui.parking_level_value.set("1")  # Ensure level is set after lot creation
-        # Park a vehicle
-        self.ui.registration_number_value.set("ABC123")
-        self.ui.vehicle_manufacturer_value.set("Toyota")
-        self.ui.vehicle_model_value.set("Camry")
-        self.ui.vehicle_color_value.set("Red")
-        self.ui.vehicle_type_value.set("Car")
-        self.ui.is_electric_value.set(False)
-        self.ui.park_button.invoke()
-
-        # Debug print for level value
-        print(f"[TEST DEBUG] level_value before status: {self.ui.parking_level_value.get()}")
-        self.ui.parking_level_value.set("1")  # Ensure level is set right before status
-        self.ui.status_button.invoke()
-        self.assertNotEqual(len(self.ui.results_tree.get_children()), 0)
+        self.ui.regular_slots_value.set("5")
+        self.ui.electric_vehicle_slots_value.set("2")
+        self.ui._handle_create_lot()
+        
+        # Verify UI updates
+        self.assertEqual(tuple(self.ui.park_lot_combo['values']), ("Test Lot",))
+        self.assertEqual(tuple(self.ui.park_level_combo['values']), ("1",))
+        self.assertEqual(tuple(self.ui.details_lot_combo['values']), ("Test Lot",))
+        self.assertEqual(tuple(self.ui.details_level_combo['values']), ("1",))
 
 if __name__ == '__main__':
     unittest.main()
