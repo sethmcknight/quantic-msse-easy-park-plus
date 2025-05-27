@@ -33,16 +33,16 @@
 **Estimated Time:** 3 hours  
 **Description:** Identify where design patterns could improve the architecture and functionality.
 - [X] Research applicable design patterns for parking management systems
-- [ ] Identify at least 4 potential patterns to consider
-    1.
-    2.
-    3.
+- [X] Identify at least 4 potential patterns to consider
+    1. Observer
+    2. Abstract Factory
+    3. State Pattern
     4.
 - [ ] Document how each pattern could benefit the application
-- [ ] Select the 2 most impactful patterns to implement
-    1.
-    2.
-
+- [X] Select the 2 most impactful patterns to implement
+    1. Observer (ParkingLotObserver)
+    2. Abstract Factory (Vehicle/ElectricVehicle)
+    3. State Pattern (ParkingSlotState)
 
 
 ## Week 2: Implementation and Redesign
@@ -51,10 +51,10 @@
 **Priority:** High  
 **Estimated Time:** 8 hours  
 **Description:** Implement the first selected design pattern into the codebase.
-- [ ] Create necessary new classes/interfaces
-- [ ] Modify existing code to implement the pattern
-- [ ] Add appropriate comments explaining the pattern implementation
-- [ ] Test to ensure functionality is preserved
+- [X] Create necessary new classes/interfaces
+- [X] Modify existing code to implement the pattern
+- [X] Add appropriate comments explaining the pattern implementation
+- [X] Test to ensure functionality is preserved
 
 ### Issue #7: Implement Design Pattern #2
 **Priority:** High  
@@ -69,11 +69,12 @@
 **Priority:** High  
 **Estimated Time:** 10 hours  
 **Description:** Refactor code to remove all identified anti-patterns and improve code quality.
-- [ ] Improve variable naming and code organization
-- [ ] Remove dead code and unnecessary abstractions
-- [ ] Implement proper error handling
-- [ ] Refactor complex methods and improve readability
-- [ ] Add appropriate comments throughout the codebase
+- [ ] Improve variable naming
+- [X] Improve code organization
+- [X] Remove dead code and unnecessary abstractions
+- [X] Implement proper error handling
+- [X] Refactor complex methods and improve readability
+- [X] Add appropriate comments throughout the codebase
 
 ### Issue #9: Redesigned UML Diagrams
 **Priority:** Medium  

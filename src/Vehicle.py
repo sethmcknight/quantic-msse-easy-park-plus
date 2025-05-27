@@ -244,11 +244,17 @@ class Bus(Vehicle):
 class ElectricCar(ElectricVehicle):
     """Class representing an electric car"""
     
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+    
     def get_type(self) -> str:
         return "Electric Car"
 
 class ElectricTruck(ElectricVehicle):
     """Class representing an electric truck"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Electric Truck"
@@ -256,11 +262,17 @@ class ElectricTruck(ElectricVehicle):
 class ElectricMotorcycle(ElectricVehicle):
     """Class representing an electric motorcycle"""
     
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
+    
     def get_type(self) -> str:
         return "Electric Motorcycle"
 
 class ElectricBus(ElectricVehicle):
     """Class representing an electric bus"""
+    
+    def __init__(self, info: VehicleInfo) -> None:
+        super().__init__(info)
     
     def get_type(self) -> str:
         return "Electric Bus"

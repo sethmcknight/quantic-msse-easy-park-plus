@@ -1,5 +1,5 @@
-# TODO: Refactor or remove unused getType() methods and unnecessary ElectricVehicle hierarchy. See anti-patterns.md.  
-# this class is a duplicate of the Vehicle class and has been merged into it.  Keeping temporarily for reference.
+from typing import Literal
+
 class ElectricVehicle:
     color: str
     registrationNumber: str
@@ -7,7 +7,7 @@ class ElectricVehicle:
     model: str
     charge: int
 
-    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str) -> None:
         self.color = color
         self.registrationNumber = registrationNumber
         self.make = make
@@ -26,22 +26,25 @@ class ElectricVehicle:
     def getRegistrationNumber(self) -> str:
         return self.registrationNumber
 
-    def setCharge(self, charge: int):
+    def setCharge(self, charge: int) -> None:
+        """Set the charge level for the electric vehicle (unused, kept for future extensibility)."""
         self.charge = charge
-    # TODO: Remove or implement setCharge if needed. Currently unused. See anti-patterns.md.
+
     def getCharge(self) -> int:
         return self.charge
 
 class ElectricCar(ElectricVehicle):
-    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str) -> None:
         super().__init__(registrationNumber, make, model, color)
 
-    def getType(self) -> str:
+    def getType(self) -> Literal["Car"]:
+        """Return the type of the vehicle (unused, kept for future extensibility)."""
         return "Car"
 
 class ElectricBike(ElectricVehicle):
-    def __init__(self, registrationNumber: str, make: str, model: str, color: str):
+    def __init__(self, registrationNumber: str, make: str, model: str, color: str) -> None:
         super().__init__(registrationNumber, make, model, color)
 
-    def getType(self) -> str:
+    def getType(self) -> Literal["Motorcycle"]:
+        """Return the type of the vehicle (unused, kept for future extensibility)."""
         return "Motorcycle"
