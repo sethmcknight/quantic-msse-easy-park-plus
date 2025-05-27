@@ -1,5 +1,5 @@
 """
-Parking Manager Module
+Parking Lot Management Module
 
 This module implements the parking lot management system.
 It uses the State Pattern to manage parking slot states, the Observer Pattern for UI updates,
@@ -227,94 +227,121 @@ class ReservedState(ParkingSlotState):
 @dataclass
 class ParkingSlot:
     """Class representing a parking slot"""
-    
     def __init__(self, slot_type: str):
         self._slot_type = slot_type
-        self._state: ParkingSlotState = EmptyState()
-    
+        self._vehicle: Optional[Vehicle] = None
+
     @property
     def slot_type(self) -> str:
         return self._slot_type
-    
-    def can_park(self, vehicle: Vehicle.Vehicle) -> bool:
-        return self._state.can_park(vehicle)
-    
-    def park(self, vehicle: Vehicle.Vehicle) -> bool:
-        if self._state.can_park(vehicle):
-            self._state = OccupiedState(vehicle)
+
+    def is_empty(self) -> bool:
+        return self._vehicle is None
+
+    def park(self, vehicle: Vehicle) -> bool:
+        if self.is_empty():
+            self._vehicle = vehicle
             return True
         return False
-    
-    def leave(self) -> Optional[Vehicle.Vehicle]:
-        vehicle = self._state.leave()
-        self._state = EmptyState()
+
+    def leave(self) -> Optional[Vehicle]:
+        vehicle = self._vehicle
+        self._vehicle = None
         return vehicle
-    
-    def get_vehicle(self) -> Optional[Vehicle.Vehicle]:
-        return self._state.get_vehicle()
-    
-    def reserve(self, vehicle_type: str) -> None:
-        self._state = ReservedState(vehicle_type)
 
-class ParkingLotObserver(ABC):
-    """Abstract base class for parking lot observers"""
-    
-    @abstractmethod
-    def update(self, message: str) -> None:
-        """Handle updates from the parking lot"""
-        pass
+    def get_vehicle(self) -> Optional[Vehicle]:
+        return self._vehicle
 
-class ParkingLot:
-    """Class representing a parking lot"""
-    
-    _instance: Optional['ParkingLot'] = None
-    
-    def __new__(cls) -> 'ParkingLot':
-        """Ensure only one instance of ParkingLot exists"""
+class ParkingLotLevel:
+    """Class representing a parking lot level"""
+    def __init__(self, level: int):
+        self.level = level
+        self.name: Optional[str] = None
+        self.regular_slots: List[ParkingSlot] = []
+        self.electric_vehicle_slots: List[ParkingSlot] = []
+
+    @property
+    def slots(self) -> List[ParkingSlot]:
+        return self.regular_slots + self.electric_vehicle_slots
+
+    def set_name(self, name: str) -> None:
+        self.name = name
+
+    def add_regular_slot(self, slot: ParkingSlot) -> None:
+        self.regular_slots.append(slot)
+
+    def add_ev_slot(self, slot: ParkingSlot) -> None:
+        self.electric_vehicle_slots.append(slot)
+
+class ParkingLot(ParkingLotInterface):
+    """Singleton class representing the parking lot"""
+    _instance = None
+
+    def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            cls._instance._initialize()
         return cls._instance
-    
-    def __init__(self):
-        """Initialize the parking lot if not already initialized"""
-        if self._initialized:
-            return
-        
-        self.slots: List[ParkingSlot] = []
-        self.level: int = 0
-        self._observers: List[ParkingLotObserver] = []
-        self._command_history: List[Command] = []
-        self._initialized = True
-    
-    @classmethod
-    def get_instance(cls) -> 'ParkingLot':
-        """Get the singleton instance of the parking lot"""
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-    
-    def register_observer(self, observer: ParkingLotObserver) -> None:
-        """Register an observer to receive updates"""
-        self._observers.append(observer)
-    
-    def notify_observers(self, message: str) -> None:
-        """Notify all observers of a change"""
-        for observer in self._observers:
-            observer.update(message)
-    
-    def execute_command(self, command: Command) -> bool:
-        """Execute a command and add it to history if successful"""
-        if command.execute():
-            self._command_history.append(command)
+
+    def _initialize(self):
+        """Initialize the parking lot"""
+        self.levels: List[ParkingLotLevel] = []
+        self.observers: List[ParkingLotObserver] = []
+        self.command_history: List[Command] = []
+
+    def create_parking_lot(self, data: ParkingLotData) -> bool:
+        """Create a new parking lot with the given data"""
+        try:
+            # Prevent duplicate lot names and levels
+            for level in self.levels:
+                if level.name == data.name and level.level == data.level:
+                    self.notify_observers(f"Lot name already exists for level {data.level}")
+                    return False
+            # Create a new level
+            level = ParkingLotLevel(data.level)
+            # Add regular slots
+            for _ in range(data.regular_slots):
+                level.add_regular_slot(ParkingSlot("regular"))
+            # Add EV slots
+            for _ in range(data.electric_vehicle_slots):
+                level.add_ev_slot(ParkingSlot("ev"))
+            # Set the name
+            level.set_name(data.name)
+            # Add the level to the parking lot
+            self.levels.append(level)
+            # Notify observers
+            self.notify_observers(f"Created parking lot {data.name} with {data.regular_slots} regular slots and {data.electric_vehicle_slots} EV slots")
             return True
-        return False
-    
-    def undo_last_command(self) -> bool:
-        """Undo the last command if possible"""
-        if self._command_history:
-            command = self._command_history.pop()
-            return command.undo()
+        except Exception as e:
+            logger.error(f"Error creating parking lot: {e}")
+            return False
+
+    def notify_observers(self, message: str) -> None:
+        """Notify all observers with a message"""
+        for observer in self.observers:
+            observer.update(message)
+
+    def register_observer(self, observer: ParkingLotObserver) -> None:
+        """Register an observer"""
+        if observer not in self.observers:
+            self.observers.append(observer)
+
+    def park_vehicle(self, vehicle_data: VehicleData) -> Optional[int]:
+        """Park a vehicle using the vehicle data"""
+        return self.park(
+            vehicle_data.registration_number,
+            vehicle_data.manufacturer,  # Updated from make
+            vehicle_data.model,
+            vehicle_data.color,
+            vehicle_data.is_electric,
+            vehicle_data.is_motorcycle
+        )
+
+    def remove_vehicle(self, registration: str) -> bool:
+        """Remove a vehicle by registration number"""
+        slot = self.get_slot_by_registration(registration)
+        if slot is not None:
+            return self.leave(slot)
         return False
     
     def create_parking_lot(self, capacity: int, electric_vehicle_capacity: int, level: int) -> None:
@@ -337,23 +364,32 @@ class ParkingLot:
         # Create vehicle using factory
         if is_electric:
             if is_motorcycle:
-                vehicle = Vehicle.VehicleFactory.create_electric_motorcycle(registration_number, make, model, color)
-            else:
-                vehicle = Vehicle.VehicleFactory.create_electric_car(registration_number, make, model, color)
-        else:
-            if is_motorcycle:
-                vehicle = Vehicle.VehicleFactory.create_motorcycle(registration_number, make, model, color)
-            else:
-                vehicle = Vehicle.VehicleFactory.create_car(registration_number, make, model, color)
+                return VehicleFactory.create_electric_motorcycle(reg, manufacturer, model, color)
+            return VehicleFactory.create_electric_car(reg, manufacturer, model, color)
+        if is_motorcycle:
+            return VehicleFactory.create_motorcycle(reg, manufacturer, model, color)
+        return VehicleFactory.create_car(reg, manufacturer, model, color)
+
+    def park(self, reg: str, manufacturer: str, model: str, color: str, is_electric: bool, is_motorcycle: bool, lot_name: Optional[str] = None, level: Optional[int] = None) -> Optional[int]:
+        """Park a vehicle in a specific lot and level if provided, otherwise find first available slot"""
+        vehicle = self._create_vehicle(reg, manufacturer, model, color, is_electric, is_motorcycle)
         
-        # Find suitable slot
-        for i, slot in enumerate(self.slots):
-            if slot.can_park(vehicle) and vehicle.can_park_in(slot.slot_type):
-                if slot.park(vehicle):
-                    self.notify_observers(f"Vehicle {registration_number} parked in slot {i + 1}")
+        # If lot and level are specified, try to park in that specific location
+        if lot_name is not None and level is not None:
+            for level_obj in self.levels:
+                if level_obj.name == lot_name and level_obj.level == level:
+                    for i, slot in enumerate(level_obj.slots):
+                        if slot.is_empty() and slot.park(vehicle):
+                            self.notify_observers(f"Parked {vehicle.get_type()} in slot {i + 1} of {lot_name} level {level}")
+                            return i + 1
+            return None
+        
+        # Otherwise, find first available slot in any lot/level
+        for level_obj in self.levels:
+            for i, slot in enumerate(level_obj.slots):
+                if slot.is_empty() and slot.park(vehicle):
+                    self.notify_observers(f"Parked {vehicle.get_type()} in slot {i + 1}")
                     return i + 1
-        
-        self.notify_observers(f"Could not park vehicle {registration_number}: No suitable slot available")
         return None
 
     def leave(self, parking_slot_number: int) -> bool:
@@ -430,11 +466,9 @@ class ParkingLot:
 
 # Main App
 def main():
-    parking_lot = ParkingLot.get_instance()
-    
     # Create UI
     from ParkingLotUI import ParkingLotUI
-    ui = ParkingLotUI(parking_lot)
+    ui = ParkingLotUI()  # No need to pass parking lot since it's created in __init__
     ui.run()
 
 if __name__ == '__main__':

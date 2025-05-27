@@ -1,0 +1,97 @@
+classDiagram
+    %% Core Classes
+    class ParkingLot {
+        -_instance: ParkingLot
+        -levels: List[ParkingLotLevel]
+        -observers: List[ParkingLotObserver]
+        +get_instance()
+        +create_parking_lot(data: ParkingLotData)
+        +park(reg, make, model, color, is_electric, is_motorcycle, lot_name, level)
+        +leave(slot_number)
+        +notify_observers(message)
+        +get_lot_names()
+        +get_levels_for_lot(lot_name)
+        +get_vehicles_in_lot(lot_name, level)
+        +get_slot_by_registration(reg)
+        +get_vehicle(slot_number)
+        +get_slots_by_color(color)
+        +get_slots_by_make(make)
+        +get_slots_by_model(model)
+    }
+    
+    class ParkingLotLevel {
+        -level: int
+        -name: str
+        -regular_slots: List[ParkingSlot]
+        -ev_slots: List[ParkingSlot]
+        +get_level()
+        +get_slots()
+        +set_name(name)
+        +add_regular_slot(slot)
+        +add_ev_slot(slot)
+    }
+    
+    class ParkingSlot {
+        -slot_type: str
+        -vehicle: Vehicle
+        +is_empty()
+        +park(vehicle)
+        +leave()
+        +get_vehicle()
+    }
+    
+    %% Observer Pattern
+    class ParkingLotObserver {
+        <<interface>>
+        +update(message)
+    }
+    
+    class ParkingLotUI {
+        -parking_lot: ParkingLot
+        -park_lot_value: StringVar
+        -park_level_value: StringVar
+        +update(message)
+        +_handle_park()
+        +_handle_remove()
+        +_handle_search()
+        +_update_park_lot_names()
+        +_update_park_levels()
+    }
+    
+    %% Factory Pattern
+    class VehicleFactory {
+        +create_car(reg, make, model, color)
+        +create_truck(reg, make, model, color)
+        +create_motorcycle(reg, make, model, color)
+        +create_bus(reg, make, model, color)
+        +create_electric_car(reg, make, model, color)
+        +create_electric_motorcycle(reg, make, model, color)
+    }
+    
+    %% Data Models
+    class VehicleData {
+        +registration: str
+        +make: str
+        +model: str
+        +color: str
+        +is_electric: bool
+        +is_motorcycle: bool
+    }
+    
+    class ParkingLotData {
+        +name: str
+        +level: int
+        +regular_slots: int
+        +ev_slots: int
+    }
+    
+    %% Relationships
+    ParkingLotObserver <|.. ParkingLotUI
+    
+    ParkingLot o-- ParkingLotLevel
+    ParkingLot o-- ParkingLotObserver
+    ParkingLotLevel o-- ParkingSlot
+    
+    ParkingLot ..> VehicleFactory : uses
+    ParkingLot ..> VehicleData : uses
+    ParkingLot ..> ParkingLotData : uses 
