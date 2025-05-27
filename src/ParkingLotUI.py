@@ -84,8 +84,10 @@ class ParkingLotUI(ParkingLotObserver):
         self._bind_events()
         
         # Initialize dropdowns
+        logger.debug("[DEBUG] Initializing dropdowns")
         self._update_park_lot_names()
         self._update_park_levels()
+        self._update_remove_lot_names()  # Add explicit call to update remove lot names
         logger.debug("[DEBUG] ParkingLotUI initialization complete")
 
     def _init_state(self):
@@ -104,6 +106,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.is_electric_value = tk.BooleanVar()
         self.park_lot_value = tk.StringVar()
         self.park_level_value = tk.StringVar()
+        # Remove section variables
+        self.remove_lot_value = tk.StringVar()
+        self.remove_level_value = tk.StringVar()
+        self.remove_slot_value = tk.StringVar()
         # Search tab variables
         self.search_registration_number_value = tk.StringVar()
         self.search_vehicle_color_value = tk.StringVar()
