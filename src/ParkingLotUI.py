@@ -171,16 +171,39 @@ class ParkingLotUI(ParkingLotObserver):
     
     def _create_search_widgets(self):
         """Create widgets for search operations"""
-        self.search_registration_label = ttk.Label(self.search_frame, text="Registration:")
-        self.search_registration_entry = ttk.Entry(self.search_frame, textvariable=self.search_registration_number_value)
-        self.search_color_label = ttk.Label(self.search_frame, text="Color:")
-        self.search_color_entry = ttk.Entry(self.search_frame, textvariable=self.search_vehicle_color_value)
-        self.search_manufacturer_label = ttk.Label(self.search_frame, text="Manufacturer:")
-        self.search_manufacturer_entry = ttk.Entry(self.search_frame, textvariable=self.search_vehicle_manufacturer_value)
-        self.search_model_label = ttk.Label(self.search_frame, text="Model:")
-        self.search_model_entry = ttk.Entry(self.search_frame, textvariable=self.search_vehicle_model_value)
-        self.search_button = ttk.Button(self.search_frame, text="Search", command=self._handle_search)
-        self.show_status_button = ttk.Button(self.search_frame, text="Show Full Status", command=self._handle_show_status)
+        # Create search form frame
+        self.search_form_frame = ttk.Frame(self.search_frame)
+        self.search_form_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Create search widgets
+        self.search_registration_label = ttk.Label(self.search_form_frame, text="Registration:")
+        self.search_registration_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_registration_number_value)
+        self.search_color_label = ttk.Label(self.search_form_frame, text="Color:")
+        self.search_color_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_color_value)
+        self.search_manufacturer_label = ttk.Label(self.search_form_frame, text="Manufacturer:")
+        self.search_manufacturer_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_manufacturer_value)
+        self.search_model_label = ttk.Label(self.search_form_frame, text="Model:")
+        self.search_model_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_model_value)
+        
+        # Create button frame
+        self.search_button_frame = ttk.Frame(self.search_form_frame)
+        self.search_button = ttk.Button(self.search_button_frame, text="Search", command=self._handle_search)
+        self.show_status_button = ttk.Button(self.search_button_frame, text="Show Full Status", command=self._handle_show_status)
+        
+        # Layout search widgets
+        self.search_registration_label.grid(row=0, column=0, padx=5, pady=5)
+        self.search_registration_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.search_color_label.grid(row=0, column=2, padx=5, pady=5)
+        self.search_color_entry.grid(row=0, column=3, padx=5, pady=5)
+        self.search_manufacturer_label.grid(row=1, column=0, padx=5, pady=5)
+        self.search_manufacturer_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.search_model_label.grid(row=1, column=2, padx=5, pady=5)
+        self.search_model_entry.grid(row=1, column=3, padx=5, pady=5)
+        
+        # Layout button frame
+        self.search_button_frame.grid(row=2, column=0, columnspan=4, pady=10)
+        self.search_button.pack(side="left", padx=5)
+        self.show_status_button.pack(side="left", padx=5)
     
     def _create_admin_widgets(self):
         """Create admin tab widgets"""
@@ -345,16 +368,31 @@ class ParkingLotUI(ParkingLotObserver):
     def _handle_search(self):
         """Handle search button click"""
         try:
+            # Create search criteria
             criteria = SearchCriteria(
-                registration_number=self.search_registration_number_value.get(),
-                color=self.search_vehicle_color_value.get(),
-                manufacturer=self.search_vehicle_manufacturer_value.get(),
-                model=self.search_vehicle_model_value.get(),
-                # Do not include search_type, as it's not a field in SearchCriteria
+                registration_number=self.search_registration_number_value.get().strip(),
+                color=self.search_vehicle_color_value.get().strip(),
+                manufacturer=self.search_vehicle_manufacturer_value.get().strip(),
+                model=self.search_vehicle_model_value.get().strip()
             )
-            self._perform_search(criteria)
+            
+            # Clear previous results
+            self.results_tree.delete(*self.results_tree.get_children())
+            
+            # Search in all lots
+            found_any = False
+            for lot_name in self.parking_manager.get_lot_names():
+                results = self.parking_manager.search_vehicles(lot_name, criteria)
+                for status in results:
+                    if status.vehicle:
+                        self._add_vehicle_to_tree(status.vehicle, status.slot)
+                        found_any = True
+            
+            if not found_any:
+                self._show_message("No vehicles found matching the search criteria")
+            
         except Exception as e:
-            logger.error(f"Error searching: {e}")
+            logger.error(f"Error performing search: {e}")
             self._show_error("Error performing search")
     
     def _handle_create_lot(self):
@@ -539,31 +577,6 @@ class ParkingLotUI(ParkingLotObserver):
         item = self.results_tree.item(selection[0])
         return int(item['values'][0])
     
-    def _perform_search(self, criteria: SearchCriteria):
-        """Perform search based on criteria"""
-        # Clear previous results
-        self.results_tree.delete(*self.results_tree.get_children())
-        search_type = self.search_type_value.get()
-        if search_type == "registration" and criteria.registration_number:
-            registration_search = criteria.registration_number.strip().casefold()
-            slot = None
-            found_vehicle = None
-            # Search all lots and levels for a matching registration (case-insensitive, whitespace-insensitive)
-            for lot_name in self.parking_manager.get_lot_names():
-                for level in self.parking_manager.get_levels_for_lot(lot_name):
-                    vehicles = self.parking_manager.get_vehicles_in_lot(lot_name, level)
-                    for s, vehicle in vehicles.items():
-                        registration_number = vehicle.registration_number
-                        if registration_number is None:
-                            registration_number = vehicle.registration_number
-                        registration_number = registration_number.strip().casefold() if registration_number else ""
-                        if registration_number == registration_search:
-                            self._add_vehicle_to_tree(vehicle, s)
-                            found_vehicle = vehicle
-            if not found_vehicle:
-                self._show_error("No vehicle found with that registration number")
-        # Add other search types as needed
-    
     def _add_vehicle_to_tree(self, vehicle: Union[Vehicle, VehicleData], slot: int) -> None:
         """Add a vehicle to the results tree"""
         logger.debug(f"[DEBUG] Adding vehicle to tree: slot={slot}, vehicle={vehicle}")
@@ -661,18 +674,9 @@ class ParkingLotUI(ParkingLotObserver):
         self.park_button.grid(row=7, column=0, padx=5, pady=5)
         self.remove_button.grid(row=7, column=1, padx=5, pady=5)
         
-        # Layout search frame
+        # Layout search frame and results tree
         self.search_frame.pack(expand=True, fill="both", padx=5, pady=5)
-        self.search_registration_label.grid(row=0, column=0, padx=5, pady=5)
-        self.search_registration_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.search_color_label.grid(row=1, column=0, padx=5, pady=5)
-        self.search_color_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.search_manufacturer_label.grid(row=2, column=0, padx=5, pady=5)
-        self.search_manufacturer_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.search_model_label.grid(row=3, column=0, padx=5, pady=5)
-        self.search_model_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.search_button.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
-        self.show_status_button.grid(row=5, column=0, columnspan=2, padx=5, pady=5)
+        self.results_tree.pack(expand=True, fill="both", padx=5, pady=5)
         
         # Layout admin frame
         self.admin_frame.pack(expand=True, fill="both", padx=5, pady=5)
@@ -687,15 +691,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.create_button.grid(row=4, column=0, padx=5, pady=5)
         self.show_lots_button.grid(row=4, column=1, padx=5, pady=5)
         self.load_sample_button.grid(row=4, column=2, padx=5, pady=5)
+        self.admin_tree.pack(expand=True, fill="both", padx=5, pady=5)
         
         # Layout details frame
         self.details_frame.pack(expand=True, fill="both", padx=5, pady=5)
-        
-        # Layout results tree
-        self.results_tree.pack(expand=True, fill="both", padx=5, pady=5)
-        
-        # Layout admin tree
-        self.admin_tree.pack(expand=True, fill="both", padx=5, pady=5)
         
         # Layout message area
         self.message_area.pack(expand=True, fill="both", padx=5, pady=5)
