@@ -46,8 +46,10 @@ class ParkingLotUI(ParkingLotObserver):
         self._create_widgets()
         self._layout_widgets()
         # Initialize dropdowns
+        logger.debug("[DEBUG] Initializing dropdowns")
         self._update_park_lot_names()
         self._update_park_levels()
+        self._update_remove_lot_names()  # Add explicit call to update remove lot names
         logger.debug("[DEBUG] ParkingLotUI initialization complete")
 
     def _init_state(self):
@@ -66,6 +68,10 @@ class ParkingLotUI(ParkingLotObserver):
         self.is_electric_value = tk.BooleanVar()
         self.park_lot_value = tk.StringVar()
         self.park_level_value = tk.StringVar()
+        # Remove section variables
+        self.remove_lot_value = tk.StringVar()
+        self.remove_level_value = tk.StringVar()
+        self.remove_slot_value = tk.StringVar()
         # Search tab variables
         self.search_registration_number_value = tk.StringVar()
         self.search_vehicle_color_value = tk.StringVar()
@@ -118,9 +124,13 @@ class ParkingLotUI(ParkingLotObserver):
     
     def _create_vehicle_widgets(self):
         """Create widgets for vehicle operations"""
+        # Create Park Vehicle frame
+        self.park_frame = ttk.LabelFrame(self.vehicle_frame, text="Park Vehicle")
+        self.park_frame.pack(fill="x", padx=5, pady=5)
+        
         # Create lot selection frame
-        self.park_lot_frame = ttk.Frame(self.vehicle_frame)
-        self.park_lot_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        self.park_lot_frame = ttk.Frame(self.park_frame)
+        self.park_lot_frame.pack(fill="x", padx=5, pady=5)
         
         # Create lot selection widgets
         self.park_lot_label = ttk.Label(self.park_lot_frame, text="Lot Name:")
@@ -135,38 +145,79 @@ class ParkingLotUI(ParkingLotObserver):
         self.park_level_label.grid(row=0, column=2, padx=5, pady=5)
         self.park_level_combo.grid(row=0, column=3, padx=5, pady=5)
         
+        # Create vehicle input frame
+        self.vehicle_input_frame = ttk.Frame(self.park_frame)
+        self.vehicle_input_frame.pack(fill="x", padx=5, pady=5)
+        
         # Create vehicle input widgets
-        self.registration_label = ttk.Label(self.vehicle_frame, text="Registration Number:")
-        self.registration_entry = ttk.Entry(self.vehicle_frame, textvariable=self.registration_number_value)
-        self.manufacturer_label = ttk.Label(self.vehicle_frame, text="Manufacturer:")
-        self.manufacturer_entry = ttk.Entry(self.vehicle_frame, textvariable=self.vehicle_manufacturer_value)
-        self.model_label = ttk.Label(self.vehicle_frame, text="Model:")
-        self.model_entry = ttk.Entry(self.vehicle_frame, textvariable=self.vehicle_model_value)
-        self.color_label = ttk.Label(self.vehicle_frame, text="Color:")
-        self.color_entry = ttk.Entry(self.vehicle_frame, textvariable=self.vehicle_color_value)
-        self.vehicle_type_label = ttk.Label(self.vehicle_frame, text="Vehicle Type:")
-        self.vehicle_type_combo = ttk.Combobox(self.vehicle_frame, textvariable=self.vehicle_type_value, state="readonly",
+        self.registration_label = ttk.Label(self.vehicle_input_frame, text="Registration Number:")
+        self.registration_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.registration_number_value)
+        self.manufacturer_label = ttk.Label(self.vehicle_input_frame, text="Manufacturer:")
+        self.manufacturer_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_manufacturer_value)
+        self.model_label = ttk.Label(self.vehicle_input_frame, text="Model:")
+        self.model_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_model_value)
+        self.color_label = ttk.Label(self.vehicle_input_frame, text="Color:")
+        self.color_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_color_value)
+        self.vehicle_type_label = ttk.Label(self.vehicle_input_frame, text="Vehicle Type:")
+        self.vehicle_type_combo = ttk.Combobox(self.vehicle_input_frame, textvariable=self.vehicle_type_value, state="readonly",
                                                values=["Car", "Truck", "Bus", "Motorcycle"])
-        self.electric_vehicle_check = ttk.Checkbutton(self.vehicle_frame, text="Electric Vehicle", variable=self.is_electric_value)
-        self.park_button = ttk.Button(self.vehicle_frame, text="Park", command=self._handle_park)
-        self.remove_button = ttk.Button(self.vehicle_frame, text="Remove", command=self._handle_remove)
+        self.electric_vehicle_check = ttk.Checkbutton(self.vehicle_input_frame, text="Electric Vehicle", variable=self.is_electric_value)
+        self.park_button = ttk.Button(self.vehicle_input_frame, text="Park", command=self._handle_park)
         
         # Layout vehicle input widgets
-        self.registration_label.grid(row=1, column=0, padx=5, pady=5)
-        self.registration_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.manufacturer_label.grid(row=2, column=0, padx=5, pady=5)
-        self.manufacturer_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.model_label.grid(row=3, column=0, padx=5, pady=5)
-        self.model_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.color_label.grid(row=4, column=0, padx=5, pady=5)
-        self.color_entry.grid(row=4, column=1, padx=5, pady=5)
-        self.vehicle_type_label.grid(row=5, column=0, padx=5, pady=5)
-        self.vehicle_type_combo.grid(row=5, column=1, padx=5, pady=5)
-        self.electric_vehicle_check.grid(row=6, column=0, padx=5, pady=5)
-        self.park_button.grid(row=7, column=0, padx=5, pady=5)
-        self.remove_button.grid(row=7, column=1, padx=5, pady=5)
+        self.registration_label.grid(row=0, column=0, padx=5, pady=5)
+        self.registration_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.manufacturer_label.grid(row=1, column=0, padx=5, pady=5)
+        self.manufacturer_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.model_label.grid(row=2, column=0, padx=5, pady=5)
+        self.model_entry.grid(row=2, column=1, padx=5, pady=5)
+        self.color_label.grid(row=3, column=0, padx=5, pady=5)
+        self.color_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.vehicle_type_label.grid(row=4, column=0, padx=5, pady=5)
+        self.vehicle_type_combo.grid(row=4, column=1, padx=5, pady=5)
+        self.electric_vehicle_check.grid(row=5, column=0, padx=5, pady=5)
+        self.park_button.grid(row=6, column=0, columnspan=2, padx=5, pady=5)
         
-        # Update lot names in combo box
+        # Create Remove Vehicle frame
+        self.remove_frame = ttk.LabelFrame(self.vehicle_frame, text="Remove Vehicle")
+        self.remove_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Create remove vehicle widgets
+        self.remove_lot_label = ttk.Label(self.remove_frame, text="Lot Name:")
+        self.remove_lot_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_lot_value, state="readonly")
+        
+        self.remove_level_label = ttk.Label(self.remove_frame, text="Level:")
+        self.remove_level_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_level_value, state="readonly")
+        
+        self.remove_slot_label = ttk.Label(self.remove_frame, text="Slot Number:")
+        self.remove_slot_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_slot_value, state="readonly")
+        
+        self.remove_button = ttk.Button(self.remove_frame, text="Remove", command=self._handle_remove)
+        
+        # Create vehicle info frame
+        self.vehicle_info_frame = ttk.Frame(self.remove_frame)
+        self.vehicle_info_label = ttk.Label(self.vehicle_info_frame, text="No vehicle selected")
+        
+        # Layout remove vehicle widgets
+        self.remove_lot_label.grid(row=0, column=0, padx=5, pady=5)
+        self.remove_lot_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.remove_level_label.grid(row=0, column=2, padx=5, pady=5)
+        self.remove_level_combo.grid(row=0, column=3, padx=5, pady=5)
+        self.remove_slot_label.grid(row=1, column=0, padx=5, pady=5)
+        self.remove_slot_combo.grid(row=1, column=1, padx=5, pady=5)
+        self.remove_button.grid(row=1, column=2, columnspan=2, padx=5, pady=5)
+        
+        # Layout vehicle info
+        self.vehicle_info_frame.grid(row=2, column=0, columnspan=4, sticky="ew", padx=5, pady=5)
+        self.vehicle_info_label.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        
+        # Bind events
+        self.remove_lot_combo.bind('<<ComboboxSelected>>', self._on_remove_lot_selected)
+        self.remove_level_combo.bind('<<ComboboxSelected>>', self._on_remove_level_selected)
+        self.remove_slot_combo.bind('<<ComboboxSelected>>', self._on_remove_slot_selected)
+        
+        # Update lot names in combo boxes
+        self._update_remove_lot_names()
         self._update_park_lot_names()
     
     def _create_search_widgets(self):
@@ -351,19 +402,56 @@ class ParkingLotUI(ParkingLotObserver):
     def _handle_remove(self):
         """Handle remove button click"""
         try:
-            slot = self._get_selected_slot()
-            if slot is None:
-                self._show_error("No slot selected")
+            lot_name = self.remove_lot_value.get()
+            level_str = self.remove_level_value.get()
+            slot_str = self.remove_slot_value.get()
+            
+            logger.debug(f"[DEBUG] Remove attempt - Lot: {lot_name}, Level: {level_str}, Slot: {slot_str}")
+            
+            if not lot_name or not level_str or not slot_str:
+                self._show_error("Please select lot, level, and slot")
                 return
-            lot_name = self.park_lot_value.get()
-            level = int(self.park_level_value.get())
+            
+            # Convert to integers and adjust level to 0-based indexing
+            level = int(level_str) - 1  # Convert to 0-based indexing
+            slot = int(slot_str)
+            
+            logger.debug(f"[DEBUG] Converting to integers - Level: {level} (0-based), Slot: {slot}")
+            
+            # Verify the slot exists and is occupied
+            statuses = self.parking_manager.get_lot_status(lot_name)
+            slot_found = False
+            for status in statuses:
+                if status.level == level + 1 and status.slot == slot:  # Compare with 1-based level
+                    slot_found = True
+                    logger.debug(f"[DEBUG] Found slot status - Occupied: {status.is_occupied}")
+                    if not status.is_occupied:
+                        self._show_error("Selected slot is empty")
+                        return
+                    break
+            
+            if not slot_found:
+                logger.error(f"[DEBUG] Slot {slot} not found in level {level + 1}")
+                self._show_error("Selected slot does not exist")
+                return
+            
+            logger.debug(f"[DEBUG] Attempting to remove vehicle from lot: {lot_name}, level: {level}, slot: {slot}")
             vehicle = self.parking_manager.remove_vehicle(lot_name, level, slot)
+            
             if vehicle:
+                logger.debug(f"[DEBUG] Successfully removed vehicle: {vehicle.registration_number}")
                 self._show_message(f"Removed vehicle {vehicle.registration_number} from slot {slot}")
+                # Update slot numbers after removal
+                self._update_remove_slots(lot_name, level + 1)  # Pass 1-based level
             else:
+                logger.error("[DEBUG] No vehicle found in selected slot")
                 self._show_error("No vehicle found in selected slot")
         except ValueError as e:
-            self._show_error(str(e))
+            logger.error(f"[DEBUG] Error in _handle_remove: {e}")
+            self._show_error("Invalid lot, level, or slot selection")
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _handle_remove: {e}")
+            self._show_error("Error removing vehicle")
     
     def _handle_search(self):
         """Handle search button click"""
@@ -420,15 +508,19 @@ class ParkingLotUI(ParkingLotObserver):
             # Create parking lot
             if self.parking_manager.create_lot(lot_data):
                 self._show_message(f"Created parking lot {lot_name}")
+                logger.debug(f"[DEBUG] Created lot {lot_name}, updating dropdowns")
+                # Update all dropdowns
                 self._update_park_lot_names()
                 self._update_park_levels()
                 self._update_details_lot_names()
                 self._update_details_levels()
+                self._update_remove_lot_names()  # Add explicit call to update remove lot names
                 # Set combo box values explicitly
                 self.park_lot_combo['values'] = self.parking_manager.get_lot_names()
                 self.park_level_combo['values'] = self.parking_manager.get_levels_for_lot(lot_name)
                 self.details_lot_combo['values'] = self.parking_manager.get_lot_names()
                 self.details_level_combo['values'] = self.parking_manager.get_levels_for_lot(lot_name)
+                self.remove_lot_combo['values'] = self.parking_manager.get_lot_names()  # Add explicit update
             else:
                 self._show_error("Failed to create parking lot")
         except ValueError as e:
@@ -655,24 +747,6 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Layout vehicle frame
         self.vehicle_frame.pack(expand=True, fill="both", padx=5, pady=5)
-        self.park_lot_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-        self.park_lot_label.grid(row=0, column=0, padx=5, pady=5)
-        self.park_lot_combo.grid(row=0, column=1, padx=5, pady=5)
-        self.park_level_label.grid(row=0, column=2, padx=5, pady=5)
-        self.park_level_combo.grid(row=0, column=3, padx=5, pady=5)
-        self.registration_label.grid(row=1, column=0, padx=5, pady=5)
-        self.registration_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.manufacturer_label.grid(row=2, column=0, padx=5, pady=5)
-        self.manufacturer_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.model_label.grid(row=3, column=0, padx=5, pady=5)
-        self.model_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.color_label.grid(row=4, column=0, padx=5, pady=5)
-        self.color_entry.grid(row=4, column=1, padx=5, pady=5)
-        self.vehicle_type_label.grid(row=5, column=0, padx=5, pady=5)
-        self.vehicle_type_combo.grid(row=5, column=1, padx=5, pady=5)
-        self.electric_vehicle_check.grid(row=6, column=0, padx=5, pady=5)
-        self.park_button.grid(row=7, column=0, padx=5, pady=5)
-        self.remove_button.grid(row=7, column=1, padx=5, pady=5)
         
         # Layout search frame and results tree
         self.search_frame.pack(expand=True, fill="both", padx=5, pady=5)
@@ -749,8 +823,33 @@ class ParkingLotUI(ParkingLotObserver):
         if lot_name:
             levels = self.parking_manager.get_levels_for_lot(lot_name)
             self.park_level_combo['values'] = levels
+            self.remove_level_combo['values'] = levels
             if levels:
                 self.park_level_combo.set(levels[0])
+                self.remove_level_combo.set(levels[0])
+                self._update_slot_numbers(lot_name, levels[0])
+
+    def _update_slot_numbers(self, lot_name: str, level: int):
+        """Update the slot numbers in the remove combo box"""
+        try:
+            # Get all slots for the selected lot and level
+            statuses = self.parking_manager.get_lot_status(lot_name)
+            occupied_slots = []
+            
+            for status in statuses:
+                if status.level == level and status.is_occupied:
+                    occupied_slots.append(str(status.slot))
+            
+            # Update the combo box
+            self.remove_slot_combo['values'] = occupied_slots
+            if occupied_slots:
+                self.remove_slot_combo.set(occupied_slots[0])
+            else:
+                self.remove_slot_combo.set('')
+            
+        except Exception as e:
+            logger.error(f"Error updating slot numbers: {e}")
+            self._show_error("Error updating slot numbers")
 
     def _update_details_levels(self):
         """Update the levels in the details combo box based on selected lot"""
@@ -884,13 +983,13 @@ class ParkingLotUI(ParkingLotObserver):
                 levels=[
                     ParkingLevelData(
                         level_number=1,
-                        regular_slots=15,  # Combined regular slots for cars and motorcycles
-                        electric_slots=7   # Combined electric slots for cars and motorcycles
+                        regular_slots=15,
+                        electric_slots=7
                     ),
                     ParkingLevelData(
                         level_number=2,
-                        regular_slots=20,  # Combined regular slots for cars and motorcycles
-                        electric_slots=10  # Combined electric slots for cars and motorcycles
+                        regular_slots=20,
+                        electric_slots=10
                     )
                 ]
             )
@@ -902,18 +1001,18 @@ class ParkingLotUI(ParkingLotObserver):
                 levels=[
                     ParkingLevelData(
                         level_number=1,
-                        regular_slots=25,  # Combined regular slots for cars and motorcycles
-                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                        regular_slots=25,
+                        electric_slots=12
                     ),
                     ParkingLevelData(
                         level_number=2,
-                        regular_slots=25,  # Combined regular slots for cars and motorcycles
-                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                        regular_slots=25,
+                        electric_slots=12
                     ),
                     ParkingLevelData(
                         level_number=3,
-                        regular_slots=25,  # Combined regular slots for cars and motorcycles
-                        electric_slots=12  # Combined electric slots for cars and motorcycles
+                        regular_slots=25,
+                        electric_slots=12
                     )
                 ]
             )
@@ -998,10 +1097,12 @@ class ParkingLotUI(ParkingLotObserver):
                     logger.error(f"[DEBUG] Failed to park vehicle {vehicle.registration_number}")
 
             # Update UI
+            logger.debug("[DEBUG] Updating UI after loading sample data")
             self._update_park_lot_names()
             self._update_park_levels()
             self._update_details_lot_names()
             self._update_details_levels()
+            self._update_remove_lot_names()  # Add explicit call to update remove lot names
             
             # Show success message
             self._show_message("Sample data loaded successfully")
@@ -1012,4 +1113,147 @@ class ParkingLotUI(ParkingLotObserver):
         except Exception as e:
             logger.error(f"Error loading sample data: {e}")
             self._show_error(f"Error loading sample data: {str(e)}")
+
+    def _update_remove_lot_names(self):
+        """Update the lot names in the remove combo box"""
+        try:
+            logger.debug("[DEBUG] Starting _update_remove_lot_names")
+            lot_names = self.parking_manager.get_lot_names()
+            logger.debug(f"[DEBUG] Retrieved lot names: {lot_names}")
+            
+            if lot_names:
+                logger.debug(f"[DEBUG] Setting lot names in combo box: {lot_names}")
+                self.remove_lot_combo['values'] = lot_names
+                self.remove_lot_value.set(lot_names[0])
+                logger.debug(f"[DEBUG] Selected first lot: {lot_names[0]}")
+                self._update_remove_levels(lot_names[0])
+            else:
+                logger.debug("[DEBUG] No lot names available")
+                self.remove_lot_combo['values'] = []
+                self.remove_lot_value.set('')
+                self.remove_level_combo['values'] = []
+                self.remove_level_value.set('')
+                self.remove_slot_combo['values'] = []
+                self.remove_slot_value.set('')
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _update_remove_lot_names: {e}")
+            self._show_error("Error updating lot names")
+
+    def _update_remove_levels(self, lot_name: str):
+        """Update the levels in the remove combo box based on selected lot"""
+        try:
+            logger.debug(f"[DEBUG] Starting _update_remove_levels for lot: {lot_name}")
+            levels = self.parking_manager.get_levels_for_lot(lot_name)
+            logger.debug(f"[DEBUG] Retrieved levels: {levels}")
+            
+            if levels:
+                level_values = [str(level) for level in levels]
+                logger.debug(f"[DEBUG] Setting level values in combo box: {level_values}")
+                self.remove_level_combo['values'] = level_values
+                self.remove_level_value.set(str(levels[0]))
+                logger.debug(f"[DEBUG] Selected first level: {levels[0]}")
+                self._update_remove_slots(lot_name, levels[0])
+            else:
+                logger.debug("[DEBUG] No levels available")
+                self.remove_level_combo['values'] = []
+                self.remove_level_value.set('')
+                self.remove_slot_combo['values'] = []
+                self.remove_slot_value.set('')
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _update_remove_levels: {e}")
+            self._show_error("Error updating levels")
+
+    def _update_remove_slots(self, lot_name: str, level: int):
+        """Update the slot numbers in the remove combo box"""
+        try:
+            logger.debug(f"[DEBUG] Starting _update_remove_slots for lot: {lot_name}, level: {level}")
+            # Get all slots for the selected lot and level
+            statuses = self.parking_manager.get_lot_status(lot_name)
+            logger.debug(f"[DEBUG] Retrieved statuses: {statuses}")
+            
+            occupied_slots = []
+            for status in statuses:
+                if status.level == level and status.is_occupied:
+                    occupied_slots.append(str(status.slot))
+                    logger.debug(f"[DEBUG] Found occupied slot: {status.slot}")
+            
+            logger.debug(f"[DEBUG] Found occupied slots: {occupied_slots}")
+            
+            # Update the combo box
+            if occupied_slots:
+                logger.debug(f"[DEBUG] Setting slot values in combo box: {occupied_slots}")
+                self.remove_slot_combo['values'] = occupied_slots
+                self.remove_slot_value.set(occupied_slots[0])
+                logger.debug(f"[DEBUG] Selected first slot: {occupied_slots[0]}")
+                self._update_vehicle_info(lot_name, level, int(occupied_slots[0]))
+            else:
+                logger.debug("[DEBUG] No occupied slots found")
+                self.remove_slot_combo['values'] = []
+                self.remove_slot_value.set('')
+                self.vehicle_info_label.config(text="No vehicles in selected level")
+            
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _update_remove_slots: {e}")
+            self._show_error("Error updating slot numbers")
+
+    def _update_vehicle_info(self, lot_name: str, level: int, slot: int):
+        """Update the vehicle information display"""
+        try:
+            statuses = self.parking_manager.get_lot_status(lot_name)
+            for status in statuses:
+                if status.level == level and status.slot == slot and status.vehicle:
+                    vehicle = status.vehicle
+                    info_text = (
+                        f"Vehicle Information:\n"
+                        f"Registration: {vehicle.registration_number}\n"
+                        f"Manufacturer: {vehicle.manufacturer}\n"
+                        f"Model: {vehicle.model}\n"
+                        f"Color: {vehicle.color}\n"
+                        f"Type: {'Electric ' if vehicle.is_electric else ''}{'Motorcycle' if vehicle.is_motorcycle else 'Car'}"
+                    )
+                    self.vehicle_info_label.config(text=info_text)
+                    return
+            self.vehicle_info_label.config(text="No vehicle found in selected slot")
+        except Exception as e:
+            logger.error(f"Error updating vehicle info: {e}")
+            self.vehicle_info_label.config(text="Error loading vehicle information")
+
+    def _on_remove_lot_selected(self, event):
+        """Handle lot selection in remove section"""
+        try:
+            logger.debug("[DEBUG] Lot selection event triggered")
+            lot_name = self.remove_lot_value.get()
+            logger.debug(f"[DEBUG] Selected lot: {lot_name}")
+            if lot_name:
+                self._update_remove_levels(lot_name)
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _on_remove_lot_selected: {e}")
+            self._show_error("Error handling lot selection")
+
+    def _on_remove_level_selected(self, event):
+        """Handle level selection in remove section"""
+        try:
+            logger.debug("[DEBUG] Level selection event triggered")
+            lot_name = self.remove_lot_value.get()
+            level_str = self.remove_level_value.get()
+            logger.debug(f"[DEBUG] Selected lot: {lot_name}, level: {level_str}")
+            if lot_name and level_str:
+                self._update_remove_slots(lot_name, int(level_str))
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _on_remove_level_selected: {e}")
+            self._show_error("Error handling level selection")
+
+    def _on_remove_slot_selected(self, event):
+        """Handle slot selection in remove section"""
+        try:
+            logger.debug("[DEBUG] Slot selection event triggered")
+            lot_name = self.remove_lot_value.get()
+            level_str = self.remove_level_value.get()
+            slot_str = self.remove_slot_value.get()
+            logger.debug(f"[DEBUG] Selected lot: {lot_name}, level: {level_str}, slot: {slot_str}")
+            if lot_name and level_str and slot_str:
+                self._update_vehicle_info(lot_name, int(level_str), int(slot_str))
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _on_remove_slot_selected: {e}")
+            self._show_error("Error handling slot selection")
 
