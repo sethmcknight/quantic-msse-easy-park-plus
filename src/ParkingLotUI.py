@@ -48,12 +48,12 @@ from tkinter import ttk
 import logging
 from typing import Dict, Optional, Union
 from Vehicle import Vehicle, ElectricVehicle, Motorcycle
-from ParkingManager import ParkingLot
-from models import VehicleData, SearchCriteria, ParkingLotData
+from ParkingManager import ParkingLotManagerImpl
+from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType
 from interfaces import ParkingLotObserver
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class ParkingLotUI(ParkingLotObserver):
@@ -61,8 +61,9 @@ class ParkingLotUI(ParkingLotObserver):
     
     def __init__(self):
         """Initialize the UI"""
-        self.parking_lot = ParkingLot()
-        self.parking_lot.register_observer(self)
+        logger.debug("[DEBUG] Initializing ParkingLotUI")
+        self.parking_manager = ParkingLotManagerImpl()
+        self.parking_manager.register_observer(self)
         # Create main window
         self.root = tk.Tk()
         self.root.title("Parking Lot Management System")
@@ -83,8 +84,9 @@ class ParkingLotUI(ParkingLotObserver):
         self._bind_events()
         
         # Initialize dropdowns
-        # self._update_lot_names()
-        # self._update_levels()
+        self._update_park_lot_names()
+        self._update_park_levels()
+        logger.debug("[DEBUG] ParkingLotUI initialization complete")
 
     def _init_state(self):
         """Initialize UI state variables"""
