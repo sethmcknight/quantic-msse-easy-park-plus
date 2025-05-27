@@ -1,11 +1,12 @@
 """
-Interfaces Module
+Interfaces for the parking system.
 
-This module contains the protocol definitions for the parking lot system.
+This module defines the interfaces used throughout the parking system.
 """
 
+from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Any, Protocol
-from models import VehicleData, SearchCriteria, ParkingLotData
+from models import VehicleData, SearchCriteria, ParkingLotData, ParkingStatus
 from Vehicle import Vehicle
 
 class ParkingLotInterface(Protocol):
@@ -75,9 +76,14 @@ class ParkingLotInterface(Protocol):
         ...
 
 class ParkingLotObserver(Protocol):
-    """Protocol for parking lot observers"""
+    """Observer interface for parking lot updates"""
+    
     def update(self, message: str) -> None:
-        """Update the observer with a message"""
+        """Handle updates from the parking lot
+        
+        Args:
+            message: The update message
+        """
         ...
 
 class Command(Protocol):
@@ -88,4 +94,111 @@ class Command(Protocol):
 
     def undo(self) -> bool:
         """Undo the command"""
+        ...
+
+class ParkingLotManager(ABC):
+    """Interface for parking lot management"""
+    
+    @abstractmethod
+    def create_lot(self, lot_data: ParkingLotData) -> bool:
+        """Create a new parking lot
+        
+        Args:
+            lot_data: The parking lot data
+            
+        Returns:
+            bool: True if the lot was created successfully
+        """
+        ...
+    
+    @abstractmethod
+    def park_vehicle(self, lot_name: str, level: int, vehicle: VehicleData) -> Optional[int]:
+        """Park a vehicle in the specified lot and level
+        
+        Args:
+            lot_name: The name of the parking lot
+            level: The parking level
+            vehicle: The vehicle to park
+            
+        Returns:
+            Optional[int]: The slot number if successful, None otherwise
+        """
+        ...
+    
+    @abstractmethod
+    def remove_vehicle(self, lot_name: str, level: int, slot: int) -> Optional[VehicleData]:
+        """Remove a vehicle from the specified lot, level, and slot
+        
+        Args:
+            lot_name: The name of the parking lot
+            level: The parking level
+            slot: The parking slot
+            
+        Returns:
+            Optional[VehicleData]: The removed vehicle if successful, None otherwise
+        """
+        ...
+    
+    @abstractmethod
+    def search_vehicles(self, lot_name: str, criteria: SearchCriteria) -> List[ParkingStatus]:
+        """Search for vehicles matching the criteria
+        
+        Args:
+            lot_name: The name of the parking lot
+            criteria: The search criteria
+            
+        Returns:
+            List[ParkingStatus]: List of matching vehicles and their status
+        """
+        ...
+    
+    @abstractmethod
+    def get_lot_status(self, lot_name: str) -> List[ParkingStatus]:
+        """Get the status of all slots in a lot
+        
+        Args:
+            lot_name: The name of the parking lot
+            
+        Returns:
+            List[ParkingStatus]: List of all slots and their status
+        """
+        ...
+    
+    @abstractmethod
+    def get_lot_names(self) -> List[str]:
+        """Get the names of all parking lots
+        
+        Returns:
+            List[str]: List of parking lot names
+        """
+        ...
+    
+    @abstractmethod
+    def get_levels_for_lot(self, lot_name: str) -> List[int]:
+        """Get the levels in a parking lot
+        
+        Args:
+            lot_name: The name of the parking lot
+            
+        Returns:
+            List[int]: List of level numbers
+        """
+        ...
+    
+    @abstractmethod
+    def register_observer(self, observer: ParkingLotObserver) -> None:
+        """Register an observer for parking lot updates
+        
+        Args:
+            observer: The observer to register
+        """
+        ...
+    
+    @abstractmethod
+    def unregister_observer(self, observer: ParkingLotObserver) -> None:
+        """Unregister an observer
+        
+        Args:
+            observer: The observer to unregister
+        """
         ...
