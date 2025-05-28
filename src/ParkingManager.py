@@ -1,280 +1,429 @@
 """
-Parking Lot Management Module
+Parking Manager Module
 
 This module implements the parking lot management system.
-It uses the State Pattern to manage parking slot states, the Observer Pattern for UI updates,
-and the Command Pattern to encapsulate parking operations.
-
-Anti-patterns Removed:
-1. Magic Numbers
-   - Removed: -1 for empty slots
-   - Solution: State Pattern for slot states
-   - Benefit: Clear state representation
-
-2. UI-Business Logic Coupling
-   - Removed: Direct UI manipulation
-   - Solution: Observer Pattern
-   - Benefit: Separation of concerns
-
-3. Hard-Coded Behavior
-   - Removed: Fixed slot behavior
-   - Solution: State Pattern
-   - Benefit: Flexible slot behavior
-
-4. Direct Operation Execution
-   - Removed: Direct method calls for operations
-   - Solution: Command Pattern
-   - Benefit: Encapsulated operations, undo/redo support
-
-Design Patterns Implemented:
-1. State Pattern
-   - Purpose: Manage parking slot states
-   - Components: ParkingSlotState interface and concrete states
-   - Benefit: Encapsulated state behavior
-
-2. Observer Pattern
-   - Purpose: Decouple UI from business logic
-   - Components: ParkingLotObserver interface
-   - Benefit: Clean separation of concerns
-
-3. Command Pattern
-   - Purpose: Encapsulate parking operations
-   - Components: Command interface and concrete commands
-   - Benefit: Flexible operation management
-
-Usage:
-    The ParkingLot class is the main entry point for parking operations.
-    It manages parking slots and notifies observers of changes.
-
-Example:
-    >>> parking_lot = ParkingLot()
-    >>> parking_lot.create_parking_lot(10, 5, 1)  # 10 regular slots, 5 EV slots, level 1
-    >>> parking_lot.park("ABC123", "Toyota", "Camry", "Red", False, False)
-
-[DEBUG LOGGING]
-This module contains temporary debug logging statements that should be removed before final submission.
-These logs help track:
-- Parking lot creation and initialization
-- Vehicle parking and removal
-- Status queries and data retrieval
-- Search operations
-
-To remove debug logging:
-1. Remove all print statements starting with [DEBUG]
-2. Remove this debug logging section from the docstring
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from models import (
-    VehicleData, ParkingLotData, ParkingLevelData,
-    SearchCriteria, ParkingStatus, SlotType, VehicleType
+    VehicleData,
+    ParkingLotData,
+    ParkingLevelData,
+    ParkingSlotData,
+    SearchCriteria,
+    SearchResult,
+    SlotType
 )
-from interfaces import ParkingLotManager, ParkingLotObserver
-from Vehicle import (
-    Vehicle, ElectricVehicle, Car, ElectricCar,
-    Motorcycle, ElectricMotorcycle, Truck, Bus
-)
+from Vehicle import Vehicle, VehicleType, create_vehicle
+from interfaces import ParkingLotInterface, ParkingLotManager, ParkingLotObserver, ValidationError, OperationError
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('parking_system.log'),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
-class ParkingSlot:
-    """Class representing a parking slot"""
+class ParkingLot(ParkingLotInterface):
+    """Class representing a parking lot"""
     
-    def __init__(self, slot_type: SlotType):
-        """Initialize a parking slot
+    def __init__(self, name: str):
+        """Initialize the parking lot
         
         Args:
-            slot_type: The type of slot
+            name: The name of the parking lot
         """
-        self.slot_type = slot_type
-        self.vehicle: Optional[Vehicle] = None
-        self.is_charging: bool = False
+        self.name = name
+        self.levels: Dict[int, List[ParkingSlotData]] = {}
+        logger.info(f"Created parking lot: {name}")
     
-    def is_available(self) -> bool:
-        """Check if the slot is available
-        
-        Returns:
-            bool: True if the slot is available
-        """
-        return self.vehicle is None
-    
-    def can_park(self, vehicle: Vehicle) -> bool:
-        """Check if a vehicle can park in this slot
+    def add_level(self, level: int, regular_slots: int, electric_slots: int) -> None:
+        """Add a level to the parking lot
         
         Args:
-            vehicle: The vehicle to check
+            level: The level number
+            regular_slots: Number of regular slots
+            electric_slots: Number of electric slots
+        """
+        slots: List[ParkingSlotData] = []
+        
+        # Add regular slots
+        for i in range(regular_slots):
+            slots.append(ParkingSlotData(
+                slot_number=i + 1,
+                is_occupied=False,
+                slot_type=SlotType.REGULAR
+            ))
+        
+        # Add electric slots
+        for i in range(electric_slots):
+            slots.append(ParkingSlotData(
+                slot_number=regular_slots + i + 1,
+                is_occupied=False,
+                slot_type=SlotType.ELECTRIC
+            ))
+        
+        self.levels[level] = slots
+        logger.info(f"Added level {level} to {self.name} with {regular_slots} regular and {electric_slots} electric slots")
+    
+    def park_vehicle(self, level: int, vehicle: Vehicle) -> Optional[int]:
+        """Park a vehicle in the lot
+        
+        Args:
+            level: The level to park in
+            vehicle: The vehicle to park
             
         Returns:
-            bool: True if the vehicle can park
+            The slot number where the vehicle was parked, or None if parking failed
         """
-        if not self.is_available():
-            return False
+        if level not in self.levels:
+            logger.error(f"Level {level} not found in {self.name}")
+            return None
         
-        if self.slot_type == SlotType.REGULAR:
-            return not vehicle.is_electric
-        else:  # ELECTRIC
-            return vehicle.is_electric
+        # Find appropriate slot
+        for slot in self.levels[level]:
+            if not slot.is_occupied:
+                if vehicle.is_electric and slot.slot_type == SlotType.ELECTRIC:
+                    slot.is_occupied = True
+                    slot.vehicle = VehicleData(
+                        registration_number=vehicle.registration_number,
+                        manufacturer=vehicle.manufacturer,
+                        model=vehicle.model,
+                        color=vehicle.color,
+                        is_electric=True,
+                        is_motorcycle=vehicle.vehicle_type == VehicleType.MOTORCYCLE,
+                        vehicle_type=vehicle.vehicle_type,
+                        current_battery_charge=vehicle.current_battery_charge
+                    )
+                    logger.info(f"Parked electric vehicle {vehicle.registration_number} in slot {slot.slot_number} with charge {vehicle.current_battery_charge:.1f}%")
+                    return slot.slot_number
+                elif not vehicle.is_electric and slot.slot_type == SlotType.REGULAR:
+                    slot.is_occupied = True
+                    slot.vehicle = VehicleData(
+                        registration_number=vehicle.registration_number,
+                        manufacturer=vehicle.manufacturer,
+                        model=vehicle.model,
+                        color=vehicle.color,
+                        is_electric=False,
+                        is_motorcycle=vehicle.vehicle_type == VehicleType.MOTORCYCLE,
+                        vehicle_type=vehicle.vehicle_type
+                    )
+                    logger.info(f"Parked vehicle {vehicle.registration_number} in slot {slot.slot_number}")
+                    return slot.slot_number
+        
+        logger.error(f"No suitable slot found for vehicle {vehicle.registration_number}")
+        return None
     
-    def park(self, vehicle: Vehicle) -> None:
-        """Park a vehicle in this slot
+    def remove_vehicle(self, level: int, slot: int) -> Optional[Vehicle]:
+        """Remove a vehicle from the lot
         
         Args:
-            vehicle: The vehicle to park
+            level: The level to remove from
+            slot: The slot to remove from
+            
+        Returns:
+            The removed vehicle, or None if no vehicle was found
         """
-        if not self.can_park(vehicle):
-            raise ValueError("Vehicle cannot park in this slot")
-        self.vehicle = vehicle
-        if isinstance(vehicle, ElectricVehicle):
-            self.is_charging = True
+        if level not in self.levels:
+            logger.error(f"Level {level} not found in {self.name}")
+            return None
+        
+        for parking_slot in self.levels[level]:
+            if parking_slot.slot_number == slot:
+                if not parking_slot.is_occupied:
+                    logger.error(f"Slot {slot} is empty")
+                    return None
+                
+                vehicle_data = parking_slot.vehicle
+                if vehicle_data is None:
+                    logger.error(f"No vehicle data in slot {slot}")
+                    return None
+                
+                # Create vehicle object
+                vehicle = create_vehicle(
+                    registration_number=vehicle_data.registration_number,
+                    manufacturer=vehicle_data.manufacturer,
+                    model=vehicle_data.model,
+                    color=vehicle_data.color,
+                    vehicle_type=vehicle_data.vehicle_type,
+                    is_electric=vehicle_data.is_electric
+                )
+                
+                # Clear slot
+                parking_slot.is_occupied = False
+                parking_slot.vehicle = None
+                
+                logger.info(f"Removed vehicle {vehicle.registration_number} from slot {slot}")
+                return vehicle
+        
+        logger.error(f"Slot {slot} not found in level {level}")
+        return None
     
-    def remove(self) -> Optional[Vehicle]:
-        """Remove the vehicle from this slot
+    def get_status(self) -> List[ParkingLevelData]:
+        """Get the status of all levels in the lot
         
         Returns:
-            Optional[Vehicle]: The removed vehicle
+            List of level data
         """
-        vehicle = self.vehicle
-        self.vehicle = None
-        self.is_charging = False
-        return vehicle
+        return [
+            ParkingLevelData(level=level, slots=slots)
+            for level, slots in sorted(self.levels.items())
+        ]
+    
+    def get_vehicle(self, level: int, slot: int) -> Optional[Vehicle]:
+        """Get a vehicle from the lot
+        
+        Args:
+            level: The level to get from
+            slot: The slot to get from
+            
+        Returns:
+            The vehicle in the slot, or None if no vehicle is present
+        """
+        if level not in self.levels:
+            logger.error(f"Level {level} not found in {self.name}")
+            return None
+        
+        for parking_slot in self.levels[level]:
+            if parking_slot.slot_number == slot:
+                if not parking_slot.is_occupied or parking_slot.vehicle is None:
+                    return None
+                
+                vehicle_data = parking_slot.vehicle
+                return create_vehicle(
+                    registration_number=vehicle_data.registration_number,
+                    manufacturer=vehicle_data.manufacturer,
+                    model=vehicle_data.model,
+                    color=vehicle_data.color,
+                    vehicle_type=vehicle_data.vehicle_type,
+                    is_electric=vehicle_data.is_electric
+                )
+        
+        logger.error(f"Slot {slot} not found in level {level}")
+        return None
 
-class ParkingLevel:
-    """Class representing a parking level"""
-    
-    def __init__(self, level_data: ParkingLevelData):
-        """Initialize a parking level
+    def get_vehicles_in_lot(self, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific level
         
         Args:
-            level_data: The level configuration
-        """
-        self.level_number = level_data.level_number
-        self.slots: List[ParkingSlot] = []
-        
-        # Create regular slots
-        for _ in range(level_data.regular_slots):
-            self.slots.append(ParkingSlot(SlotType.REGULAR))
-        
-        # Create electric slots
-        for _ in range(level_data.electric_slots):
-            self.slots.append(ParkingSlot(SlotType.ELECTRIC))
-    
-    def get_available_slot(self, vehicle: Vehicle) -> Optional[int]:
-        """Get an available slot for a vehicle
-        
-        Args:
-            vehicle: The vehicle to park
+            level: The level to get vehicles from
             
         Returns:
-            Optional[int]: The slot number if available
+            Dictionary mapping slot numbers to vehicles
         """
-        # For electric vehicles, try electric slots first
-        if vehicle.is_electric:
-            for i, slot in enumerate(self.slots):
-                if slot.slot_type == SlotType.ELECTRIC and slot.is_available():
-                    return i
-            return None  # No electric slots available
+        vehicles: Dict[int, Vehicle] = {}
         
-        # For non-electric vehicles, try regular slots
-        for i, slot in enumerate(self.slots):
-            if slot.slot_type == SlotType.REGULAR and slot.is_available():
-                return i
-        return None
-    
-    def park_vehicle(self, vehicle: Vehicle) -> Optional[int]:
-        """Park a vehicle in this level
+        if level not in self.levels:
+            logger.error(f"Level {level} not found in {self.name}")
+            return vehicles
         
-        Args:
-            vehicle: The vehicle to park
-            
-        Returns:
-            Optional[int]: The slot number if successful
-        """
-        slot_num = self.get_available_slot(vehicle)
-        if slot_num is not None:
-            self.slots[slot_num].park(vehicle)
-        return slot_num
-    
-    def remove_vehicle(self, slot_num: int) -> Optional[Vehicle]:
-        """Remove a vehicle from this level
-        
-        Args:
-            slot_num: The slot number
-            
-        Returns:
-            Optional[Vehicle]: The removed vehicle
-        """
-        if 0 <= slot_num < len(self.slots):
-            return self.slots[slot_num].remove()
-        return None
-    
-    def get_status(self) -> List[ParkingStatus]:
-        """Get the status of all slots in this level
-        
-        Returns:
-            List[ParkingStatus]: List of slot statuses
-        """
-        statuses: List[ParkingStatus] = []
-        for i, slot in enumerate(self.slots):
-            vehicle_data = None
-            if slot.vehicle is not None:
-                vehicle_data = VehicleData(
+        for slot in self.levels[level]:
+            if slot.is_occupied and slot.vehicle:
+                vehicle = create_vehicle(
                     registration_number=slot.vehicle.registration_number,
                     manufacturer=slot.vehicle.manufacturer,
                     model=slot.vehicle.model,
                     color=slot.vehicle.color,
-                    is_electric=slot.vehicle.is_electric,
-                    is_motorcycle=slot.vehicle.is_motorcycle,
-                    vehicle_type=slot.vehicle.vehicle_type
+                    vehicle_type=slot.vehicle.vehicle_type,
+                    is_electric=slot.vehicle.is_electric
                 )
-            status = ParkingStatus(
-                lot_name="",  # Will be set by ParkingLot
-                level=self.level_number,
-                slot=i,
-                vehicle=vehicle_data,
-                slot_type=slot.slot_type,
-                is_occupied=not slot.is_available(),
-                is_charging=slot.is_charging
-            )
-            statuses.append(status)
-        return statuses
+                vehicles[slot.slot_number] = vehicle
+        
+        return vehicles
 
-class ParkingLot:
-    """Class representing a parking lot"""
+class ParkingLotManagerImpl(ParkingLotManager):
+    """Implementation of the parking lot manager"""
     
-    def __init__(self, lot_data: ParkingLotData):
-        """Initialize a parking lot
+    def __init__(self):
+        """Initialize the parking lot manager"""
+        self.lots: Dict[str, ParkingLot] = {}
+        self.observers: Set[ParkingLotObserver] = set()
+        logger.info("Initialized ParkingLotManagerImpl")
+    
+    def create_lot(self, data: ParkingLotData) -> bool:
+        """Create a new parking lot or add a level to an existing lot
         
         Args:
-            lot_data: The lot configuration
-        """
-        self.name = lot_data.name
-        self.levels: List[ParkingLevel] = []
-        self.observers: List[ParkingLotObserver] = []
-        
-        # Create initial levels
-        for level_data in lot_data.levels:
-            self.levels.append(ParkingLevel(level_data))
-    
-    def add_level(self, level_data: ParkingLevelData) -> bool:
-        """Add a new level to the parking lot
-        
-        Args:
-            level_data: The level configuration
+            data: The parking lot data
             
         Returns:
-            bool: True if the level was added successfully
+            True if the lot was created or updated successfully
+            
+        Raises:
+            ValidationError: If the lot data is invalid
+            OperationError: If the operation fails
         """
-        # Check if level number already exists
-        if any(level.level_number == level_data.level_number for level in self.levels):
-            return False
+        if not data.name:
+            raise ValidationError("Lot name is required")
         
-        # Add the new level
-        self.levels.append(ParkingLevel(level_data))
-        self.notify_observers(f"Added level {level_data.level_number} to lot {self.name}")
-        return True
+        try:
+            if data.name in self.lots:
+                # Add new level to existing lot
+                lot = self.lots[data.name]
+                for level_data in data.levels:
+                    # Check if level already exists
+                    if level_data.level in lot.levels:
+                        raise OperationError(f"Level {level_data.level} already exists in lot {data.name}")
+                    
+                    # Add the new level
+                    lot.add_level(
+                        level=level_data.level,
+                        regular_slots=len([s for s in level_data.slots if s.slot_type == SlotType.REGULAR]),
+                        electric_slots=len([s for s in level_data.slots if s.slot_type == SlotType.ELECTRIC])
+                    )
+                logger.info(f"Added new level to existing lot: {data.name}")
+            else:
+                # Create new lot
+                lot = ParkingLot(data.name)
+                for level_data in data.levels:
+                    lot.add_level(
+                        level=level_data.level,
+                        regular_slots=len([s for s in level_data.slots if s.slot_type == SlotType.REGULAR]),
+                        electric_slots=len([s for s in level_data.slots if s.slot_type == SlotType.ELECTRIC])
+                    )
+                self.lots[data.name] = lot
+                logger.info(f"Created new parking lot: {data.name}")
+            
+            self._notify_observers(data.name)
+            return True
+        except Exception as e:
+            logger.error(f"Error creating/updating lot {data.name}: {e}")
+            raise OperationError(f"Failed to create/update lot: {str(e)}")
+    
+    def park_vehicle(self, lot_name: str, level: int, data: VehicleData) -> Optional[int]:
+        """Park a vehicle in a lot
+        
+        Args:
+            lot_name: The name of the lot
+            level: The level to park in
+            data: The vehicle data
+            
+        Returns:
+            The slot number where the vehicle was parked, or None if parking failed
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or parking fails
+        """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
+        try:
+            vehicle = create_vehicle(
+                registration_number=data.registration_number,
+                manufacturer=data.manufacturer,
+                model=data.model,
+                color=data.color,
+                vehicle_type=data.vehicle_type,
+                is_electric=data.is_electric
+            )
+            
+            slot = self.lots[lot_name].park_vehicle(level, vehicle)
+            if slot is not None:
+                self._notify_observers(lot_name)
+            return slot
+        except Exception as e:
+            logger.error(f"Error parking vehicle in lot {lot_name}: {e}")
+            raise OperationError(f"Failed to park vehicle: {str(e)}")
+    
+    def remove_vehicle(self, lot_name: str, level: int, slot: int) -> Optional[Vehicle]:
+        """Remove a vehicle from a lot
+        
+        Args:
+            lot_name: The name of the lot
+            level: The level to remove from
+            slot: The slot to remove from
+            
+        Returns:
+            The removed vehicle, or None if no vehicle was found
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or removal fails
+        """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
+        try:
+            vehicle = self.lots[lot_name].remove_vehicle(level, slot)
+            if vehicle is not None:
+                self._notify_observers(lot_name)
+            return vehicle
+        except Exception as e:
+            logger.error(f"Error removing vehicle from lot {lot_name}: {e}")
+            raise OperationError(f"Failed to remove vehicle: {str(e)}")
+    
+    def search_vehicles(self, lot_name: str, criteria: SearchCriteria) -> List[SearchResult]:
+        """Search for vehicles matching criteria in a specific lot
+        
+        Args:
+            lot_name: The name of the lot to search in
+            criteria: The search criteria
+            
+        Returns:
+            List of search results
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or search fails
+        """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
+        try:
+            results: List[SearchResult] = []
+            lot = self.lots[lot_name]
+            
+            # Search through all levels
+            for level, slots in lot.levels.items():
+                for slot in slots:
+                    if slot.is_occupied and slot.vehicle and self._matches_criteria(slot.vehicle, criteria):
+                        results.append(SearchResult(
+                            lot_name=lot_name,
+                            level=level,
+                            slot=slot.slot_number,
+                            vehicle=slot.vehicle
+                        ))
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error searching vehicles in lot {lot_name}: {e}")
+            raise OperationError(f"Failed to search vehicles: {str(e)}")
+    
+    def get_lot_status(self, lot_name: str) -> List[ParkingLevelData]:
+        """Get the status of a lot
+        
+        Args:
+            lot_name: The name of the lot
+            
+        Returns:
+            List of level data
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or status retrieval fails
+        """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
+        try:
+            return self.lots[lot_name].get_status()
+        except Exception as e:
+            logger.error(f"Error getting status for lot {lot_name}: {e}")
+            raise OperationError(f"Failed to get lot status: {str(e)}")
+    
+    def get_lot_names(self) -> List[str]:
+        """Get the names of all lots
+        
+        Returns:
+            List of lot names
+        """
+        return list(self.lots.keys())
     
     def register_observer(self, observer: ParkingLotObserver) -> None:
         """Register an observer
@@ -282,7 +431,8 @@ class ParkingLot:
         Args:
             observer: The observer to register
         """
-        self.observers.append(observer)
+        self.observers.add(observer)
+        logger.info(f"Registered observer: {observer}")
     
     def unregister_observer(self, observer: ParkingLotObserver) -> None:
         """Unregister an observer
@@ -290,329 +440,105 @@ class ParkingLot:
         Args:
             observer: The observer to unregister
         """
-        self.observers.remove(observer)
+        if observer in self.observers:
+            self.observers.remove(observer)
+            logger.info(f"Unregistered observer: {observer}")
     
-    def notify_observers(self, message: str) -> None:
-        """Notify all observers
+    def remove_observer(self, observer: ParkingLotObserver) -> None:
+        """Remove an observer (for interface compatibility)"""
+        self.unregister_observer(observer)
+    
+    def _notify_observers(self, lot_name: str) -> None:
+        """Notify all observers of a change
         
         Args:
-            message: The message to send
+            lot_name: The name of the lot that was updated
         """
         for observer in self.observers:
-            observer.update(message)
+            observer.update(lot_name)
     
-    def park_vehicle(self, level: int, vehicle: Vehicle) -> Optional[int]:
-        """Park a vehicle in the lot
+    def _matches_criteria(self, vehicle: VehicleData, criteria: SearchCriteria) -> bool:
+        """Check if a vehicle matches search criteria
         
         Args:
-            level: The level number
-            vehicle: The vehicle to park
-            
-        Returns:
-            Optional[int]: The slot number if successful
-        """
-        if not 0 <= level < len(self.levels):
-            return None
-        
-        slot_num = self.levels[level].park_vehicle(vehicle)
-        if slot_num is not None:
-            self.notify_observers(f"Vehicle {vehicle.registration_number} parked in slot {slot_num}")
-        return slot_num
-    
-    def remove_vehicle(self, level: int, slot: int) -> Optional[Vehicle]:
-        """Remove a vehicle from the lot
-        
-        Args:
-            level: The level number
-            slot: The slot number
-            
-        Returns:
-            Optional[Vehicle]: The removed vehicle
-        """
-        if not 0 <= level < len(self.levels):
-            return None
-        
-        vehicle = self.levels[level].remove_vehicle(slot)
-        if vehicle is not None:
-            self.notify_observers(f"Vehicle {vehicle.registration_number} removed from slot {slot}")
-        return vehicle
-    
-    def get_status(self) -> List[ParkingStatus]:
-        """Get the status of all slots in the lot
-        
-        Returns:
-            List[ParkingStatus]: List of slot statuses
-        """
-        statuses: List[ParkingStatus] = []
-        for level in self.levels:
-            level_statuses = level.get_status()
-            for status in level_statuses:
-                status.lot_name = self.name
-            statuses.extend(level_statuses)
-        return statuses
-
-class ParkingLotManagerImpl(ParkingLotManager):
-    """Implementation of the parking lot manager"""
-    
-    def __init__(self):
-        """Initialize the parking lot manager"""
-        logger.debug("[DEBUG] Initializing ParkingLotManagerImpl")
-        self.lots: Dict[str, ParkingLot] = {}
-        self.observers = []
-        logger.debug("[DEBUG] ParkingLotManagerImpl initialization complete")
-    
-    def create_lot(self, lot_data: ParkingLotData) -> bool:
-        """Create a new parking lot
-        
-        Args:
-            lot_data: The lot configuration
-            
-        Returns:
-            bool: True if the lot was created successfully
-        """
-        if lot_data.name in self.lots:
-            # If lot exists, try to add the new level
-            if len(lot_data.levels) == 1:
-                return self.lots[lot_data.name].add_level(lot_data.levels[0])
-            return False
-        
-        self.lots[lot_data.name] = ParkingLot(lot_data)
-        return True
-    
-    def park_vehicle(self, lot_name: str, level: int, vehicle: VehicleData) -> Optional[int]:
-        """Park a vehicle in the specified lot and level
-        
-        Args:
-            lot_name: The name of the parking lot
-            level: The parking level
-            vehicle: The vehicle to park
-            
-        Returns:
-            Optional[int]: The slot number if successful
-        """
-        if lot_name not in self.lots:
-            return None
-        
-        # Create the appropriate vehicle type
-        vehicle_obj = self._create_vehicle(vehicle)
-        if vehicle_obj is None:
-            return None
-        
-        return self.lots[lot_name].park_vehicle(level, vehicle_obj)
-    
-    def remove_vehicle(self, lot_name: str, level: int, slot: int) -> Optional[VehicleData]:
-        """Remove a vehicle from the specified lot, level, and slot
-        
-        Args:
-            lot_name: The name of the parking lot
-            level: The parking level
-            slot: The parking slot
-            
-        Returns:
-            Optional[VehicleData]: The removed vehicle if successful
-        """
-        if lot_name not in self.lots:
-            return None
-        
-        vehicle = self.lots[lot_name].remove_vehicle(level, slot)
-        if vehicle is None:
-            return None
-        
-        # Convert vehicle to VehicleData
-        return VehicleData(
-            registration_number=vehicle.registration_number,
-            manufacturer=vehicle.manufacturer,
-            model=vehicle.model,
-            color=vehicle.color,
-            is_electric=vehicle.is_electric,
-            is_motorcycle=vehicle.is_motorcycle,
-            vehicle_type=vehicle.vehicle_type
-        )
-    
-    def search_vehicles(self, lot_name: str, criteria: SearchCriteria) -> List[ParkingStatus]:
-        """Search for vehicles matching the criteria
-        
-        Args:
-            lot_name: The name of the parking lot
+            vehicle: The vehicle to check
             criteria: The search criteria
             
         Returns:
-            List[ParkingStatus]: List of matching vehicles and their status
+            True if the vehicle matches the criteria
         """
-        if lot_name not in self.lots:
-            return []
-        
-        all_statuses = self.lots[lot_name].get_status()
-        if criteria.is_empty():
-            return all_statuses
-        
-        matching_statuses: List[ParkingStatus] = []
-        for status in all_statuses:
-            if status.vehicle is None:
-                continue
-            
-            matches = True
-            if criteria.registration_number and status.vehicle.registration_number != criteria.registration_number:
-                matches = False
-            if criteria.color and status.vehicle.color != criteria.color:
-                matches = False
-            if criteria.manufacturer and status.vehicle.manufacturer != criteria.manufacturer:
-                matches = False
-            if criteria.model and status.vehicle.model != criteria.model:
-                matches = False
-            if criteria.vehicle_type and status.vehicle.vehicle_type != criteria.vehicle_type:
-                matches = False
-            if criteria.is_electric is not None and status.vehicle.is_electric != criteria.is_electric:
-                matches = False
-            if criteria.is_motorcycle is not None and status.vehicle.is_motorcycle != criteria.is_motorcycle:
-                matches = False
-            
-            if matches:
-                matching_statuses.append(status)
-        
-        return matching_statuses
-    
-    def get_lot_status(self, lot_name: str) -> List[ParkingStatus]:
-        """Get the status of all slots in a lot
-        
-        Args:
-            lot_name: The name of the parking lot
-            
-        Returns:
-            List[ParkingStatus]: List of all slots and their status
-        """
-        if lot_name not in self.lots:
-            return []
-        return self.lots[lot_name].get_status()
-    
-    def get_lot_names(self) -> List[str]:
-        """Get the names of all parking lots
-        
-        Returns:
-            List[str]: List of parking lot names
-        """
-        logger.debug("[DEBUG] Getting all parking lot names")
-        try:
-            names = list(self.lots.keys())
-            logger.debug(f"[DEBUG] Found {len(names)} parking lots: {names}")
-            return names
-        except Exception as e:
-            logger.error(f"[DEBUG] Error getting lot names: {e}")
-            raise
-    
+        if criteria.registration_number and vehicle.registration_number != criteria.registration_number:
+            return False
+        if criteria.color and vehicle.color != criteria.color:
+            return False
+        if criteria.manufacturer and vehicle.manufacturer != criteria.manufacturer:
+            return False
+        if criteria.model and vehicle.model != criteria.model:
+            return False
+        if criteria.is_electric is not None and vehicle.is_electric != criteria.is_electric:
+            return False
+        if criteria.is_motorcycle is not None and (vehicle.vehicle_type == VehicleType.MOTORCYCLE) != criteria.is_motorcycle:
+            return False
+        if criteria.vehicle_type and vehicle.vehicle_type != criteria.vehicle_type:
+            return False
+        return True
+
     def get_levels_for_lot(self, lot_name: str) -> List[int]:
-        """Get the levels in a parking lot
+        """Get the levels in a lot
         
         Args:
-            lot_name: The name of the parking lot
+            lot_name: The name of the lot
             
         Returns:
-            List[int]: List of level numbers
+            List of level numbers
         """
         if lot_name not in self.lots:
+            logger.error(f"Lot {lot_name} not found")
             return []
-        logger.debug(f"[DEBUG] Getting levels for lot: {lot_name}")
-        try:
-            levels = [level.level_number for level in self.lots[lot_name].levels]
-            logger.debug(f"[DEBUG] Found {len(levels)} levels for lot {lot_name}: {levels}")
-            return levels
-        except Exception as e:
-            logger.error(f"[DEBUG] Error getting levels: {e}")
-            raise
-    
-    def register_observer(self, observer: ParkingLotObserver) -> None:
-        """Register an observer for parking lot updates
+        
+        return sorted(self.lots[lot_name].levels.keys())
+
+    def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific lot and level
         
         Args:
-            observer: The observer to register
-        """
-        for lot in self.lots.values():
-            lot.register_observer(observer)
-    
-    def unregister_observer(self, observer: ParkingLotObserver) -> None:
-        """Unregister an observer
-        
-        Args:
-            observer: The observer to unregister
-        """
-        for lot in self.lots.values():
-            lot.unregister_observer(observer)
-    
-    def _create_vehicle(self, data: VehicleData) -> Optional[Vehicle]:
-        """Create a vehicle from vehicle data
-        
-        Args:
-            data: The vehicle data
+            lot_name: The name of the lot
+            level: The level to get vehicles from
             
         Returns:
-            Optional[Vehicle]: The created vehicle
+            Dictionary mapping slot numbers to vehicles
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or retrieval fails
         """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
         try:
-            if data.is_electric:
-                if data.is_motorcycle:
-                    return ElectricMotorcycle(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=True,
-                        is_motorcycle=True,
-                        vehicle_type=VehicleType.ELECTRIC_MOTORCYCLE
+            vehicles: Dict[int, Vehicle] = {}
+            lot = self.lots[lot_name]
+            
+            if level not in lot.levels:
+                logger.error(f"Level {level} not found in lot {lot_name}")
+                return vehicles
+            
+            for slot in lot.levels[level]:
+                if slot.is_occupied and slot.vehicle:
+                    vehicle = create_vehicle(
+                        registration_number=slot.vehicle.registration_number,
+                        manufacturer=slot.vehicle.manufacturer,
+                        model=slot.vehicle.model,
+                        color=slot.vehicle.color,
+                        vehicle_type=slot.vehicle.vehicle_type,
+                        is_electric=slot.vehicle.is_electric
                     )
-                else:
-                    return ElectricCar(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=True,
-                        is_motorcycle=False,
-                        vehicle_type=VehicleType.ELECTRIC_CAR
-                    )
-            else:
-                if data.is_motorcycle:
-                    return Motorcycle(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=False,
-                        is_motorcycle=True,
-                        vehicle_type=VehicleType.MOTORCYCLE
-                    )
-                elif data.vehicle_type == VehicleType.TRUCK:
-                    return Truck(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=False,
-                        is_motorcycle=False,
-                        vehicle_type=VehicleType.TRUCK
-                    )
-                elif data.vehicle_type == VehicleType.BUS:
-                    return Bus(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=False,
-                        is_motorcycle=False,
-                        vehicle_type=VehicleType.BUS
-                    )
-                else:
-                    return Car(
-                        registration_number=data.registration_number,
-                        manufacturer=data.manufacturer,
-                        model=data.model,
-                        color=data.color,
-                        is_electric=False,
-                        is_motorcycle=False,
-                        vehicle_type=VehicleType.CAR
-                    )
-        except ValueError as e:
-            logger.error(f"Error creating vehicle: {e}")
-            return None
+                    vehicles[slot.slot_number] = vehicle
+            
+            return vehicles
+        except Exception as e:
+            logger.error(f"Error getting vehicles in lot {lot_name}, level {level}: {e}")
+            raise OperationError(f"Failed to get vehicles: {str(e)}")
 
 # Main App
 def main():

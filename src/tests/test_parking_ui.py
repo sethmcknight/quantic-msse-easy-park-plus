@@ -93,7 +93,39 @@ class TestParkingLotUI(unittest.TestCase):
         self.assertEqual(call_args[2].manufacturer, "Toyota")
         self.assertEqual(call_args[2].model, "Camry")
         self.assertEqual(call_args[2].color, "Red")
+        self.assertEqual(call_args[2].vehicle_type, VehicleType.CAR)
         self.assertFalse(call_args[2].is_electric)
+        self.assertFalse(call_args[2].is_motorcycle)
+    
+    def test_park_electric_vehicle(self):
+        """Test parking an electric vehicle through the UI"""
+        # Mock the parking manager
+        self.ui.parking_manager.park_vehicle = MagicMock(return_value=1)
+        
+        # Set input values
+        self.ui.registration_number_value.set("EV123")
+        self.ui.vehicle_manufacturer_value.set("Tesla")
+        self.ui.vehicle_model_value.set("Model 3")
+        self.ui.vehicle_color_value.set("White")
+        self.ui.vehicle_type_value.set("Car")
+        self.ui.is_electric_value.set(True)
+        self.ui.park_lot_value.set("Test Lot")
+        self.ui.park_level_value.set("1")
+        
+        # Click park button
+        self.ui._handle_park()
+        
+        # Verify parking manager was called with correct data
+        self.ui.parking_manager.park_vehicle.assert_called_once()
+        call_args = self.ui.parking_manager.park_vehicle.call_args[0]
+        self.assertEqual(call_args[0], "Test Lot")  # lot_name
+        self.assertEqual(call_args[1], 1)  # level
+        self.assertEqual(call_args[2].registration_number, "EV123")
+        self.assertEqual(call_args[2].manufacturer, "Tesla")
+        self.assertEqual(call_args[2].model, "Model 3")
+        self.assertEqual(call_args[2].color, "White")
+        self.assertEqual(call_args[2].vehicle_type, VehicleType.CAR)
+        self.assertTrue(call_args[2].is_electric)
         self.assertFalse(call_args[2].is_motorcycle)
     
     def test_remove_vehicle(self):
@@ -139,7 +171,7 @@ class TestParkingLotUI(unittest.TestCase):
         self.ui.parking_manager.get_vehicles_in_lot = MagicMock(return_value=mock_vehicles)
         self.ui.parking_manager.get_lot_names = MagicMock(return_value=["Test Lot"])
         self.ui.parking_manager.get_levels_for_lot = MagicMock(return_value=[1])
-        
+    
         # Test registration search
         self.ui.search_registration_number_value.set("ABC123")
         self.ui.search_type_value.set("registration")
@@ -243,9 +275,9 @@ class TestParkingLotUI(unittest.TestCase):
         self.ui.vehicle_type_value.set("Car")
         self.ui.is_electric_value.set(True)
         vehicle_type = self.ui._get_vehicle_type()
-        self.assertEqual(vehicle_type, VehicleType.ELECTRIC_CAR)
+        self.assertEqual(vehicle_type, VehicleType.CAR)
         
-        # Test motorcycle
+        # Test regular motorcycle
         self.ui.vehicle_type_value.set("Motorcycle")
         self.ui.is_electric_value.set(False)
         vehicle_type = self.ui._get_vehicle_type()
@@ -255,7 +287,7 @@ class TestParkingLotUI(unittest.TestCase):
         self.ui.vehicle_type_value.set("Motorcycle")
         self.ui.is_electric_value.set(True)
         vehicle_type = self.ui._get_vehicle_type()
-        self.assertEqual(vehicle_type, VehicleType.ELECTRIC_MOTORCYCLE)
+        self.assertEqual(vehicle_type, VehicleType.MOTORCYCLE)
         
         # Test truck
         self.ui.vehicle_type_value.set("Truck")
@@ -263,9 +295,21 @@ class TestParkingLotUI(unittest.TestCase):
         vehicle_type = self.ui._get_vehicle_type()
         self.assertEqual(vehicle_type, VehicleType.TRUCK)
         
+        # Test electric truck
+        self.ui.vehicle_type_value.set("Truck")
+        self.ui.is_electric_value.set(True)
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.TRUCK)
+        
         # Test bus
         self.ui.vehicle_type_value.set("Bus")
         self.ui.is_electric_value.set(False)
+        vehicle_type = self.ui._get_vehicle_type()
+        self.assertEqual(vehicle_type, VehicleType.BUS)
+        
+        # Test electric bus
+        self.ui.vehicle_type_value.set("Bus")
+        self.ui.is_electric_value.set(True)
         vehicle_type = self.ui._get_vehicle_type()
         self.assertEqual(vehicle_type, VehicleType.BUS)
     
@@ -362,4 +406,4 @@ class TestParkingLotUI(unittest.TestCase):
         self.assertEqual(tuple(self.ui.details_level_combo['values']), ("1",))
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() 
