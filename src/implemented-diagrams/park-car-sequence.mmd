@@ -1,48 +1,35 @@
 sequenceDiagram
-    participant User
+    actor User
     participant UI as ParkingLotUI
-    participant PL as ParkingLot
-    participant Factory as VehicleFactory
-    participant Observer as ParkingLotObserver
+    participant State as UIStateManager
+    participant Valid as ValidationManager
+    participant Park as ParkingManager
+    participant Lot as ParkingLot
+    participant Tree as TreeViewManager
+    participant Msg as MessageManager
 
-    User->>UI: Selects lot and level
-    User->>UI: Enters vehicle info and clicks "Park"
-    UI->>UI: Validates input data
+    User->>UI: Enter vehicle details
+    UI->>State: Get input values
+    State-->>UI: Return values
+    UI->>Valid: Validate parking input
+    Valid-->>UI: Validation result
     
-    UI->>PL: park(reg, make, model, color, is_electric, is_motorcycle, lot_name, level)
-    
-    PL->>PL: _create_vehicle(reg, make, model, color, is_electric, is_motorcycle)
-    PL->>Factory: create_vehicle(...)
-    Factory-->>PL: Returns Vehicle instance
-    
-    alt Specific Lot/Level Specified
-        PL->>PL: Find level_obj matching lot_name and level
-        alt Level Found
-            PL->>PL: Find empty slot in level_obj
-            alt Slot Found
-                PL->>PL: Park vehicle in slot
-                PL->>Observer: notify_observers("Vehicle parked in lot/level")
-                Observer-->>UI: update("Vehicle parked in lot/level")
-                PL-->>UI: slot_number
-                UI-->>User: Show confirmation with lot/level info
-            else No Slot Available
-                PL-->>UI: None
-                UI-->>User: Show "No available slots in selected lot/level" error
-            end
-        else Level Not Found
-            PL-->>UI: None
-            UI-->>User: Show "Invalid lot/level" error
-        end
-    else No Specific Location
-        PL->>PL: Find first available slot in any level
-        alt Slot Found
-            PL->>PL: Park vehicle in slot
-            PL->>Observer: notify_observers("Vehicle parked")
-            Observer-->>UI: update("Vehicle parked")
-            PL-->>UI: slot_number
-            UI-->>User: Show confirmation
-        else No Slot Available
-            PL-->>UI: None
-            UI-->>User: Show "No available slots" error
+    alt Invalid Input
+        UI->>Msg: Show error message
+        Msg-->>User: Display error
+    else Valid Input
+        UI->>Park: Request parking
+        Park->>Lot: Park vehicle
+        Lot-->>Park: Parking result
+        Park-->>UI: Return result
+        
+        alt Parking Failed
+            UI->>Msg: Show error message
+            Msg-->>User: Display error
+        else Parking Successful
+            UI->>Tree: Update details view
+            Tree-->>User: Show updated view
+            UI->>Msg: Show success message
+            Msg-->>User: Display success
         end
     end 

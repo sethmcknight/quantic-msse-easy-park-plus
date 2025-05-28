@@ -17,6 +17,13 @@ classDiagram
         +get_slots_by_color(color)
         +get_slots_by_make(make)
         +get_slots_by_model(model)
+        -Dict[str, Dict[int, Dict[int, Vehicle]]] vehicles
+        +add_observer()
+        +remove_observer()
+        +notify_observers()
+        +park_vehicle()
+        +remove_vehicle()
+        +search_vehicles()
     }
     
     class ParkingLotLevel {
@@ -43,19 +50,76 @@ classDiagram
     %% Observer Pattern
     class ParkingLotObserver {
         <<interface>>
-        +update(message)
+        +on_parking_lot_updated()
     }
     
     class ParkingLotUI {
+        -UIStateManager state_manager
+        -TreeViewManager tree_manager
+        -MessageManager message_manager
+        -ValidationManager validation_manager
+        -ParkingManager parking_manager
         -parking_lot: ParkingLot
         -park_lot_value: StringVar
         -park_level_value: StringVar
-        +update(message)
+        +main_window: tk.Tk
+        +create_widgets()
         +_handle_park()
         +_handle_remove()
         +_handle_search()
         +_update_park_lot_names()
         +_update_park_levels()
+    }
+    
+    class UIStateManager {
+        +lot_name_value: tk.StringVar
+        +parking_level_value: tk.StringVar
+        +regular_slots_value: tk.StringVar
+        +electric_vehicle_slots_value: tk.StringVar
+        +registration_number_value: tk.StringVar
+        +vehicle_manufacturer_value: tk.StringVar
+        +vehicle_model_value: tk.StringVar
+        +vehicle_color_value: tk.StringVar
+        +vehicle_type_value: tk.StringVar
+        +is_electric_value: tk.BooleanVar
+        +park_lot_value: tk.StringVar
+        +park_level_value: tk.StringVar
+        +search_registration_number_value: tk.StringVar
+        +search_type_value: tk.StringVar
+        +details_filter_value: tk.StringVar
+    }
+    
+    class TreeViewManager {
+        +results_tree: ttk.Treeview
+        +details_tree: ttk.Treeview
+        +update_results()
+        +update_details()
+        +clear_results()
+        +clear_details()
+    }
+    
+    class MessageManager {
+        +message_area: tk.Text
+        +show_error()
+        +show_info()
+        +show_success()
+        +clear_messages()
+    }
+    
+    class ValidationManager {
+        +validate_parking_input()
+        +validate_search_input()
+        +validate_lot_creation()
+    }
+    
+    class ParkingManager {
+        -ParkingLot parking_lot
+        +create_lot()
+        +park_vehicle()
+        +remove_vehicle()
+        +search_vehicles()
+        +get_lot_names()
+        +get_vehicles_in_lot()
     }
     
     %% Factory Pattern
@@ -94,4 +158,18 @@ classDiagram
     
     ParkingLot ..> VehicleFactory : uses
     ParkingLot ..> VehicleData : uses
-    ParkingLot ..> ParkingLotData : uses 
+    ParkingLot ..> ParkingLotData : uses
+    
+    ParkingLotUI --> UIStateManager
+    ParkingLotUI --> TreeViewManager
+    ParkingLotUI --> MessageManager
+    ParkingLotUI --> ValidationManager
+    ParkingLotUI --> ParkingManager
+    ParkingManager --> ParkingLot
+    ParkingLot --> Vehicle
+    
+    Vehicle <|-- RegularVehicle
+    Vehicle <|-- ElectricVehicle
+    
+    ParkingLotData --> ParkingLevelData
+    ParkingLevelData --> ParkingSlotData 
