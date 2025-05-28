@@ -53,35 +53,9 @@ class VehicleProtocol(Protocol):
     is_motorcycle: bool
     current_battery_charge: Optional[int]
 
-class ParkingLotUI(ParkingLotObserver):
-    """Class representing the parking lot UI"""
-    
+class UIStateManager:
+    """Manages UI state variables"""
     def __init__(self):
-        """Initialize the UI"""
-        logger.info("Initializing ParkingLotUI")
-        self.parking_manager = ParkingLotManagerImpl()
-        self.parking_manager.register_observer(self)
-        
-        # Create main window
-        self.main_window = tk.Tk()
-        self.main_window.title("Parking Lot Management System")
-        
-        # Initialize UI state
-        self._init_state()
-        
-        # Create and layout widgets
-        self._create_widgets()
-        self._layout_widgets()
-        
-        # Initialize dropdowns
-        logger.info("Initializing dropdowns")
-        self._update_park_lot_names()
-        self._update_park_levels()
-        self._update_remove_lot_names()
-        logger.info("ParkingLotUI initialization complete")
-
-    def _init_state(self):
-        """Initialize UI state variables"""
         # Admin tab variables
         self.lot_name_value = tk.StringVar()
         self.parking_level_value = tk.StringVar()
@@ -114,6 +88,136 @@ class ParkingLotUI(ParkingLotObserver):
         # Details tab variables
         self.details_lot_name_value = tk.StringVar()
         self.details_parking_level_value = tk.StringVar()
+        self.details_filter_value = tk.StringVar(value="All Slots")
+
+class TreeViewManager:
+    """Manages tree view operations"""
+    def __init__(self, tree: ttk.Treeview):
+        self.tree = tree
+
+    def clear(self):
+        """Clear all items from the tree"""
+        self.tree.delete(*self.tree.get_children())
+
+    def add_vehicle(self, vehicle: Union[Vehicle, VehicleData], slot: int):
+        """Add a vehicle to the tree"""
+        registration_number: str = vehicle.registration_number
+        manufacturer: str = vehicle.manufacturer
+        model: str = vehicle.model
+        color: str = vehicle.color
+        is_ev: bool = vehicle.is_electric
+        is_motorcycle: bool = vehicle.vehicle_type == VehicleType.MOTORCYCLE
+        
+        charge_status: str = "N/A"
+        if is_ev:
+            if isinstance(vehicle, Vehicle) and hasattr(vehicle, 'current_battery_charge'):
+                charge_status = f"{vehicle.current_battery_charge:.1f}%"
+            elif isinstance(vehicle, VehicleData) and hasattr(vehicle, 'current_battery_charge'):
+                charge_status = f"{vehicle.current_battery_charge:.1f}%"
+
+        vehicle_type: str = (
+            "EV Motorcycle" if is_ev and is_motorcycle else
+            "EV" if is_ev else
+            "Motorcycle" if is_motorcycle else "Standard"
+        )
+
+        values: Tuple[str, ...] = (
+            str(slot),
+            str(registration_number),
+            str(manufacturer),
+            str(model),
+            str(color),
+            "EV" if is_ev else "Standard",
+            vehicle_type,
+            charge_status
+        )
+
+        self.tree.insert("", "end", values=values)
+
+class MessageManager:
+    """Manages message display"""
+    def __init__(self, message_area: tk.Text):
+        self.message_area = message_area
+
+    def show_message(self, message: str):
+        """Show a message in the message area"""
+        self.message_area.insert("end", f"{message}\n")
+        self.message_area.see("end")
+
+    def show_error(self, message: str):
+        """Show error message"""
+        messagebox.showerror("Error", message)
+
+class ValidationManager:
+    """Manages input validation"""
+    @staticmethod
+    def validate_vehicle_data(data: VehicleData) -> bool:
+        """Validate vehicle data"""
+        try:
+            if not data.registration_number:
+                raise ValidationError("Please enter registration number")
+            if not data.manufacturer:
+                raise ValidationError("Please enter manufacturer")
+            if not data.model:
+                raise ValidationError("Please enter model")
+            if not data.color:
+                raise ValidationError("Please enter color")
+            return True
+        except ValidationError as e:
+            raise ValidationError(str(e))
+
+    @staticmethod
+    def validate_lot_data(data: ParkingLotData) -> bool:
+        """Validate parking lot data"""
+        if not data.name:
+            raise ValidationError("Please enter a lot name")
+        
+        for level in data.levels:
+            regular_slots = len([s for s in level.slots if s.slot_type == SlotType.REGULAR])
+            electric_slots = len([s for s in level.slots if s.slot_type == SlotType.ELECTRIC])
+            
+            if regular_slots <= 0:
+                raise ValidationError("Please enter valid numbers for regular slots")
+            if electric_slots < 0:
+                raise ValidationError("Please enter valid numbers for electric slots")
+        
+        return True
+
+class ParkingLotUI(ParkingLotObserver):
+    """Class representing the parking lot UI"""
+    
+    def __init__(self):
+        """Initialize the UI"""
+        logger.info("Initializing ParkingLotUI")
+        self.parking_manager = ParkingLotManagerImpl()
+        
+        # Create main window
+        self.main_window = tk.Tk()
+        self.main_window.title("Parking Lot Management System")
+        
+        # Initialize managers
+        self.state_manager = UIStateManager()
+        self.validation_manager = ValidationManager()
+        
+        # Create and layout widgets
+        self._create_widgets()
+        self._layout_widgets()
+        
+        # Initialize message manager after creating message_area
+        self.message_manager = MessageManager(self.message_area)
+        
+        # Initialize tree manager after creating results_tree
+        self.tree_manager = TreeViewManager(self.results_tree)
+        
+        # Register as observer after all managers are initialized
+        self.parking_manager.register_observer(self)
+        
+        # Initialize dropdowns
+        logger.info("Initializing dropdowns")
+        self._update_park_lot_names()
+        self._update_park_levels()
+        self._update_remove_lot_names()
+        logger.info("ParkingLotUI initialization complete")
 
     def _create_widgets(self):
         """Create UI widgets"""
@@ -162,10 +266,10 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Create lot selection widgets
         self.park_lot_label = ttk.Label(self.park_lot_frame, text="Lot Name:")
-        self.park_lot_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.park_lot_value, state="readonly")
+        self.park_lot_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.state_manager.park_lot_value, state="readonly")
         
         self.park_level_label = ttk.Label(self.park_lot_frame, text="Level:")
-        self.park_level_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.park_level_value, state="readonly")
+        self.park_level_combo = ttk.Combobox(self.park_lot_frame, textvariable=self.state_manager.park_level_value, state="readonly")
         
         # Layout lot selection widgets
         self.park_lot_label.grid(row=0, column=0, padx=5, pady=5)
@@ -179,17 +283,17 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Create vehicle input widgets
         self.registration_label = ttk.Label(self.vehicle_input_frame, text="Registration Number:")
-        self.registration_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.registration_number_value)
+        self.registration_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.state_manager.registration_number_value)
         self.manufacturer_label = ttk.Label(self.vehicle_input_frame, text="Manufacturer:")
-        self.manufacturer_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_manufacturer_value)
+        self.manufacturer_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.state_manager.vehicle_manufacturer_value)
         self.model_label = ttk.Label(self.vehicle_input_frame, text="Model:")
-        self.model_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_model_value)
+        self.model_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.state_manager.vehicle_model_value)
         self.color_label = ttk.Label(self.vehicle_input_frame, text="Color:")
-        self.color_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.vehicle_color_value)
+        self.color_entry = ttk.Entry(self.vehicle_input_frame, textvariable=self.state_manager.vehicle_color_value)
         self.vehicle_type_label = ttk.Label(self.vehicle_input_frame, text="Vehicle Type:")
-        self.vehicle_type_combo = ttk.Combobox(self.vehicle_input_frame, textvariable=self.vehicle_type_value, state="readonly",
+        self.vehicle_type_combo = ttk.Combobox(self.vehicle_input_frame, textvariable=self.state_manager.vehicle_type_value, state="readonly",
                                                values=["Car", "Truck", "Bus", "Motorcycle"])
-        self.electric_vehicle_check = ttk.Checkbutton(self.vehicle_input_frame, text="Electric Vehicle", variable=self.is_electric_value)
+        self.electric_vehicle_check = ttk.Checkbutton(self.vehicle_input_frame, text="Electric Vehicle", variable=self.state_manager.is_electric_value)
         self.park_button = ttk.Button(self.vehicle_input_frame, text="Park", command=self._handle_park)
         
         # Layout vehicle input widgets
@@ -212,13 +316,13 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Create remove vehicle widgets
         self.remove_lot_label = ttk.Label(self.remove_frame, text="Lot Name:")
-        self.remove_lot_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_lot_value, state="readonly")
+        self.remove_lot_combo = ttk.Combobox(self.remove_frame, textvariable=self.state_manager.remove_lot_value, state="readonly")
         
         self.remove_level_label = ttk.Label(self.remove_frame, text="Level:")
-        self.remove_level_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_level_value, state="readonly")
+        self.remove_level_combo = ttk.Combobox(self.remove_frame, textvariable=self.state_manager.remove_level_value, state="readonly")
         
         self.remove_slot_label = ttk.Label(self.remove_frame, text="Slot Number:")
-        self.remove_slot_combo = ttk.Combobox(self.remove_frame, textvariable=self.remove_slot_value, state="readonly")
+        self.remove_slot_combo = ttk.Combobox(self.remove_frame, textvariable=self.state_manager.remove_slot_value, state="readonly")
         
         self.remove_button = ttk.Button(self.remove_frame, text="Remove", command=self._handle_remove)
         
@@ -256,13 +360,13 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Create search widgets
         self.search_registration_label = ttk.Label(self.search_form_frame, text="Registration:")
-        self.search_registration_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_registration_number_value)
+        self.search_registration_entry = ttk.Entry(self.search_form_frame, textvariable=self.state_manager.search_registration_number_value)
         self.search_color_label = ttk.Label(self.search_form_frame, text="Color:")
-        self.search_color_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_color_value)
+        self.search_color_entry = ttk.Entry(self.search_form_frame, textvariable=self.state_manager.search_vehicle_color_value)
         self.search_manufacturer_label = ttk.Label(self.search_form_frame, text="Manufacturer:")
-        self.search_manufacturer_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_manufacturer_value)
+        self.search_manufacturer_entry = ttk.Entry(self.search_form_frame, textvariable=self.state_manager.search_vehicle_manufacturer_value)
         self.search_model_label = ttk.Label(self.search_form_frame, text="Model:")
-        self.search_model_entry = ttk.Entry(self.search_form_frame, textvariable=self.search_vehicle_model_value)
+        self.search_model_entry = ttk.Entry(self.search_form_frame, textvariable=self.state_manager.search_vehicle_model_value)
         
         # Create button frame
         self.search_button_frame = ttk.Frame(self.search_form_frame)
@@ -305,13 +409,13 @@ class ParkingLotUI(ParkingLotObserver):
         """Create admin tab widgets"""
         # Create admin widgets
         self.lot_name_label = ttk.Label(self.admin_frame, text="Lot Name:")
-        self.lot_name_entry = ttk.Entry(self.admin_frame, textvariable=self.lot_name_value)
+        self.lot_name_entry = ttk.Entry(self.admin_frame, textvariable=self.state_manager.lot_name_value)
         self.level_label = ttk.Label(self.admin_frame, text="Level:")
-        self.level_entry = ttk.Entry(self.admin_frame, textvariable=self.parking_level_value)
+        self.level_entry = ttk.Entry(self.admin_frame, textvariable=self.state_manager.parking_level_value)
         self.num_label = ttk.Label(self.admin_frame, text="Number of Regular Slots:")
-        self.num_entry = ttk.Entry(self.admin_frame, textvariable=self.regular_slots_value)
+        self.num_entry = ttk.Entry(self.admin_frame, textvariable=self.state_manager.regular_slots_value)
         self.electric_vehicle_num_label = ttk.Label(self.admin_frame, text="Number of Electric Vehicle Slots:")
-        self.electric_vehicle_num_entry = ttk.Entry(self.admin_frame, textvariable=self.electric_vehicle_slots_value)
+        self.electric_vehicle_num_entry = ttk.Entry(self.admin_frame, textvariable=self.state_manager.electric_vehicle_slots_value)
         self.create_button = ttk.Button(self.admin_frame, text="Create Parking Lot", command=self._handle_create_lot)
         self.show_lots_button = ttk.Button(self.admin_frame, text="Show All Lots", command=self._handle_show_lots)
         self.load_sample_button = ttk.Button(self.admin_frame, text="Load Sample Data", command=self._handle_load_sample_data)
@@ -338,16 +442,15 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Create lot selection widgets
         self.details_lot_label = ttk.Label(self.details_select_frame, text="Lot Name:")
-        self.details_lot_combo = ttk.Combobox(self.details_select_frame, textvariable=self.details_lot_name_value, state="readonly")
+        self.details_lot_combo = ttk.Combobox(self.details_select_frame, textvariable=self.state_manager.details_lot_name_value, state="readonly")
         
         self.details_level_label = ttk.Label(self.details_select_frame, text="Level:")
-        self.details_level_combo = ttk.Combobox(self.details_select_frame, textvariable=self.details_parking_level_value, state="readonly")
+        self.details_level_combo = ttk.Combobox(self.details_select_frame, textvariable=self.state_manager.details_parking_level_value, state="readonly")
         
         # Add filter options
         self.details_filter_label = ttk.Label(self.details_select_frame, text="Filter:")
-        self.details_filter_value = tk.StringVar(value="All Slots")
         self.details_filter_combo = ttk.Combobox(self.details_select_frame, 
-                                               textvariable=self.details_filter_value,
+                                               textvariable=self.state_manager.details_filter_value,
                                                values=["All Slots", "Available Slots", "Occupied Slots", "All Levels"],
                                                state="readonly")
         
@@ -396,12 +499,12 @@ class ParkingLotUI(ParkingLotObserver):
         try:
             # Get and validate vehicle data
             vehicle_data = self._get_vehicle_data()
-            if not self._validate_vehicle_data(vehicle_data):
+            if not self.validation_manager.validate_vehicle_data(vehicle_data):
                 return
             
             # Get lot and level
-            lot_name = self.park_lot_value.get()
-            level_str = self.park_level_value.get()
+            lot_name = self.state_manager.park_lot_value.get()
+            level_str = self.state_manager.park_level_value.get()
             
             if not lot_name or not level_str:
                 raise ValidationError("Please select lot and level")
@@ -414,49 +517,33 @@ class ParkingLotUI(ParkingLotObserver):
             # Park vehicle
             slot = self.parking_manager.park_vehicle(lot_name, level, vehicle_data)
             if slot is not None:
-                self._show_message(f"Parked vehicle in slot {slot}")
+                self.message_manager.show_message(f"Parked vehicle in slot {slot}")
                 self._update_remove_slots(lot_name, level)
             else:
                 raise OperationError("Failed to park vehicle - no available slots")
                 
         except ValidationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except OperationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except Exception as e:
             logger.error(f"Error in _handle_park: {e}")
-            self._show_error("An unexpected error occurred")
+            self.message_manager.show_error("An unexpected error occurred")
 
     def _get_vehicle_data(self) -> VehicleData:
         """Get vehicle data from UI fields"""
         try:
             return VehicleData(
-                registration_number=self.registration_number_value.get().strip(),
-                manufacturer=self.vehicle_manufacturer_value.get().strip(),
-                model=self.vehicle_model_value.get().strip(),
-                color=self.vehicle_color_value.get().strip(),
-                is_electric=self.is_electric_value.get(),
-                is_motorcycle=self.vehicle_type_value.get() == "Motorcycle",
+                registration_number=self.state_manager.registration_number_value.get().strip(),
+                manufacturer=self.state_manager.vehicle_manufacturer_value.get().strip(),
+                model=self.state_manager.vehicle_model_value.get().strip(),
+                color=self.state_manager.vehicle_color_value.get().strip(),
+                is_electric=self.state_manager.is_electric_value.get(),
+                is_motorcycle=self.state_manager.vehicle_type_value.get() == "Motorcycle",
                 vehicle_type=self._get_vehicle_type()
             )
         except Exception as e:
             raise ValidationError(f"Error getting vehicle data: {e}")
-
-    def _validate_vehicle_data(self, data: VehicleData) -> bool:
-        """Validate vehicle data"""
-        try:
-            if not data.registration_number:
-                raise ValidationError("Please enter registration number")
-            if not data.manufacturer:
-                raise ValidationError("Please enter manufacturer")
-            if not data.model:
-                raise ValidationError("Please enter model")
-            if not data.color:
-                raise ValidationError("Please enter color")
-            return True
-        except ValidationError as e:
-            self._show_error(str(e))
-            return False
 
     def _handle_remove(self):
         """Handle remove button click"""
@@ -473,24 +560,24 @@ class ParkingLotUI(ParkingLotObserver):
             # Remove vehicle
             vehicle = self.parking_manager.remove_vehicle(lot_name, level, slot)
             if vehicle:
-                self._show_message(f"Removed vehicle {vehicle.registration_number} from slot {slot}")
+                self.message_manager.show_message(f"Removed vehicle {vehicle.registration_number} from slot {slot}")
                 self._update_remove_slots(lot_name, level)
             else:
                 raise OperationError("No vehicle found in selected slot")
                 
         except ValidationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except OperationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except Exception as e:
             logger.error(f"Error in _handle_remove: {e}")
-            self._show_error("An unexpected error occurred")
+            self.message_manager.show_error("An unexpected error occurred")
 
     def _get_remove_input(self) -> tuple[str, int, int]:
         """Get and validate remove input"""
-        lot_name = self.remove_lot_value.get()
-        level_str = self.remove_level_value.get()
-        slot_str = self.remove_slot_value.get()
+        lot_name = self.state_manager.remove_lot_value.get()
+        level_str = self.state_manager.remove_level_value.get()
+        slot_str = self.state_manager.remove_slot_value.get()
         
         if not lot_name or not level_str or not slot_str:
             raise ValidationError("Please select lot, level, and slot")
@@ -511,10 +598,10 @@ class ParkingLotUI(ParkingLotObserver):
                     for slot_data in level_data.slots:
                         if slot_data.slot_number == slot:
                             if not slot_data.is_occupied:
-                                self._show_error("Selected slot is empty")
+                                self.message_manager.show_error("Selected slot is empty")
                                 return False
                             return True
-            self._show_error("Selected slot does not exist")
+            self.message_manager.show_error("Selected slot does not exist")
             return False
         except Exception as e:
             logger.error(f"Error verifying slot: {e}")
@@ -525,10 +612,10 @@ class ParkingLotUI(ParkingLotObserver):
         try:
             # Create search criteria
             criteria = SearchCriteria(
-                registration_number=self.search_registration_number_value.get().strip(),
-                color=self.search_vehicle_color_value.get().strip(),
-                manufacturer=self.search_vehicle_manufacturer_value.get().strip(),
-                model=self.search_vehicle_model_value.get().strip()
+                registration_number=self.state_manager.search_registration_number_value.get().strip(),
+                color=self.state_manager.search_vehicle_color_value.get().strip(),
+                manufacturer=self.state_manager.search_vehicle_manufacturer_value.get().strip(),
+                model=self.state_manager.search_vehicle_model_value.get().strip()
             )
             
             # Clear previous results
@@ -544,23 +631,23 @@ class ParkingLotUI(ParkingLotObserver):
                         found_any = True
             
             if not found_any:
-                self._show_message("No vehicles found matching the search criteria")
+                self.message_manager.show_message("No vehicles found matching the search criteria")
             
         except ValidationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except OperationError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
         except Exception as e:
             logger.error(f"Error performing search: {e}")
-            self._show_error("Error performing search")
+            self.message_manager.show_error("Error performing search")
     
     def _handle_create_lot(self):
         """Handle create lot button click"""
         try:
-            lot_name = self.lot_name_value.get()
-            level_number = int(self.parking_level_value.get())
-            regular_slots = int(self.regular_slots_value.get())
-            electric_slots = int(self.electric_vehicle_slots_value.get())
+            lot_name = self.state_manager.lot_name_value.get()
+            level_number = int(self.state_manager.parking_level_value.get())
+            regular_slots = int(self.state_manager.regular_slots_value.get())
+            electric_slots = int(self.state_manager.electric_vehicle_slots_value.get())
             
             # Create level data
             level_data = ParkingLevelData(
@@ -581,12 +668,12 @@ class ParkingLotUI(ParkingLotObserver):
             )
             
             # Validate data
-            if not self._validate_lot_data(lot_data):
+            if not self.validation_manager.validate_lot_data(lot_data):
                 return
             
             # Create parking lot
             if self.parking_manager.create_lot(lot_data):
-                self._show_message(f"Created parking lot {lot_name}")
+                self.message_manager.show_message(f"Created parking lot {lot_name}")
                 # Update all dropdowns
                 self._update_park_lot_names()
                 self._update_park_levels()
@@ -600,9 +687,9 @@ class ParkingLotUI(ParkingLotObserver):
                 self.details_level_combo['values'] = self.parking_manager.get_levels_for_lot(lot_name)
                 self.remove_lot_combo['values'] = self.parking_manager.get_lot_names()
             else:
-                self._show_error("Failed to create parking lot")
+                self.message_manager.show_error("Failed to create parking lot")
         except ValueError as e:
-            self._show_error(str(e))
+            self.message_manager.show_error(str(e))
     
     def _handle_show_lots(self) -> None:
         """Handle showing all parking lots"""
@@ -650,27 +737,7 @@ class ParkingLotUI(ParkingLotObserver):
             
         except Exception as e:
             logger.error(f"Error showing lots: {e}")
-            self._show_error("Error showing lots")
-    
-    def _validate_lot_data(self, data: ParkingLotData) -> bool:
-        """Validate parking lot data"""
-        if not data.name:
-            self._show_error("Please enter a lot name")
-            return False
-        
-        # Validate each level's data
-        for level in data.levels:
-            regular_slots = len([s for s in level.slots if s.slot_type == SlotType.REGULAR])
-            electric_slots = len([s for s in level.slots if s.slot_type == SlotType.ELECTRIC])
-            
-            if regular_slots <= 0:
-                self._show_error("Please enter valid numbers for regular slots")
-                return False
-            if electric_slots < 0:
-                self._show_error("Please enter valid numbers for electric slots")
-                return False
-        
-        return True
+            self.message_manager.show_error("Error showing lots")
     
     def _get_selected_slot(self) -> Optional[int]:
         """Get the selected slot number from the tree view"""
@@ -682,58 +749,24 @@ class ParkingLotUI(ParkingLotObserver):
     
     def _add_vehicle_to_tree(self, vehicle: Union[Vehicle, VehicleData], slot: int) -> None:
         """Add a vehicle to the results tree"""
-        # Get vehicle attributes
-        registration_number: str = vehicle.registration_number
-        manufacturer: str = vehicle.manufacturer
-        model: str = vehicle.model
-        color: str = vehicle.color
-        is_ev: bool = vehicle.is_electric
-        is_motorcycle: bool = vehicle.vehicle_type == VehicleType.MOTORCYCLE
-        
-        # Handle charge status
-        charge_status: str = "N/A"
-        if is_ev:
-            if isinstance(vehicle, Vehicle) and hasattr(vehicle, 'current_battery_charge'):
-                charge_status = f"{vehicle.current_battery_charge}%"
-            elif isinstance(vehicle, VehicleData) and hasattr(vehicle, 'current_battery_charge'):
-                charge_status = f"{vehicle.current_battery_charge}%"
-
-        vehicle_type: str = (
-            "EV Motorcycle" if is_ev and is_motorcycle else
-            "EV" if is_ev else
-            "Motorcycle" if is_motorcycle else "Standard"
-        )
-
-        values: Tuple[str, ...] = (
-            str(slot),
-            str(registration_number),
-            str(manufacturer),
-            str(model),
-            str(color),
-            "EV" if is_ev else "Standard",
-            vehicle_type,
-            charge_status
-        )
-
-        self.results_tree.insert("", "end", values=values)
+        cast(TreeViewManager, self.tree_manager).add_vehicle(vehicle, slot)
     
     def _clear_park_fields(self):
         """Clear vehicle input fields"""
-        self.registration_number_value.set("")
-        self.vehicle_manufacturer_value.set("")
-        self.vehicle_model_value.set("")
-        self.vehicle_color_value.set("")
-        self.vehicle_type_value.set("Car")
-        self.is_electric_value.set(False)
+        self.state_manager.registration_number_value.set("")
+        self.state_manager.vehicle_manufacturer_value.set("")
+        self.state_manager.vehicle_model_value.set("")
+        self.state_manager.vehicle_color_value.set("")
+        self.state_manager.vehicle_type_value.set("Car")
+        self.state_manager.is_electric_value.set(False)
     
     def _show_message(self, message: str) -> None:
         """Show a message in the message area"""
-        self.message_area.insert("end", f"{message}\n")
-        self.message_area.see("end")
+        self.message_manager.show_message(message)
     
     def _show_error(self, message: str) -> None:
         """Show error message"""
-        messagebox.showerror("Error", message)
+        self.message_manager.show_error(message)
     
     def update(self, lot_name: str):
         """Handle updates from the parking lot
@@ -749,7 +782,7 @@ class ParkingLotUI(ParkingLotObserver):
         # Show status message
         status = self.parking_manager.get_lot_status(lot_name)
         if status:
-            self._show_message(f"Updated status for lot: {lot_name}")
+            self.message_manager.show_message(f"Updated status for lot: {lot_name}")
             self._show_status()
     
     def run(self):
@@ -792,12 +825,12 @@ class ParkingLotUI(ParkingLotObserver):
     def _show_full_status(self) -> None:
         """Show full status of the parking lot"""
         try:
-            selected_lot = self.lot_name_value.get()
-            selected_level = int(self.parking_level_value.get())
+            selected_lot = self.state_manager.lot_name_value.get()
+            selected_level = int(self.state_manager.parking_level_value.get())
             print(f"[DEBUG] _show_full_status called with lot={selected_lot}, level={selected_level}")
             
             if not selected_lot:
-                self._show_error("Please select a parking lot")
+                self.message_manager.show_error("Please select a parking lot")
                 return
             
             # Clear previous results
@@ -810,20 +843,23 @@ class ParkingLotUI(ParkingLotObserver):
                 self._add_vehicle_to_tree(vehicle, slot_number)
             
             if not self.results_tree.get_children():
-                self._show_message("No vehicles found in the selected lot and level.")
+                self.message_manager.show_message("No vehicles found in the selected lot and level.")
         
         except Exception as e:
             logger.error(f"Error showing full status: {str(e)}")
-            self._show_error(f"Error showing full status: {str(e)}")
+            self.message_manager.show_error(f"Error showing full status: {str(e)}")
 
     def _show_status(self) -> None:
         """Show parking lot status"""
-        lot_name = self.lot_name_value.get() or self.park_lot_value.get()
+        lot_name = self.state_manager.lot_name_value.get() or self.state_manager.park_lot_value.get()
         if not lot_name:
-            self._show_error("Please select a lot to show status.")
+            self.message_manager.show_error("Please select a lot to show status.")
             return
         status = self.parking_manager.get_lot_status(lot_name)
-        self._show_message(status)
+        if isinstance(status, str):
+            self.message_manager.show_message(status)
+        else:
+            self.message_manager.show_message(str(status))
 
     def create_lot(self):
         """Create a new parking lot"""
@@ -834,19 +870,19 @@ class ParkingLotUI(ParkingLotObserver):
         lot_names = self.parking_manager.get_lot_names()
         self.details_lot_combo['values'] = lot_names
         if lot_names:
-            self.details_lot_combo.set(lot_names[0])
+            self.state_manager.details_lot_name_value.set(lot_names[0])
             self._update_details_levels()
 
     def _update_park_levels(self):
         """Update the levels in the park combo box based on selected lot"""
-        lot_name = self.park_lot_value.get()
+        lot_name = self.state_manager.park_lot_value.get()
         if lot_name:
             levels = self.parking_manager.get_levels_for_lot(lot_name)
-            self.park_level_combo['values'] = levels
-            self.remove_level_combo['values'] = levels
+            self.park_level_combo['values'] = [str(level) for level in levels]
+            self.remove_level_combo['values'] = [str(level) for level in levels]
             if levels:
-                self.park_level_combo.set(levels[0])
-                self.remove_level_combo.set(levels[0])
+                self.state_manager.park_level_value.set(str(levels[0]))
+                self.state_manager.remove_level_value.set(str(levels[0]))
                 self._update_slot_numbers(lot_name, levels[0])
 
     def _update_slot_numbers(self, lot_name: str, level: int):
@@ -871,11 +907,11 @@ class ParkingLotUI(ParkingLotObserver):
             
         except Exception as e:
             logger.error(f"Error updating slot numbers: {e}")
-            self._show_error("Error updating slot numbers")
+            self.message_manager.show_error("Error updating slot numbers")
 
     def _update_details_levels(self):
         """Update the levels in the details combo box based on selected lot"""
-        lot_name = self.details_lot_name_value.get()
+        lot_name = self.state_manager.details_lot_name_value.get()
         if lot_name:
             levels = self.parking_manager.get_levels_for_lot(lot_name)
             self.details_level_combo['values'] = levels
@@ -889,11 +925,11 @@ class ParkingLotUI(ParkingLotObserver):
             self.details_tree.delete(*self.details_tree.get_children())
             
             # Get selected lot and level
-            lot_name = self.details_lot_name_value.get()
-            filter_type = self.details_filter_value.get()
+            lot_name = self.state_manager.details_lot_name_value.get()
+            filter_type = self.state_manager.details_filter_value.get()
             
             if not lot_name:
-                self._show_error("Please select a lot")
+                self.message_manager.show_error("Please select a lot")
                 return
             
             # Get all levels for the lot
@@ -906,15 +942,15 @@ class ParkingLotUI(ParkingLotObserver):
                     self._add_level_details(lot_name, level)
             else:
                 # Show specific level
-                level = int(self.details_parking_level_value.get())
+                level = int(self.state_manager.details_parking_level_value.get())
                 self._add_level_details(lot_name, level, filter_type)
             
             if not self.details_tree.get_children():
-                self._show_message("No slots found matching the criteria.")
+                self.message_manager.show_message("No slots found matching the criteria.")
                 
         except Exception as e:
             logger.error(f"Error showing details: {e}")
-            self._show_error("Error showing lot details")
+            self.message_manager.show_error("Error showing lot details")
 
     def _add_level_details(self, lot_name: str, level: int, filter_type: str = "All Slots") -> None:
         """Add details for a specific level to the tree"""
@@ -956,9 +992,9 @@ class ParkingLotUI(ParkingLotObserver):
                     charge_status: str = "N/A"
                     if slot.vehicle and slot.vehicle.is_electric:
                         if isinstance(slot.vehicle, Vehicle) and hasattr(slot.vehicle, 'current_battery_charge'):
-                            charge_status = f"{slot.vehicle.current_battery_charge}%"
+                            charge_status = f"{slot.vehicle.current_battery_charge:.1f}%"
                         elif isinstance(slot.vehicle, VehicleData) and hasattr(slot.vehicle, 'current_battery_charge'):
-                            charge_status = f"{slot.vehicle.current_battery_charge}%"
+                            charge_status = f"{slot.vehicle.current_battery_charge:.1f}%"
                     
                     values: Tuple[str, ...] = (
                         str(level),
@@ -984,12 +1020,12 @@ class ParkingLotUI(ParkingLotObserver):
         lot_names = self.parking_manager.get_lot_names()
         self.park_lot_combo['values'] = lot_names
         if lot_names:
-            self.park_lot_combo.set(lot_names[0])
+            self.state_manager.park_lot_value.set(lot_names[0])
             self._update_park_levels()
 
     def _get_vehicle_type(self) -> VehicleType:
         """Get the vehicle type based on UI selections"""
-        type_str = self.vehicle_type_value.get()
+        type_str = self.state_manager.vehicle_type_value.get()
         return VehicleType.from_string(type_str)
 
     def _handle_load_sample_data(self):
@@ -1207,14 +1243,14 @@ class ParkingLotUI(ParkingLotObserver):
             self._update_remove_lot_names()
             
             # Show success message
-            self._show_message("Sample data loaded successfully")
+            self.message_manager.show_message("Sample data loaded successfully")
             
             # Refresh the lots display
             self._handle_show_lots()
             
         except Exception as e:
             logger.error(f"Error loading sample data: {e}")
-            self._show_error(f"Error loading sample data: {str(e)}")
+            self.message_manager.show_error(f"Error loading sample data: {str(e)}")
 
     def _update_remove_lot_names(self):
         """Update the lot names in the remove combo box"""
@@ -1226,20 +1262,20 @@ class ParkingLotUI(ParkingLotObserver):
             if lot_names:
                 logger.debug(f"[DEBUG] Setting lot names in combo box: {lot_names}")
                 self.remove_lot_combo['values'] = lot_names
-                self.remove_lot_value.set(lot_names[0])
+                self.state_manager.remove_lot_value.set(lot_names[0])
                 logger.debug(f"[DEBUG] Selected first lot: {lot_names[0]}")
                 self._update_remove_levels(lot_names[0])
             else:
                 logger.debug("[DEBUG] No lot names available")
                 self.remove_lot_combo['values'] = []
-                self.remove_lot_value.set('')
+                self.state_manager.remove_lot_value.set('')
                 self.remove_level_combo['values'] = []
-                self.remove_level_value.set('')
+                self.state_manager.remove_level_value.set('')
                 self.remove_slot_combo['values'] = []
-                self.remove_slot_value.set('')
+                self.state_manager.remove_slot_value.set('')
         except Exception as e:
             logger.error(f"[DEBUG] Error in _update_remove_lot_names: {e}")
-            self._show_error("Error updating lot names")
+            self.message_manager.show_error("Error updating lot names")
 
     def _update_remove_levels(self, lot_name: str):
         """Update the levels in the remove combo box based on selected lot"""
@@ -1252,18 +1288,18 @@ class ParkingLotUI(ParkingLotObserver):
                 level_values = [str(level) for level in levels]
                 logger.debug(f"[DEBUG] Setting level values in combo box: {level_values}")
                 self.remove_level_combo['values'] = level_values
-                self.remove_level_value.set(str(levels[0]))
+                self.state_manager.remove_level_value.set(str(levels[0]))
                 logger.debug(f"[DEBUG] Selected first level: {levels[0]}")
                 self._update_remove_slots(lot_name, levels[0])
             else:
                 logger.debug("[DEBUG] No levels available")
                 self.remove_level_combo['values'] = []
-                self.remove_level_value.set('')
+                self.state_manager.remove_level_value.set('')
                 self.remove_slot_combo['values'] = []
-                self.remove_slot_value.set('')
+                self.state_manager.remove_slot_value.set('')
         except Exception as e:
             logger.error(f"[DEBUG] Error in _update_remove_levels: {e}")
-            self._show_error("Error updating levels")
+            self.message_manager.show_error("Error updating levels")
 
     def _update_remove_slots(self, lot_name: str, level: int):
         """Update the slot numbers in the remove combo box"""
@@ -1287,18 +1323,18 @@ class ParkingLotUI(ParkingLotObserver):
             if occupied_slots:
                 logger.debug(f"[DEBUG] Setting slot values in combo box: {occupied_slots}")
                 self.remove_slot_combo['values'] = occupied_slots
-                self.remove_slot_value.set(occupied_slots[0])
+                self.state_manager.remove_slot_value.set(occupied_slots[0])
                 logger.debug(f"[DEBUG] Selected first slot: {occupied_slots[0]}")
                 self._update_vehicle_info(lot_name, level, int(occupied_slots[0]))
             else:
                 logger.debug("[DEBUG] No occupied slots found")
                 self.remove_slot_combo['values'] = []
-                self.remove_slot_value.set('')
+                self.state_manager.remove_slot_value.set('')
                 self.vehicle_info_label.config(text="No vehicles in selected level")
             
         except Exception as e:
             logger.error(f"[DEBUG] Error in _update_remove_slots: {e}")
-            self._show_error("Error updating slot numbers")
+            self.message_manager.show_error("Error updating slot numbers")
 
     def _update_vehicle_info(self, lot_name: str, level: int, slot: int) -> None:
         """Update the vehicle information display"""
@@ -1338,35 +1374,35 @@ class ParkingLotUI(ParkingLotObserver):
     def _on_remove_lot_selected(self, event: Any) -> None:
         """Handle lot selection in remove section"""
         try:
-            lot_name = self.remove_lot_value.get()
+            lot_name = self.state_manager.remove_lot_value.get()
             if lot_name:
                 self._update_remove_levels(lot_name)
         except Exception as e:
             logger.error(f"Error in _on_remove_lot_selected: {e}")
-            self._show_error("Error updating levels")
+            self.message_manager.show_error("Error updating levels")
 
     def _on_remove_level_selected(self, event: Any) -> None:
         """Handle level selection in remove section"""
         try:
-            lot_name = self.remove_lot_value.get()
-            level_str = self.remove_level_value.get()
+            lot_name = self.state_manager.remove_lot_value.get()
+            level_str = self.state_manager.remove_level_value.get()
             if lot_name and level_str:
                 self._update_remove_slots(lot_name, int(level_str))
         except Exception as e:
             logger.error(f"Error in _on_remove_level_selected: {e}")
-            self._show_error("Error updating slots")
+            self.message_manager.show_error("Error updating slots")
 
     def _on_remove_slot_selected(self, event: Any) -> None:
         """Handle slot selection in remove section"""
         try:
-            lot_name = self.remove_lot_value.get()
-            level_str = self.remove_level_value.get()
-            slot_str = self.remove_slot_value.get()
+            lot_name = self.state_manager.remove_lot_value.get()
+            level_str = self.state_manager.remove_level_value.get()
+            slot_str = self.state_manager.remove_slot_value.get()
             if lot_name and level_str and slot_str:
                 self._update_vehicle_info(lot_name, int(level_str), int(slot_str))
         except Exception as e:
             logger.error(f"Error in _on_remove_slot_selected: {e}")
-            self._show_error("Error updating vehicle info")
+            self.message_manager.show_error("Error updating vehicle info")
 
     def _is_motorcycle(self, vehicle: VehicleData) -> bool:
         """Check if vehicle is a motorcycle"""
@@ -1379,19 +1415,19 @@ class ParkingLotUI(ParkingLotObserver):
 
     def _get_vehicle_type_from_ui(self) -> VehicleType:
         """Get vehicle type from UI selection"""
-        type_str = self.vehicle_type_value.get()
+        type_str = self.state_manager.vehicle_type_value.get()
         return VehicleType.from_string(type_str)
 
     def _create_vehicle_data(self) -> VehicleData:
         """Create vehicle data from UI inputs"""
         vehicle_type = self._get_vehicle_type_from_ui()
-        is_electric = self.is_electric_value.get()
+        is_electric = self.state_manager.is_electric_value.get()
         
         return VehicleData(
-            registration_number=self.registration_number_value.get(),
-            manufacturer=self.vehicle_manufacturer_value.get(),
-            model=self.vehicle_model_value.get(),
-            color=self.vehicle_color_value.get(),
+            registration_number=self.state_manager.registration_number_value.get(),
+            manufacturer=self.state_manager.vehicle_manufacturer_value.get(),
+            model=self.state_manager.vehicle_model_value.get(),
+            color=self.state_manager.vehicle_color_value.get(),
             vehicle_type=vehicle_type,
             is_electric=is_electric,
             is_motorcycle=self._is_motorcycle(VehicleData(
@@ -1420,7 +1456,7 @@ class ParkingLotUI(ParkingLotObserver):
                     result.vehicle.color,
                     "Electric" if result.vehicle.is_electric else "Regular",
                     vehicle_type,
-                    f"{result.vehicle.current_battery_charge}%" if result.vehicle.is_electric else "N/A"
+                    f"{result.vehicle.current_battery_charge:.1f}%" if result.vehicle.is_electric else "N/A"
                 )
             )
 
