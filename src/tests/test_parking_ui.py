@@ -139,7 +139,7 @@ class TestParkingLotUI(unittest.TestCase):
         self.ui.parking_manager.get_vehicles_in_lot = MagicMock(return_value=mock_vehicles)
         self.ui.parking_manager.get_lot_names = MagicMock(return_value=["Test Lot"])
         self.ui.parking_manager.get_levels_for_lot = MagicMock(return_value=[1])
-        
+    
         # Test registration search
         self.ui.search_registration_number_value.set("ABC123")
         self.ui.search_type_value.set("registration")
@@ -362,4 +362,4 @@ class TestParkingLotUI(unittest.TestCase):
         self.assertEqual(tuple(self.ui.details_level_combo['values']), ("1",))
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() 

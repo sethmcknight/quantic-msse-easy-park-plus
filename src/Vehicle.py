@@ -1,11 +1,21 @@
 """
-Vehicle classes for the parking system.
+Vehicle Module
 
-This module defines the vehicle classes used in the parking system.
+This module defines the vehicle classes for the parking system.
 """
 
 from dataclasses import dataclass
-from models import VehicleType
+from typing import Optional
+from enum import Enum, auto
+
+class VehicleType(Enum):
+    """Enum for vehicle types"""
+    CAR = auto()
+    TRUCK = auto()
+    MOTORCYCLE = auto()
+    BUS = auto()
+    ELECTRIC_CAR = auto()
+    ELECTRIC_BIKE = auto()
 
 @dataclass
 class Vehicle:
@@ -14,136 +24,72 @@ class Vehicle:
     manufacturer: str
     model: str
     color: str
-    is_electric: bool
-    is_motorcycle: bool
     vehicle_type: VehicleType
-    
-    def __post_init__(self):
-        """Validate vehicle data"""
-        if not self.registration_number:
-            raise ValueError("Registration number is required")
-        if not self.manufacturer:
-            raise ValueError("Manufacturer is required")
-        if not self.model:
-            raise ValueError("Model is required")
-        if not self.color:
-            raise ValueError("Color is required")
-    
-    def get_vehicle_type(self) -> VehicleType:
-        """Get the vehicle type"""
-        return self.vehicle_type
-    
-    def get_status(self) -> str:
-        """Get the vehicle status"""
-        return (f"Registration: {self.registration_number}\n"
-                f"Manufacturer: {self.manufacturer}\n"
-                f"Model: {self.model}\n"
-                f"Color: {self.color}\n"
-                f"Type: {self.vehicle_type.name}")
+    is_electric: bool = False
+    current_battery_charge: Optional[float] = None
 
-@dataclass
-class ElectricVehicle(Vehicle):
-    """Class for electric vehicles"""
-    charge_level: float = 0.0
-    
     def __post_init__(self):
-        """Validate electric vehicle data"""
-        super().__post_init__()
-        if not self.is_electric:
-            raise ValueError("Electric vehicle must have is_electric=True")
-        if self.charge_level < 0 or self.charge_level > 100:
-            raise ValueError("Charge level must be between 0 and 100")
-    
-    def set_charge(self, charge: float) -> None:
-        """Set the charge level
-        
-        Args:
-            charge: The new charge level (0-100)
-        """
-        if charge < 0 or charge > 100:
-            raise ValueError("Charge level must be between 0 and 100")
-        self.charge_level = charge
-    
-    def get_charge(self) -> float:
-        """Get the current charge level
-        
-        Returns:
-            float: The current charge level (0-100)
-        """
-        return self.charge_level
-    
-    def get_status(self) -> str:
-        """Get the vehicle status"""
-        return (super().get_status() + "\n"
-                f"Charge Level: {self.charge_level}%")
+        """Initialize vehicle after creation"""
+        if self.is_electric and self.current_battery_charge is None:
+            self.current_battery_charge = 0.0
 
-@dataclass
-class Car(Vehicle):
-    """Class for regular cars"""
-    def __post_init__(self):
-        """Validate car data"""
-        super().__post_init__()
-        if self.is_motorcycle:
-            raise ValueError("Car cannot be a motorcycle")
+    def get_type(self) -> str:
+        """Get vehicle type as string"""
+        return self.vehicle_type.name.lower()
+
+    def get_manufacturer(self) -> str:
+        """Get vehicle manufacturer"""
+        return self.manufacturer
+
+    def get_model(self) -> str:
+        """Get vehicle model"""
+        return self.model
+
+    def get_color(self) -> str:
+        """Get vehicle color"""
+        return self.color
+
+    def get_registration_number(self) -> str:
+        """Get vehicle registration number"""
+        return self.registration_number
+
+    def get_battery_charge(self) -> Optional[float]:
+        """Get current battery charge if electric vehicle"""
+        return self.current_battery_charge if self.is_electric else None
+
+    def set_battery_charge(self, charge: float) -> None:
+        """Set battery charge for electric vehicles"""
         if self.is_electric:
-            raise ValueError("Car cannot be electric")
-        self.vehicle_type = VehicleType.CAR
+            self.current_battery_charge = max(0.0, min(100.0, charge))
+        else:
+            raise ValueError("Cannot set battery charge for non-electric vehicle")
 
-@dataclass
-class ElectricCar(ElectricVehicle):
-    """Class for electric cars"""
-    def __post_init__(self):
-        """Validate electric car data"""
-        super().__post_init__()
-        if self.is_motorcycle:
-            raise ValueError("Electric car cannot be a motorcycle")
-        self.vehicle_type = VehicleType.ELECTRIC_CAR
+    def __str__(self) -> str:
+        """String representation of vehicle"""
+        base_info = f"{self.manufacturer} {self.model} ({self.color}) - {self.registration_number}"
+        if self.is_electric and self.current_battery_charge is not None:
+            return f"{base_info} - Battery: {self.current_battery_charge}%"
+        return base_info
 
-@dataclass
-class Motorcycle(Vehicle):
-    """Class for motorcycles"""
-    def __post_init__(self):
-        """Validate motorcycle data"""
-        super().__post_init__()
-        if not self.is_motorcycle:
-            raise ValueError("Motorcycle must have is_motorcycle=True")
-        if self.is_electric:
-            raise ValueError("Motorcycle cannot be electric")
-        self.vehicle_type = VehicleType.MOTORCYCLE
-
-@dataclass
-class ElectricMotorcycle(ElectricVehicle):
-    """Class for electric motorcycles"""
-    def __post_init__(self):
-        """Validate electric motorcycle data"""
-        super().__post_init__()
-        if not self.is_motorcycle:
-            raise ValueError("Electric motorcycle must have is_motorcycle=True")
-        self.vehicle_type = VehicleType.ELECTRIC_MOTORCYCLE
-
-@dataclass
-class Truck(Vehicle):
-    """Class for trucks"""
-    def __post_init__(self):
-        """Validate truck data"""
-        super().__post_init__()
-        if self.is_motorcycle:
-            raise ValueError("Truck cannot be a motorcycle")
-        if self.is_electric:
-            raise ValueError("Truck cannot be electric")
-        self.vehicle_type = VehicleType.TRUCK
-
-@dataclass
-class Bus(Vehicle):
-    """Class for buses"""
-    def __post_init__(self):
-        """Validate bus data"""
-        super().__post_init__()
-        if self.is_motorcycle:
-            raise ValueError("Bus cannot be a motorcycle")
-        if self.is_electric:
-            raise ValueError("Bus cannot be electric")
-        self.vehicle_type = VehicleType.BUS
+def create_vehicle(
+    registration_number: str,
+    manufacturer: str,
+    model: str,
+    color: str,
+    vehicle_type: VehicleType,
+    is_electric: bool = False,
+    current_battery_charge: Optional[float] = None
+) -> Vehicle:
+    """Factory function to create vehicles"""
+    return Vehicle(
+        registration_number=registration_number,
+        manufacturer=manufacturer,
+        model=model,
+        color=color,
+        vehicle_type=vehicle_type,
+        is_electric=is_electric,
+        current_battery_charge=current_battery_charge
+    )
 
 
 

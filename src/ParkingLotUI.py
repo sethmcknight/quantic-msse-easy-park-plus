@@ -17,40 +17,59 @@ To remove debug logging:
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import logging
-from typing import Dict, Optional, Union
-from Vehicle import Vehicle, ElectricVehicle, Motorcycle
+from typing import Dict, Optional, Union, List, Any, Callable, cast
+from Vehicle import Vehicle, VehicleType
 from ParkingManager import ParkingLotManagerImpl
-from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType
+from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType, ParkingSlotData
 from interfaces import ParkingLotObserver
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+class ParkingLotUIError(Exception):
+    """Base exception for ParkingLotUI errors"""
+    pass
+
+class ValidationError(ParkingLotUIError):
+    """Exception for validation errors"""
+    pass
+
+class OperationError(ParkingLotUIError):
+    """Exception for operation errors"""
+    pass
 
 class ParkingLotUI(ParkingLotObserver):
     """Class representing the parking lot UI"""
     
     def __init__(self):
         """Initialize the UI"""
-        logger.debug("[DEBUG] Initializing ParkingLotUI")
+        logger.info("Initializing ParkingLotUI")
         self.parking_manager = ParkingLotManagerImpl()
         self.parking_manager.register_observer(self)
+        
         # Create main window
         self.main_window = tk.Tk()
         self.main_window.title("Parking Lot Management System")
+        
         # Initialize UI state
         self._init_state()
+        
         # Create and layout widgets
         self._create_widgets()
         self._layout_widgets()
+        
         # Initialize dropdowns
-        logger.debug("[DEBUG] Initializing dropdowns")
+        logger.info("Initializing dropdowns")
         self._update_park_lot_names()
         self._update_park_levels()
-        self._update_remove_lot_names()  # Add explicit call to update remove lot names
-        logger.debug("[DEBUG] ParkingLotUI initialization complete")
+        self._update_remove_lot_names()
+        logger.info("ParkingLotUI initialization complete")
 
     def _init_state(self):
         """Initialize UI state variables"""
@@ -59,6 +78,7 @@ class ParkingLotUI(ParkingLotObserver):
         self.parking_level_value = tk.StringVar()
         self.regular_slots_value = tk.StringVar()
         self.electric_vehicle_slots_value = tk.StringVar()
+        
         # Vehicle Operations variables
         self.registration_number_value = tk.StringVar()
         self.vehicle_manufacturer_value = tk.StringVar()
@@ -68,10 +88,12 @@ class ParkingLotUI(ParkingLotObserver):
         self.is_electric_value = tk.BooleanVar()
         self.park_lot_value = tk.StringVar()
         self.park_level_value = tk.StringVar()
+        
         # Remove section variables
         self.remove_lot_value = tk.StringVar()
         self.remove_level_value = tk.StringVar()
         self.remove_slot_value = tk.StringVar()
+        
         # Search tab variables
         self.search_registration_number_value = tk.StringVar()
         self.search_vehicle_color_value = tk.StringVar()
@@ -79,10 +101,11 @@ class ParkingLotUI(ParkingLotObserver):
         self.search_vehicle_model_value = tk.StringVar()
         self.search_type_value = tk.StringVar(value="registration")
         self.search_value_value = tk.StringVar()
+        
         # Details tab variables
         self.details_lot_name_value = tk.StringVar()
         self.details_parking_level_value = tk.StringVar()
-    
+
     def _create_widgets(self):
         """Create UI widgets"""
         # Create notebook for tabs
@@ -369,18 +392,8 @@ class ParkingLotUI(ParkingLotObserver):
     def _handle_park(self):
         """Handle park button click"""
         try:
-            # Get vehicle data
-            data = VehicleData(
-                registration_number=self.registration_number_value.get(),
-                manufacturer=self.vehicle_manufacturer_value.get(),
-                model=self.vehicle_model_value.get(),
-                color=self.vehicle_color_value.get(),
-                is_electric=self.is_electric_value.get(),
-                is_motorcycle=self.vehicle_type_value.get() == "Motorcycle",
-                vehicle_type=self._get_vehicle_type()
-            )
-            
-            # Validate data
+            # Get and validate vehicle data
+            data = self._get_vehicle_data()
             if not self._validate_vehicle_data(data):
                 return
             
@@ -396,63 +409,107 @@ class ParkingLotUI(ParkingLotObserver):
             else:
                 self._show_error("Failed to park vehicle")
             
-        except ValueError as e:
+        except ValidationError as e:
             self._show_error(str(e))
-    
+        except ValueError as e:
+            self._show_error("Invalid input: " + str(e))
+        except Exception as e:
+            logger.error(f"Error in _handle_park: {e}")
+            self._show_error("An unexpected error occurred")
+
+    def _get_vehicle_data(self) -> VehicleData:
+        """Get vehicle data from UI fields"""
+        try:
+            return VehicleData(
+                registration_number=self.registration_number_value.get().strip(),
+                manufacturer=self.vehicle_manufacturer_value.get().strip(),
+                model=self.vehicle_model_value.get().strip(),
+                color=self.vehicle_color_value.get().strip(),
+                is_electric=self.is_electric_value.get(),
+                is_motorcycle=self.vehicle_type_value.get() == "Motorcycle",
+                vehicle_type=self._get_vehicle_type()
+            )
+        except Exception as e:
+            raise ValidationError(f"Error getting vehicle data: {e}")
+
+    def _validate_vehicle_data(self, data: VehicleData) -> bool:
+        """Validate vehicle data"""
+        try:
+            if not data.registration_number:
+                raise ValidationError("Please enter registration number")
+            if not data.manufacturer:
+                raise ValidationError("Please enter manufacturer")
+            if not data.model:
+                raise ValidationError("Please enter model")
+            if not data.color:
+                raise ValidationError("Please enter color")
+            return True
+        except ValidationError as e:
+            self._show_error(str(e))
+            return False
+
     def _handle_remove(self):
         """Handle remove button click"""
         try:
-            lot_name = self.remove_lot_value.get()
-            level_str = self.remove_level_value.get()
-            slot_str = self.remove_slot_value.get()
-            
-            logger.debug(f"[DEBUG] Remove attempt - Lot: {lot_name}, Level: {level_str}, Slot: {slot_str}")
-            
-            if not lot_name or not level_str or not slot_str:
-                self._show_error("Please select lot, level, and slot")
+            # Get and validate input
+            lot_name, level, slot = self._get_remove_input()
+            if not all([lot_name, level, slot]):
                 return
             
-            # Convert to integers and adjust level to 0-based indexing
-            level = int(level_str) - 1  # Convert to 0-based indexing
-            slot = int(slot_str)
-            
-            logger.debug(f"[DEBUG] Converting to integers - Level: {level} (0-based), Slot: {slot}")
-            
-            # Verify the slot exists and is occupied
-            statuses = self.parking_manager.get_lot_status(lot_name)
-            slot_found = False
-            for status in statuses:
-                if status.level == level + 1 and status.slot == slot:  # Compare with 1-based level
-                    slot_found = True
-                    logger.debug(f"[DEBUG] Found slot status - Occupied: {status.is_occupied}")
-                    if not status.is_occupied:
-                        self._show_error("Selected slot is empty")
-                        return
-                    break
-            
-            if not slot_found:
-                logger.error(f"[DEBUG] Slot {slot} not found in level {level + 1}")
-                self._show_error("Selected slot does not exist")
+            # Verify slot exists and is occupied
+            if not self._verify_slot_occupied(lot_name, level, slot):
                 return
             
-            logger.debug(f"[DEBUG] Attempting to remove vehicle from lot: {lot_name}, level: {level}, slot: {slot}")
+            # Remove vehicle
             vehicle = self.parking_manager.remove_vehicle(lot_name, level, slot)
-            
             if vehicle:
-                logger.debug(f"[DEBUG] Successfully removed vehicle: {vehicle.registration_number}")
                 self._show_message(f"Removed vehicle {vehicle.registration_number} from slot {slot}")
-                # Update slot numbers after removal
-                self._update_remove_slots(lot_name, level + 1)  # Pass 1-based level
+                self._update_remove_slots(lot_name, level + 1)
             else:
-                logger.error("[DEBUG] No vehicle found in selected slot")
                 self._show_error("No vehicle found in selected slot")
+                
+        except ValidationError as e:
+            self._show_error(str(e))
         except ValueError as e:
-            logger.error(f"[DEBUG] Error in _handle_remove: {e}")
-            self._show_error("Invalid lot, level, or slot selection")
+            self._show_error("Invalid input: " + str(e))
         except Exception as e:
-            logger.error(f"[DEBUG] Error in _handle_remove: {e}")
-            self._show_error("Error removing vehicle")
-    
+            logger.error(f"Error in _handle_remove: {e}")
+            self._show_error("An unexpected error occurred")
+
+    def _get_remove_input(self) -> tuple[str, int, int]:
+        """Get and validate remove input"""
+        lot_name = self.remove_lot_value.get()
+        level_str = self.remove_level_value.get()
+        slot_str = self.remove_slot_value.get()
+        
+        if not lot_name or not level_str or not slot_str:
+            raise ValidationError("Please select lot, level, and slot")
+        
+        try:
+            level = int(level_str)  # Keep 1-based indexing
+            slot = int(slot_str)
+            return lot_name, level, slot
+        except ValueError:
+            raise ValidationError("Invalid level or slot number")
+
+    def _verify_slot_occupied(self, lot_name: str, level: int, slot: int) -> bool:
+        """Verify that the slot exists and is occupied"""
+        try:
+            statuses = self.parking_manager.get_lot_status(lot_name)
+            for level_data in statuses:
+                if level_data.level == level:  # Use level directly
+                    for slot_data in level_data.slots:
+                        if slot_data.slot_number == slot:
+                            if not slot_data.is_occupied:
+                                self._show_error("Selected slot is empty")
+                                return False
+                            return True
+            self._show_error("Selected slot does not exist")
+            return False
+        except Exception as e:
+            logger.error(f"Error verifying slot: {e}")
+            raise OperationError("Error verifying slot status")
+
     def _handle_search(self):
         """Handle search button click"""
         try:
@@ -531,7 +588,7 @@ class ParkingLotUI(ParkingLotObserver):
         try:
             lot_name = self.lot_name_value.get()
             if not lot_name:
-                self.show_error("Please select a lot")
+                self._show_error("Please select a lot")
                 return
             
             logger.debug(f"[DEBUG] Showing status for lot: {lot_name}")
@@ -543,37 +600,38 @@ class ParkingLotUI(ParkingLotObserver):
             logger.debug("[DEBUG] Cleared admin tree")
             
             # Add each status to the tree
-            for status in statuses:
-                logger.debug(f"[DEBUG] Processing status: level={status.level}, slot={status.slot}, is_occupied={status.is_occupied}")
-                
-                if not status.is_occupied:
-                    logger.debug("[DEBUG] No vehicle in this slot")
-                    continue
-                
-                if status.vehicle is None:
-                    continue
-                
-                logger.debug(f"[DEBUG] Adding vehicle to tree: {status.vehicle.registration_number}")
-                self.admin_tree.insert("", "end", values=(
-                    status.lot_name,
-                    status.level,
-                    status.slot,
-                    status.vehicle.registration_number,
-                    status.vehicle.manufacturer,
-                    status.vehicle.model,
-                    status.vehicle.color,
-                    "Yes" if status.vehicle.is_electric else "No",
-                    "Yes" if status.vehicle.is_motorcycle else "No",
-                    status.vehicle.vehicle_type.value,
-                    "N/A"  # Charge status is not available in VehicleData
-                ))
+            for level_data in statuses:
+                for slot in level_data.slots:
+                    logger.debug(f"[DEBUG] Processing slot: level={level_data.level}, slot={slot.slot_number}, is_occupied={slot.is_occupied}")
+                    
+                    if not slot.is_occupied:
+                        logger.debug("[DEBUG] No vehicle in this slot")
+                        continue
+                    
+                    if slot.vehicle is None:
+                        continue
+                    
+                    logger.debug(f"[DEBUG] Adding vehicle to tree: {slot.vehicle.registration_number}")
+                    self.admin_tree.insert("", "end", values=(
+                        lot_name,
+                        level_data.level,
+                        slot.slot_number,
+                        slot.vehicle.registration_number,
+                        slot.vehicle.manufacturer,
+                        slot.vehicle.model,
+                        slot.vehicle.color,
+                        "Yes" if slot.vehicle.is_electric else "No",
+                        "Yes" if slot.vehicle.is_motorcycle else "No",
+                        slot.vehicle.vehicle_type.value,
+                        "N/A"  # Charge status is not available in VehicleData
+                    ))
             
             # Switch to admin tab to show results
             self.notebook.select(self.admin_tab)
             
         except Exception as e:
             logger.error(f"Error showing status: {e}")
-            self.show_error(f"Error showing status: {str(e)}")
+            self._show_error(f"Error showing status: {str(e)}")
 
     def _handle_show_lots(self) -> None:
         """Handle showing all parking lots"""
@@ -601,15 +659,16 @@ class ParkingLotUI(ParkingLotObserver):
                 total_available_regular = 0
                 total_available_ev = 0
                 
-                for status in statuses:
-                    if status.slot_type == SlotType.REGULAR:
-                        total_regular_capacity += 1
-                        if not status.is_occupied:
-                            total_available_regular += 1
-                    elif status.slot_type == SlotType.ELECTRIC:
-                        total_ev_capacity += 1
-                        if not status.is_occupied:
-                            total_available_ev += 1
+                for level_data in statuses:
+                    for slot in level_data.slots:
+                        if slot.slot_type == SlotType.REGULAR:
+                            total_regular_capacity += 1
+                            if not slot.is_occupied:
+                                total_available_regular += 1
+                        elif slot.slot_type == SlotType.ELECTRIC:
+                            total_ev_capacity += 1
+                            if not slot.is_occupied:
+                                total_available_ev += 1
                 
                 logger.debug(f"[DEBUG] Adding lot {lot_name} to tree with aggregations")
                 self.admin_tree.insert("", "end", values=(
@@ -627,22 +686,6 @@ class ParkingLotUI(ParkingLotObserver):
         except Exception as e:
             logger.error(f"Error showing lots: {e}")
             self._show_error(f"Error showing lots: {str(e)}")
-    
-    def _validate_vehicle_data(self, data: VehicleData) -> bool:
-        """Validate vehicle data"""
-        if not data.registration_number:
-            self._show_error("Please enter registration number")
-            return False
-        if not data.manufacturer:
-            self._show_error("Please enter manufacturer")
-            return False
-        if not data.model:
-            self._show_error("Please enter model")
-            return False
-        if not data.color:
-            self._show_error("Please enter color")
-            return False
-        return True
     
     def _validate_lot_data(self, data: ParkingLotData) -> bool:
         """Validate parking lot data"""
@@ -676,12 +719,12 @@ class ParkingLotUI(ParkingLotObserver):
             # Get vehicle attributes
             if isinstance(vehicle, Vehicle):
                 registration_number = vehicle.registration_number
-                manufacturer = vehicle.vehicle_manufacturer
+                manufacturer = vehicle.manufacturer
                 model = vehicle.model
                 color = vehicle.color
-                is_ev = isinstance(vehicle, ElectricVehicle)
-                is_motorcycle = isinstance(vehicle, Motorcycle)
-                charge_status = f"{vehicle.current_battery_charge}%" if is_ev and hasattr(vehicle, "current_battery_charge") else "N/A"
+                is_ev = vehicle.is_electric
+                is_motorcycle = vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE]
+                charge_status = f"{vehicle.current_battery_charge}%" if is_ev and vehicle.current_battery_charge is not None else "N/A"
             else:  # VehicleData
                 registration_number = vehicle.registration_number
                 manufacturer = vehicle.manufacturer
@@ -723,18 +766,31 @@ class ParkingLotUI(ParkingLotObserver):
         self.vehicle_type_value.set("Car")
         self.is_electric_value.set(False)
     
-    def _show_message(self, message: str):
+    def _show_message(self, message: str) -> None:
         """Show a message in the message area"""
         self.message_area.insert("end", f"{message}\n")
         self.message_area.see("end")
     
-    def _show_error(self, message: str):
-        """Show an error message"""
-        self._show_message(message)
+    def _show_error(self, message: str) -> None:
+        """Show error message"""
+        messagebox.showerror("Error", message)
     
-    def update(self, message: str):
-        """Handle updates from the parking lot"""
-        self._show_message(message)
+    def update(self, lot_name: str):
+        """Handle updates from the parking lot
+        
+        Args:
+            lot_name: The name of the lot that was updated
+        """
+        # Update UI state
+        self._update_park_lot_names()
+        self._update_remove_lot_names()
+        self._update_details_lot_names()
+        
+        # Show status message
+        status = self.parking_manager.get_lot_status(lot_name)
+        if status:
+            self._show_message(f"Updated status for lot: {lot_name}")
+            self._show_status()
     
     def run(self):
         """Run the UI"""
@@ -802,7 +858,11 @@ class ParkingLotUI(ParkingLotObserver):
 
     def _show_status(self) -> None:
         """Show parking lot status"""
-        status = self.parking_manager.get_status()
+        lot_name = self.lot_name_value.get() or self.park_lot_value.get()
+        if not lot_name:
+            self._show_error("Please select a lot to show status.")
+            return
+        status = self.parking_manager.get_lot_status(lot_name)
         self._show_message(status)
 
     def create_lot(self):
@@ -836,9 +896,11 @@ class ParkingLotUI(ParkingLotObserver):
             statuses = self.parking_manager.get_lot_status(lot_name)
             occupied_slots = []
             
-            for status in statuses:
-                if status.level == level and status.is_occupied:
-                    occupied_slots.append(str(status.slot))
+            for level_data in statuses:
+                if level_data.level == level:
+                    for slot in level_data.slots:
+                        if slot.is_occupied:
+                            occupied_slots.append(str(slot.slot_number))
             
             # Update the combo box
             self.remove_slot_combo['values'] = occupied_slots
@@ -900,52 +962,53 @@ class ParkingLotUI(ParkingLotObserver):
             # Get status for this level
             statuses = self.parking_manager.get_lot_status(lot_name)
             
-            for status in statuses:
-                if status.level != level:
+            for level_data in statuses:
+                if level_data.level != level:
                     continue
                     
-                # Apply filter
-                if filter_type == "Available Slots" and status.is_occupied:
-                    continue
-                if filter_type == "Occupied Slots" and not status.is_occupied:
-                    continue
-                
-                # Prepare values
-                slot_status = "Occupied" if status.is_occupied else "Available"
-                registration = status.vehicle.registration_number if status.vehicle else ""
-                manufacturer = status.vehicle.manufacturer if status.vehicle else ""
-                model = status.vehicle.model if status.vehicle else ""
-                color = status.vehicle.color if status.vehicle else ""
-                slot_type = "EV" if status.slot_type == SlotType.ELECTRIC else "Standard"
-                vehicle_type = (
-                    "EV Motorcycle" if status.vehicle and status.vehicle.is_electric and status.vehicle.is_motorcycle else
-                    "EV" if status.vehicle and status.vehicle.is_electric else
-                    "Motorcycle" if status.vehicle and status.vehicle.is_motorcycle else
-                    "Standard" if status.vehicle else "N/A"
-                )
-                
-                # Handle charge status
-                charge_status = "N/A"
-                if status.vehicle and status.vehicle.is_electric:
-                    if status.is_charging:
-                        charge_status = "Charging"
-                    else:
-                        charge_status = "Not Charging"
-                
-                values = (
-                    level,
-                    status.slot,
-                    slot_status,
-                    registration,
-                    manufacturer,
-                    model,
-                    color,
-                    slot_type,
-                    vehicle_type,
-                    charge_status
-                )
-                
-                self.details_tree.insert("", "end", values=values)
+                for slot in level_data.slots:
+                    # Apply filter
+                    if filter_type == "Available Slots" and slot.is_occupied:
+                        continue
+                    if filter_type == "Occupied Slots" and not slot.is_occupied:
+                        continue
+                    
+                    # Prepare values
+                    slot_status = "Occupied" if slot.is_occupied else "Available"
+                    registration = slot.vehicle.registration_number if slot.vehicle else ""
+                    manufacturer = slot.vehicle.manufacturer if slot.vehicle else ""
+                    model = slot.vehicle.model if slot.vehicle else ""
+                    color = slot.vehicle.color if slot.vehicle else ""
+                    slot_type = "EV" if slot.slot_type == SlotType.ELECTRIC else "Standard"
+                    vehicle_type = (
+                        "EV Motorcycle" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.is_motorcycle else
+                        "EV" if slot.vehicle and slot.vehicle.is_electric else
+                        "Motorcycle" if slot.vehicle and slot.vehicle.is_motorcycle else
+                        "Standard" if slot.vehicle else "N/A"
+                    )
+                    
+                    # Handle charge status
+                    charge_status = "N/A"
+                    if slot.vehicle and slot.vehicle.is_electric:
+                        if hasattr(slot, 'is_charging') and slot.is_charging:
+                            charge_status = "Charging"
+                        else:
+                            charge_status = "Not Charging"
+                    
+                    values = (
+                        level,
+                        slot.slot_number,
+                        slot_status,
+                        registration,
+                        manufacturer,
+                        model,
+                        color,
+                        slot_type,
+                        vehicle_type,
+                        charge_status
+                    )
+                    
+                    self.details_tree.insert("", "end", values=values)
                 
         except Exception as e:
             logger.error(f"Error adding level details: {e}")
@@ -963,7 +1026,7 @@ class ParkingLotUI(ParkingLotObserver):
         """Get the vehicle type based on UI selections"""
         if self.is_electric_value.get():
             if self.vehicle_type_value.get() == "Motorcycle":
-                return VehicleType.ELECTRIC_MOTORCYCLE
+                return VehicleType.ELECTRIC_BIKE
             return VehicleType.ELECTRIC_CAR
         else:
             if self.vehicle_type_value.get() == "Motorcycle":
@@ -982,14 +1045,34 @@ class ParkingLotUI(ParkingLotObserver):
                 name="Downtown",
                 levels=[
                     ParkingLevelData(
-                        level_number=1,
-                        regular_slots=15,
-                        electric_slots=7
+                        level=1,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(15)
+                        ] + [
+                            ParkingSlotData(slot_number=i+16, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(7)
+                        ]
                     ),
                     ParkingLevelData(
-                        level_number=2,
-                        regular_slots=20,
-                        electric_slots=10
+                        level=2,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(20)
+                        ] + [
+                            ParkingSlotData(slot_number=i+21, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(10)
+                        ]
+                    ),
+                    ParkingLevelData(
+                        level=3,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(8)
+                        ] + [
+                            ParkingSlotData(slot_number=i+9, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(8)
+                        ]
                     )
                 ]
             )
@@ -1000,19 +1083,34 @@ class ParkingLotUI(ParkingLotObserver):
                 name="Airport",
                 levels=[
                     ParkingLevelData(
-                        level_number=1,
-                        regular_slots=25,
-                        electric_slots=12
+                        level=1,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(25)
+                        ] + [
+                            ParkingSlotData(slot_number=i+26, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(12)
+                        ]
                     ),
                     ParkingLevelData(
-                        level_number=2,
-                        regular_slots=25,
-                        electric_slots=12
+                        level=2,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(25)
+                        ] + [
+                            ParkingSlotData(slot_number=i+26, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(12)
+                        ]
                     ),
                     ParkingLevelData(
-                        level_number=3,
-                        regular_slots=25,
-                        electric_slots=12
+                        level=3,
+                        slots=[
+                            ParkingSlotData(slot_number=i+1, is_occupied=False, slot_type=SlotType.REGULAR)
+                            for i in range(25)
+                        ] + [
+                            ParkingSlotData(slot_number=i+26, is_occupied=False, slot_type=SlotType.ELECTRIC)
+                            for i in range(12)
+                        ]
                     )
                 ]
             )
@@ -1054,7 +1152,7 @@ class ParkingLotUI(ParkingLotObserver):
                     color="White",
                     is_electric=True,
                     is_motorcycle=True,
-                    vehicle_type=VehicleType.ELECTRIC_MOTORCYCLE
+                    vehicle_type=VehicleType.ELECTRIC_BIKE
                 )
             ]
 
@@ -1102,7 +1200,7 @@ class ParkingLotUI(ParkingLotObserver):
             self._update_park_levels()
             self._update_details_lot_names()
             self._update_details_levels()
-            self._update_remove_lot_names()  # Add explicit call to update remove lot names
+            self._update_remove_lot_names()
             
             # Show success message
             self._show_message("Sample data loaded successfully")
@@ -1172,10 +1270,12 @@ class ParkingLotUI(ParkingLotObserver):
             logger.debug(f"[DEBUG] Retrieved statuses: {statuses}")
             
             occupied_slots = []
-            for status in statuses:
-                if status.level == level and status.is_occupied:
-                    occupied_slots.append(str(status.slot))
-                    logger.debug(f"[DEBUG] Found occupied slot: {status.slot}")
+            for level_data in statuses:
+                if level_data.level == level:
+                    for slot in level_data.slots:
+                        if slot.is_occupied:
+                            occupied_slots.append(str(slot.slot_number))
+                            logger.debug(f"[DEBUG] Found occupied slot: {slot.slot_number}")
             
             logger.debug(f"[DEBUG] Found occupied slots: {occupied_slots}")
             
@@ -1200,60 +1300,56 @@ class ParkingLotUI(ParkingLotObserver):
         """Update the vehicle information display"""
         try:
             statuses = self.parking_manager.get_lot_status(lot_name)
-            for status in statuses:
-                if status.level == level and status.slot == slot and status.vehicle:
-                    vehicle = status.vehicle
-                    info_text = (
-                        f"Vehicle Information:\n"
-                        f"Registration: {vehicle.registration_number}\n"
-                        f"Manufacturer: {vehicle.manufacturer}\n"
-                        f"Model: {vehicle.model}\n"
-                        f"Color: {vehicle.color}\n"
-                        f"Type: {'Electric ' if vehicle.is_electric else ''}{'Motorcycle' if vehicle.is_motorcycle else 'Car'}"
-                    )
-                    self.vehicle_info_label.config(text=info_text)
-                    return
+            for level_data in statuses:
+                if level_data.level == level:
+                    for slot_data in level_data.slots:
+                        if slot_data.slot_number == slot and slot_data.vehicle:
+                            vehicle = slot_data.vehicle
+                            info_text = (
+                                f"Vehicle Information:\n"
+                                f"Registration: {vehicle.registration_number}\n"
+                                f"Manufacturer: {vehicle.manufacturer}\n"
+                                f"Model: {vehicle.model}\n"
+                                f"Color: {vehicle.color}\n"
+                                f"Type: {'Electric ' if vehicle.is_electric else ''}{'Motorcycle' if vehicle.is_motorcycle else 'Car'}"
+                            )
+                            self.vehicle_info_label.config(text=info_text)
+                            return
             self.vehicle_info_label.config(text="No vehicle found in selected slot")
         except Exception as e:
             logger.error(f"Error updating vehicle info: {e}")
             self.vehicle_info_label.config(text="Error loading vehicle information")
 
-    def _on_remove_lot_selected(self, event):
+    def _on_remove_lot_selected(self, event: Any) -> None:
         """Handle lot selection in remove section"""
         try:
-            logger.debug("[DEBUG] Lot selection event triggered")
             lot_name = self.remove_lot_value.get()
-            logger.debug(f"[DEBUG] Selected lot: {lot_name}")
             if lot_name:
                 self._update_remove_levels(lot_name)
         except Exception as e:
-            logger.error(f"[DEBUG] Error in _on_remove_lot_selected: {e}")
-            self._show_error("Error handling lot selection")
+            logger.error(f"Error in _on_remove_lot_selected: {e}")
+            self._show_error("Error updating levels")
 
-    def _on_remove_level_selected(self, event):
+    def _on_remove_level_selected(self, event: Any) -> None:
         """Handle level selection in remove section"""
         try:
-            logger.debug("[DEBUG] Level selection event triggered")
             lot_name = self.remove_lot_value.get()
             level_str = self.remove_level_value.get()
-            logger.debug(f"[DEBUG] Selected lot: {lot_name}, level: {level_str}")
             if lot_name and level_str:
                 self._update_remove_slots(lot_name, int(level_str))
         except Exception as e:
-            logger.error(f"[DEBUG] Error in _on_remove_level_selected: {e}")
-            self._show_error("Error handling level selection")
+            logger.error(f"Error in _on_remove_level_selected: {e}")
+            self._show_error("Error updating slots")
 
-    def _on_remove_slot_selected(self, event):
+    def _on_remove_slot_selected(self, event: Any) -> None:
         """Handle slot selection in remove section"""
         try:
-            logger.debug("[DEBUG] Slot selection event triggered")
             lot_name = self.remove_lot_value.get()
             level_str = self.remove_level_value.get()
             slot_str = self.remove_slot_value.get()
-            logger.debug(f"[DEBUG] Selected lot: {lot_name}, level: {level_str}, slot: {slot_str}")
             if lot_name and level_str and slot_str:
                 self._update_vehicle_info(lot_name, int(level_str), int(slot_str))
         except Exception as e:
-            logger.error(f"[DEBUG] Error in _on_remove_slot_selected: {e}")
-            self._show_error("Error handling slot selection")
+            logger.error(f"Error in _on_remove_slot_selected: {e}")
+            self._show_error("Error updating vehicle info")
 
