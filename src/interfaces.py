@@ -15,6 +15,22 @@ from models import (
 )
 from Vehicle import Vehicle
 
+class ParkingSystemError(Exception):
+    """Base exception for all parking system errors"""
+    pass
+
+class ParkingLotError(ParkingSystemError):
+    """Base exception for parking lot operations"""
+    pass
+
+class ValidationError(ParkingSystemError):
+    """Exception for validation errors"""
+    pass
+
+class OperationError(ParkingSystemError):
+    """Exception for operation errors"""
+    pass
+
 class ParkingLotObserver(ABC):
     """Interface for parking lot observers"""
     
