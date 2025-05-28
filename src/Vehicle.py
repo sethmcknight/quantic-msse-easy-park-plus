@@ -1,7 +1,7 @@
 """
-Vehicle classes for the parking system.
+Vehicle Module
 
-This module defines the vehicle classes used in the parking system.
+This module defines the vehicle classes for the parking system.
 """
 
 from dataclasses import dataclass
@@ -16,10 +16,10 @@ class Vehicle:
     manufacturer: str
     model: str
     color: str
-    is_electric: bool
-    is_motorcycle: bool
     vehicle_type: VehicleType
-    
+    is_electric: bool = False
+    current_battery_charge: Optional[float] = None
+
     def __post_init__(self):
         """Validate vehicle data"""
         if not self.registration_number:

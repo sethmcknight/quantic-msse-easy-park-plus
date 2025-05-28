@@ -44,26 +44,42 @@ Example:
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import logging
-from typing import Dict, Optional, Union
-from Vehicle import Vehicle, ElectricVehicle, Motorcycle
+from typing import Dict, Optional, Union, List, Any, Callable, cast
+from Vehicle import Vehicle, VehicleType
 from ParkingManager import ParkingLotManagerImpl
-from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType
+from models import VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData, VehicleType, SlotType, ParkingSlotData
 from interfaces import ParkingLotObserver
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+class ParkingLotUIError(Exception):
+    """Base exception for ParkingLotUI errors"""
+    pass
+
+class ValidationError(ParkingLotUIError):
+    """Exception for validation errors"""
+    pass
+
+class OperationError(ParkingLotUIError):
+    """Exception for operation errors"""
+    pass
 
 class ParkingLotUI(ParkingLotObserver):
     """Class representing the parking lot UI"""
     
     def __init__(self):
         """Initialize the UI"""
-        logger.debug("[DEBUG] Initializing ParkingLotUI")
+        logger.info("Initializing ParkingLotUI")
         self.parking_manager = ParkingLotManagerImpl()
         self.parking_manager.register_observer(self)
+        
         # Create main window
         self.root = tk.Tk()
         self.root.title("Parking Lot Management System")
@@ -73,6 +89,7 @@ class ParkingLotUI(ParkingLotObserver):
         
         # Initialize UI state
         self._init_state()
+        
         # Create and layout widgets
         self._create_widgets()
         self._layout_widgets()
@@ -84,11 +101,11 @@ class ParkingLotUI(ParkingLotObserver):
         self._bind_events()
         
         # Initialize dropdowns
-        logger.debug("[DEBUG] Initializing dropdowns")
+        logger.info("Initializing dropdowns")
         self._update_park_lot_names()
         self._update_park_levels()
-        self._update_remove_lot_names()  # Add explicit call to update remove lot names
-        logger.debug("[DEBUG] ParkingLotUI initialization complete")
+        self._update_remove_lot_names()
+        logger.info("ParkingLotUI initialization complete")
 
     def _init_state(self):
         """Initialize UI state variables"""
@@ -97,6 +114,7 @@ class ParkingLotUI(ParkingLotObserver):
         self.parking_level_value = tk.StringVar()
         self.regular_slots_value = tk.StringVar()
         self.electric_vehicle_slots_value = tk.StringVar()
+        
         # Vehicle Operations variables
         self.registration_number_value = tk.StringVar()
         self.vehicle_manufacturer_value = tk.StringVar()
@@ -106,10 +124,12 @@ class ParkingLotUI(ParkingLotObserver):
         self.is_electric_value = tk.BooleanVar()
         self.park_lot_value = tk.StringVar()
         self.park_level_value = tk.StringVar()
+        
         # Remove section variables
         self.remove_lot_value = tk.StringVar()
         self.remove_level_value = tk.StringVar()
         self.remove_slot_value = tk.StringVar()
+        
         # Search tab variables
         self.search_registration_number_value = tk.StringVar()
         self.search_vehicle_color_value = tk.StringVar()
@@ -117,10 +137,11 @@ class ParkingLotUI(ParkingLotObserver):
         self.search_vehicle_model_value = tk.StringVar()
         self.search_type_value = tk.StringVar(value="registration")
         self.search_value_value = tk.StringVar()
+        
         # Details tab variables
         self.details_lot_name_value = tk.StringVar()
         self.details_parking_level_value = tk.StringVar()
-    
+
     def _create_widgets(self):
         """Create UI widgets"""
         # Create notebook for tabs
