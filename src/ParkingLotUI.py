@@ -7,14 +7,14 @@ This module provides a graphical user interface for the parking lot management s
 import tkinter as tk
 from tkinter import ttk, messagebox
 import logging
-from typing import Dict, Optional, List, Any, cast, Tuple, Sequence, TypedDict, Protocol, Union, TYPE_CHECKING
+from typing import Dict, Optional, List, Any, Tuple, TypedDict, Protocol, Union, TYPE_CHECKING
 from Vehicle import Vehicle, VehicleType
 from ParkingManager import ParkingLotManagerImpl
 from models import (
     VehicleData, SearchCriteria, ParkingLotData, ParkingLevelData,
     VehicleType, SlotType, ParkingSlotData, SearchResult
 )
-from interfaces import ParkingLotObserver, ParkingSystemError, ValidationError, OperationError
+from interfaces import ParkingLotObserver, ValidationError, OperationError
 
 if TYPE_CHECKING:
     from tkinter import _tkinter
@@ -51,7 +51,7 @@ class VehicleProtocol(Protocol):
     is_electric: bool
     vehicle_type: VehicleType
     is_motorcycle: bool
-    current_battery_charge: Optional[int]
+    current_battery_charge: Optional[float]
 
 class UIStateManager:
     """Manages UI state variables"""
@@ -749,7 +749,7 @@ class ParkingLotUI(ParkingLotObserver):
     
     def _add_vehicle_to_tree(self, vehicle: Union[Vehicle, VehicleData], slot: int) -> None:
         """Add a vehicle to the results tree"""
-        cast(TreeViewManager, self.tree_manager).add_vehicle(vehicle, slot)
+        self.tree_manager.add_vehicle(vehicle, slot)
     
     def _clear_park_fields(self):
         """Clear vehicle input fields"""
@@ -768,11 +768,11 @@ class ParkingLotUI(ParkingLotObserver):
         """Show error message"""
         self.message_manager.show_error(message)
     
-    def update(self, lot_name: str):
+    def update(self, message: str):
         """Handle updates from the parking lot
         
         Args:
-            lot_name: The name of the lot that was updated
+            message: The name of the lot that was updated
         """
         # Update UI state
         self._update_park_lot_names()
@@ -780,9 +780,9 @@ class ParkingLotUI(ParkingLotObserver):
         self._update_details_lot_names()
         
         # Show status message
-        status = self.parking_manager.get_lot_status(lot_name)
+        status = self.parking_manager.get_lot_status(message)
         if status:
-            self.message_manager.show_message(f"Updated status for lot: {lot_name}")
+            self.message_manager.show_message(f"Updated status for lot: {message}")
             self._show_status()
     
     def run(self):
@@ -827,7 +827,7 @@ class ParkingLotUI(ParkingLotObserver):
         try:
             selected_lot = self.state_manager.lot_name_value.get()
             selected_level = int(self.state_manager.parking_level_value.get())
-            print(f"[DEBUG] _show_full_status called with lot={selected_lot}, level={selected_level}")
+            logger.debug(f"_show_full_status called with lot={selected_lot}, level={selected_level}")
             
             if not selected_lot:
                 self.message_manager.show_error("Please select a parking lot")
@@ -838,7 +838,7 @@ class ParkingLotUI(ParkingLotObserver):
             
             # Get all vehicles in the lot
             vehicles: Dict[int, Vehicle] = self.parking_manager.get_vehicles_in_lot(selected_lot, selected_level)
-            print(f"[DEBUG] _show_full_status received {len(vehicles)} vehicles")
+            logger.debug(f"_show_full_status received {len(vehicles)} vehicles")
             for slot_number, vehicle in vehicles.items():
                 self._add_vehicle_to_tree(vehicle, slot_number)
             
