@@ -97,9 +97,10 @@ class ParkingLot(ParkingLotInterface):
                         color=vehicle.color,
                         is_electric=True,
                         is_motorcycle=vehicle.vehicle_type == VehicleType.MOTORCYCLE,
-                        vehicle_type=vehicle.vehicle_type
+                        vehicle_type=vehicle.vehicle_type,
+                        current_battery_charge=vehicle.current_battery_charge
                     )
-                    logger.info(f"Parked electric vehicle {vehicle.registration_number} in slot {slot.slot_number}")
+                    logger.info(f"Parked electric vehicle {vehicle.registration_number} in slot {slot.slot_number} with charge {vehicle.current_battery_charge:.1f}%")
                     return slot.slot_number
                 elif not vehicle.is_electric and slot.slot_type == SlotType.REGULAR:
                     slot.is_occupied = True
