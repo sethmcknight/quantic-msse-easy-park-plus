@@ -17,7 +17,7 @@ from models import (
 from interfaces import ParkingLotObserver, ValidationError, OperationError
 
 if TYPE_CHECKING:
-    from tkinter import _tkinter
+    from tkinter import _tkinter  # type: ignore
 
 # Configure logging
 logging.basicConfig(
@@ -533,14 +533,16 @@ class ParkingLotUI(ParkingLotObserver):
     def _get_vehicle_data(self) -> VehicleData:
         """Get vehicle data from UI fields"""
         try:
+            vehicle_type = self._get_vehicle_type()
+            is_motorcycle = vehicle_type == VehicleType.MOTORCYCLE
             return VehicleData(
                 registration_number=self.state_manager.registration_number_value.get().strip(),
                 manufacturer=self.state_manager.vehicle_manufacturer_value.get().strip(),
                 model=self.state_manager.vehicle_model_value.get().strip(),
                 color=self.state_manager.vehicle_color_value.get().strip(),
                 is_electric=self.state_manager.is_electric_value.get(),
-                is_motorcycle=self.state_manager.vehicle_type_value.get() == "Motorcycle",
-                vehicle_type=self._get_vehicle_type()
+                is_motorcycle=is_motorcycle,
+                vehicle_type=vehicle_type
             )
         except Exception as e:
             raise ValidationError(f"Error getting vehicle data: {e}")
@@ -976,25 +978,8 @@ class ParkingLotUI(ParkingLotObserver):
                     model: str = slot.vehicle.model if slot.vehicle else ""
                     color: str = slot.vehicle.color if slot.vehicle else ""
                     slot_type: str = "EV" if slot.slot_type == SlotType.ELECTRIC else "Standard"
-                    vehicle_type: str = (
-                        "Electric Motorcycle" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.MOTORCYCLE else
-                        "Electric Car" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.CAR else
-                        "Electric Truck" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.TRUCK else
-                        "Electric Bus" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.BUS else
-                        "Motorcycle" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.MOTORCYCLE else
-                        "Car" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.CAR else
-                        "Truck" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.TRUCK else
-                        "Bus" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.BUS else
-                        "Unknown"
-                    )
-                    
-                    # Handle charge status
-                    charge_status: str = "N/A"
-                    if slot.vehicle and slot.vehicle.is_electric:
-                        if isinstance(slot.vehicle, Vehicle) and hasattr(slot.vehicle, 'current_battery_charge'):
-                            charge_status = f"{slot.vehicle.current_battery_charge:.1f}%"
-                        elif isinstance(slot.vehicle, VehicleData) and hasattr(slot.vehicle, 'current_battery_charge'):
-                            charge_status = f"{slot.vehicle.current_battery_charge:.1f}%"
+                    vehicle_type: str = self._get_vehicle_type_display(slot.vehicle) if slot.vehicle else "Unknown"
+                    charge_status: str = self._get_battery_charge_display(slot.vehicle) if slot.vehicle else "N/A"
                     
                     values: Tuple[str, ...] = (
                         str(level),
@@ -1301,39 +1286,35 @@ class ParkingLotUI(ParkingLotObserver):
             logger.error(f"[DEBUG] Error in _update_remove_levels: {e}")
             self.message_manager.show_error("Error updating levels")
 
-    def _update_remove_slots(self, lot_name: str, level: int):
+    def _update_remove_slots(self, lot_name: str, level: int) -> None:
         """Update the slot numbers in the remove combo box"""
         try:
-            logger.debug(f"[DEBUG] Starting _update_remove_slots for lot: {lot_name}, level: {level}")
+            logger.debug(f"Updating remove slots for lot: {lot_name}, level: {level}")
             # Get all slots for the selected lot and level
             statuses = self.parking_manager.get_lot_status(lot_name)
-            logger.debug(f"[DEBUG] Retrieved statuses: {statuses}")
             
-            occupied_slots = []
+            occupied_slots: List[str] = []
             for level_data in statuses:
                 if level_data.level == level:
                     for slot in level_data.slots:
                         if slot.is_occupied:
                             occupied_slots.append(str(slot.slot_number))
-                            logger.debug(f"[DEBUG] Found occupied slot: {slot.slot_number}")
+                            logger.debug(f"Found occupied slot: {slot.slot_number}")
             
-            logger.debug(f"[DEBUG] Found occupied slots: {occupied_slots}")
+            logger.debug(f"Found {len(occupied_slots)} occupied slots")
             
             # Update the combo box
             if occupied_slots:
-                logger.debug(f"[DEBUG] Setting slot values in combo box: {occupied_slots}")
                 self.remove_slot_combo['values'] = occupied_slots
                 self.state_manager.remove_slot_value.set(occupied_slots[0])
-                logger.debug(f"[DEBUG] Selected first slot: {occupied_slots[0]}")
                 self._update_vehicle_info(lot_name, level, int(occupied_slots[0]))
             else:
-                logger.debug("[DEBUG] No occupied slots found")
                 self.remove_slot_combo['values'] = []
                 self.state_manager.remove_slot_value.set('')
                 self.vehicle_info_label.config(text="No vehicles in selected level")
             
         except Exception as e:
-            logger.error(f"[DEBUG] Error in _update_remove_slots: {e}")
+            logger.error(f"Error updating slot numbers: {e}")
             self.message_manager.show_error("Error updating slot numbers")
 
     def _update_vehicle_info(self, lot_name: str, level: int, slot: int) -> None:
@@ -1345,17 +1326,7 @@ class ParkingLotUI(ParkingLotObserver):
                     for slot_data in level_data.slots:
                         if slot_data.slot_number == slot and slot_data.vehicle:
                             vehicle = slot_data.vehicle
-                            vehicle_type = (
-                                "Electric Motorcycle" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.MOTORCYCLE else
-                                "Electric Car" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.CAR else
-                                "Electric Truck" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.TRUCK else
-                                "Electric Bus" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.BUS else
-                                "Motorcycle" if vehicle.vehicle_type == VehicleType.MOTORCYCLE else
-                                "Car" if vehicle.vehicle_type == VehicleType.CAR else
-                                "Truck" if vehicle.vehicle_type == VehicleType.TRUCK else
-                                "Bus" if vehicle.vehicle_type == VehicleType.BUS else
-                                "Unknown"
-                            )
+                            vehicle_type = self._get_vehicle_type_display(vehicle)
                             info_text: str = (
                                 f"Vehicle Information:\n"
                                 f"Registration: {vehicle.registration_number}\n"
@@ -1364,6 +1335,8 @@ class ParkingLotUI(ParkingLotObserver):
                                 f"Color: {vehicle.color}\n"
                                 f"Type: {vehicle_type}"
                             )
+                            if vehicle.is_electric:
+                                info_text += f"\nBattery Charge: {self._get_battery_charge_display(vehicle)}"
                             self.vehicle_info_label.config(text=info_text)
                             return
             self.vehicle_info_label.config(text="No vehicle found in selected slot")
@@ -1408,10 +1381,33 @@ class ParkingLotUI(ParkingLotObserver):
         """Check if vehicle is a motorcycle"""
         return vehicle.vehicle_type == VehicleType.MOTORCYCLE
 
-    def _get_vehicle_type_display(self, vehicle: VehicleData) -> str:
+    def _get_vehicle_type_display(self, vehicle: Union[Vehicle, VehicleData]) -> str:
         """Get display string for vehicle type"""
-        type_str = vehicle.vehicle_type.name.lower()
-        return f"Electric {type_str.capitalize()}" if vehicle.is_electric else type_str.capitalize()
+        if not vehicle:
+            return "Unknown"
+            
+        is_ev = vehicle.is_electric
+        vehicle_type = vehicle.vehicle_type
+        
+        type_map = {
+            VehicleType.MOTORCYCLE: "Motorcycle",
+            VehicleType.CAR: "Car",
+            VehicleType.TRUCK: "Truck",
+            VehicleType.BUS: "Bus"
+        }
+        
+        base_type = type_map.get(vehicle_type, "Unknown")
+        return f"Electric {base_type}" if is_ev else base_type
+
+    def _get_battery_charge_display(self, vehicle: Union[Vehicle, VehicleData]) -> str:
+        """Get display string for battery charge"""
+        if not vehicle or not vehicle.is_electric:
+            return "N/A"
+            
+        if hasattr(vehicle, 'current_battery_charge') and vehicle.current_battery_charge is not None:
+            return f"{vehicle.current_battery_charge:.1f}%"
+            
+        return "N/A"
 
     def _get_vehicle_type_from_ui(self) -> VehicleType:
         """Get vehicle type from UI selection"""
@@ -1419,26 +1415,21 @@ class ParkingLotUI(ParkingLotObserver):
         return VehicleType.from_string(type_str)
 
     def _create_vehicle_data(self) -> VehicleData:
-        """Create vehicle data from UI inputs"""
-        vehicle_type = self._get_vehicle_type_from_ui()
-        is_electric = self.state_manager.is_electric_value.get()
-        
-        return VehicleData(
-            registration_number=self.state_manager.registration_number_value.get(),
-            manufacturer=self.state_manager.vehicle_manufacturer_value.get(),
-            model=self.state_manager.vehicle_model_value.get(),
-            color=self.state_manager.vehicle_color_value.get(),
-            vehicle_type=vehicle_type,
-            is_electric=is_electric,
-            is_motorcycle=self._is_motorcycle(VehicleData(
-                registration_number="",
-                manufacturer="",
-                model="",
-                color="",
-                vehicle_type=vehicle_type,
-                is_electric=is_electric
-            ))
-        )
+        """Get vehicle data from UI fields"""
+        try:
+            vehicle_type = self._get_vehicle_type()
+            is_motorcycle = vehicle_type == VehicleType.MOTORCYCLE
+            return VehicleData(
+                registration_number=self.state_manager.registration_number_value.get().strip(),
+                manufacturer=self.state_manager.vehicle_manufacturer_value.get().strip(),
+                model=self.state_manager.vehicle_model_value.get().strip(),
+                color=self.state_manager.vehicle_color_value.get().strip(),
+                is_electric=self.state_manager.is_electric_value.get(),
+                is_motorcycle=is_motorcycle,
+                vehicle_type=vehicle_type
+            )
+        except Exception as e:
+            raise ValidationError(f"Error getting vehicle data: {e}")
 
     def _update_results_tree(self, results: List[SearchResult]) -> None:
         """Update search results tree"""
