@@ -16,12 +16,16 @@ from models import (
     SlotType
 )
 from Vehicle import Vehicle, VehicleType, create_vehicle
-from interfaces import ParkingLotInterface, ParkingLotManager, ParkingLotObserver
+from interfaces import ParkingLotInterface, ParkingLotManager, ParkingLotObserver, ValidationError, OperationError
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('parking_system.log'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -212,30 +216,54 @@ class ParkingLotManagerImpl(ParkingLotManager):
         logger.info("Initialized ParkingLotManagerImpl")
     
     def create_lot(self, data: ParkingLotData) -> bool:
-        """Create a new parking lot
+        """Create a new parking lot or add a level to an existing lot
         
         Args:
             data: The parking lot data
             
         Returns:
-            True if the lot was created successfully
+            True if the lot was created or updated successfully
+            
+        Raises:
+            ValidationError: If the lot data is invalid
+            OperationError: If the operation fails
         """
-        if data.name in self.lots:
-            logger.error(f"Lot {data.name} already exists")
-            return False
+        if not data.name:
+            raise ValidationError("Lot name is required")
         
-        lot = ParkingLot(data.name)
-        for level_data in data.levels:
-            lot.add_level(
-                level=level_data.level,
-                regular_slots=len([s for s in level_data.slots if s.slot_type == SlotType.REGULAR]),
-                electric_slots=len([s for s in level_data.slots if s.slot_type == SlotType.ELECTRIC])
-            )
-        
-        self.lots[data.name] = lot
-        self._notify_observers(data.name)
-        logger.info(f"Created parking lot: {data.name}")
-        return True
+        try:
+            if data.name in self.lots:
+                # Add new level to existing lot
+                lot = self.lots[data.name]
+                for level_data in data.levels:
+                    # Check if level already exists
+                    if level_data.level in lot.levels:
+                        raise OperationError(f"Level {level_data.level} already exists in lot {data.name}")
+                    
+                    # Add the new level
+                    lot.add_level(
+                        level=level_data.level,
+                        regular_slots=len([s for s in level_data.slots if s.slot_type == SlotType.REGULAR]),
+                        electric_slots=len([s for s in level_data.slots if s.slot_type == SlotType.ELECTRIC])
+                    )
+                logger.info(f"Added new level to existing lot: {data.name}")
+            else:
+                # Create new lot
+                lot = ParkingLot(data.name)
+                for level_data in data.levels:
+                    lot.add_level(
+                        level=level_data.level,
+                        regular_slots=len([s for s in level_data.slots if s.slot_type == SlotType.REGULAR]),
+                        electric_slots=len([s for s in level_data.slots if s.slot_type == SlotType.ELECTRIC])
+                    )
+                self.lots[data.name] = lot
+                logger.info(f"Created new parking lot: {data.name}")
+            
+            self._notify_observers(data.name)
+            return True
+        except Exception as e:
+            logger.error(f"Error creating/updating lot {data.name}: {e}")
+            raise OperationError(f"Failed to create/update lot: {str(e)}")
     
     def park_vehicle(self, lot_name: str, level: int, data: VehicleData) -> Optional[int]:
         """Park a vehicle in a lot
@@ -247,24 +275,31 @@ class ParkingLotManagerImpl(ParkingLotManager):
             
         Returns:
             The slot number where the vehicle was parked, or None if parking failed
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or parking fails
         """
         if lot_name not in self.lots:
-            logger.error(f"Lot {lot_name} not found")
-            return None
+            raise OperationError(f"Lot {lot_name} not found")
         
-        vehicle = create_vehicle(
-            registration_number=data.registration_number,
-            manufacturer=data.manufacturer,
-            model=data.model,
-            color=data.color,
-            vehicle_type=data.vehicle_type,
-            is_electric=data.is_electric
-        )
-        
-        slot = self.lots[lot_name].park_vehicle(level, vehicle)
-        if slot is not None:
-            self._notify_observers(lot_name)
-        return slot
+        try:
+            vehicle = create_vehicle(
+                registration_number=data.registration_number,
+                manufacturer=data.manufacturer,
+                model=data.model,
+                color=data.color,
+                vehicle_type=data.vehicle_type,
+                is_electric=data.is_electric
+            )
+            
+            slot = self.lots[lot_name].park_vehicle(level, vehicle)
+            if slot is not None:
+                self._notify_observers(lot_name)
+            return slot
+        except Exception as e:
+            logger.error(f"Error parking vehicle in lot {lot_name}: {e}")
+            raise OperationError(f"Failed to park vehicle: {str(e)}")
     
     def remove_vehicle(self, lot_name: str, level: int, slot: int) -> Optional[Vehicle]:
         """Remove a vehicle from a lot
@@ -276,15 +311,22 @@ class ParkingLotManagerImpl(ParkingLotManager):
             
         Returns:
             The removed vehicle, or None if no vehicle was found
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or removal fails
         """
         if lot_name not in self.lots:
-            logger.error(f"Lot {lot_name} not found")
-            return None
+            raise OperationError(f"Lot {lot_name} not found")
         
-        vehicle = self.lots[lot_name].remove_vehicle(level, slot)
-        if vehicle is not None:
-            self._notify_observers(lot_name)
-        return vehicle
+        try:
+            vehicle = self.lots[lot_name].remove_vehicle(level, slot)
+            if vehicle is not None:
+                self._notify_observers(lot_name)
+            return vehicle
+        except Exception as e:
+            logger.error(f"Error removing vehicle from lot {lot_name}: {e}")
+            raise OperationError(f"Failed to remove vehicle: {str(e)}")
     
     def search_vehicles(self, lot_name: str, criteria: SearchCriteria) -> List[SearchResult]:
         """Search for vehicles matching criteria in a specific lot
@@ -295,26 +337,33 @@ class ParkingLotManagerImpl(ParkingLotManager):
             
         Returns:
             List of search results
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or search fails
         """
         if lot_name not in self.lots:
-            logger.error(f"Lot {lot_name} not found")
-            return []
+            raise OperationError(f"Lot {lot_name} not found")
         
-        results: List[SearchResult] = []
-        lot = self.lots[lot_name]
-        
-        # Search through all levels
-        for level, slots in lot.levels.items():
-            for slot in slots:
-                if slot.is_occupied and slot.vehicle and self._matches_criteria(slot.vehicle, criteria):
-                    results.append(SearchResult(
-                        lot_name=lot_name,
-                        level=level,
-                        slot=slot.slot_number,
-                        vehicle=slot.vehicle
-                    ))
-        
-        return results
+        try:
+            results: List[SearchResult] = []
+            lot = self.lots[lot_name]
+            
+            # Search through all levels
+            for level, slots in lot.levels.items():
+                for slot in slots:
+                    if slot.is_occupied and slot.vehicle and self._matches_criteria(slot.vehicle, criteria):
+                        results.append(SearchResult(
+                            lot_name=lot_name,
+                            level=level,
+                            slot=slot.slot_number,
+                            vehicle=slot.vehicle
+                        ))
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error searching vehicles in lot {lot_name}: {e}")
+            raise OperationError(f"Failed to search vehicles: {str(e)}")
     
     def get_lot_status(self, lot_name: str) -> List[ParkingLevelData]:
         """Get the status of a lot
@@ -324,12 +373,19 @@ class ParkingLotManagerImpl(ParkingLotManager):
             
         Returns:
             List of level data
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or status retrieval fails
         """
         if lot_name not in self.lots:
-            logger.error(f"Lot {lot_name} not found")
-            return []
+            raise OperationError(f"Lot {lot_name} not found")
         
-        return self.lots[lot_name].get_status()
+        try:
+            return self.lots[lot_name].get_status()
+        except Exception as e:
+            logger.error(f"Error getting status for lot {lot_name}: {e}")
+            raise OperationError(f"Failed to get lot status: {str(e)}")
     
     def get_lot_names(self) -> List[str]:
         """Get the names of all lots
