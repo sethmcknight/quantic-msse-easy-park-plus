@@ -5,7 +5,7 @@ This module defines the interfaces used in the parking system.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict
 from models import (
     VehicleData,
     ParkingLotData,
@@ -91,6 +91,18 @@ class ParkingLotInterface(ABC):
             
         Returns:
             The vehicle in the slot, or None if no vehicle is present
+        """
+        pass
+
+    @abstractmethod
+    def get_vehicles_in_lot(self, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific level
+        
+        Args:
+            level: The level to get vehicles from
+            
+        Returns:
+            Dictionary mapping slot numbers to vehicles
         """
         pass
 
@@ -186,5 +198,18 @@ class ParkingLotManager(ABC):
         
         Args:
             observer: The observer to remove
+        """
+        pass
+
+    @abstractmethod
+    def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific lot and level
+        
+        Args:
+            lot_name: The name of the lot
+            level: The level to get vehicles from
+            
+        Returns:
+            Dictionary mapping slot numbers to vehicles
         """
         pass

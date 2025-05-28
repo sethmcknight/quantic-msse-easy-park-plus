@@ -206,6 +206,35 @@ class ParkingLot(ParkingLotInterface):
         logger.error(f"Slot {slot} not found in level {level}")
         return None
 
+    def get_vehicles_in_lot(self, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific level
+        
+        Args:
+            level: The level to get vehicles from
+            
+        Returns:
+            Dictionary mapping slot numbers to vehicles
+        """
+        vehicles: Dict[int, Vehicle] = {}
+        
+        if level not in self.levels:
+            logger.error(f"Level {level} not found in {self.name}")
+            return vehicles
+        
+        for slot in self.levels[level]:
+            if slot.is_occupied and slot.vehicle:
+                vehicle = create_vehicle(
+                    registration_number=slot.vehicle.registration_number,
+                    manufacturer=slot.vehicle.manufacturer,
+                    model=slot.vehicle.model,
+                    color=slot.vehicle.color,
+                    vehicle_type=slot.vehicle.vehicle_type,
+                    is_electric=slot.vehicle.is_electric
+                )
+                vehicles[slot.slot_number] = vehicle
+        
+        return vehicles
+
 class ParkingLotManagerImpl(ParkingLotManager):
     """Implementation of the parking lot manager"""
     
@@ -467,6 +496,48 @@ class ParkingLotManagerImpl(ParkingLotManager):
             return []
         
         return sorted(self.lots[lot_name].levels.keys())
+
+    def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Vehicle]:
+        """Get all vehicles in a specific lot and level
+        
+        Args:
+            lot_name: The name of the lot
+            level: The level to get vehicles from
+            
+        Returns:
+            Dictionary mapping slot numbers to vehicles
+            
+        Raises:
+            ValidationError: If the input data is invalid
+            OperationError: If the lot doesn't exist or retrieval fails
+        """
+        if lot_name not in self.lots:
+            raise OperationError(f"Lot {lot_name} not found")
+        
+        try:
+            vehicles: Dict[int, Vehicle] = {}
+            lot = self.lots[lot_name]
+            
+            if level not in lot.levels:
+                logger.error(f"Level {level} not found in lot {lot_name}")
+                return vehicles
+            
+            for slot in lot.levels[level]:
+                if slot.is_occupied and slot.vehicle:
+                    vehicle = create_vehicle(
+                        registration_number=slot.vehicle.registration_number,
+                        manufacturer=slot.vehicle.manufacturer,
+                        model=slot.vehicle.model,
+                        color=slot.vehicle.color,
+                        vehicle_type=slot.vehicle.vehicle_type,
+                        is_electric=slot.vehicle.is_electric
+                    )
+                    vehicles[slot.slot_number] = vehicle
+            
+            return vehicles
+        except Exception as e:
+            logger.error(f"Error getting vehicles in lot {lot_name}, level {level}: {e}")
+            raise OperationError(f"Failed to get vehicles: {str(e)}")
 
 # Main App
 def main():

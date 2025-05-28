@@ -24,6 +24,7 @@ class VehicleData:
     is_electric: bool
     is_motorcycle: bool
     vehicle_type: VehicleType
+    current_battery_charge: Optional[float] = None
 
 @dataclass
 class ParkingSlotData:
