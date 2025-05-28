@@ -1,35 +1,37 @@
 import unittest
-from Vehicle import VehicleFactory
+from Vehicle import Vehicle, VehicleType, create_vehicle
 from ParkingManager import ParkingLot
-from models import ParkingLotData # Add this import
+from models import ParkingLotData
 
 class TestVehicle(unittest.TestCase):
     def test_vehicle_attributes(self):
-        v = VehicleFactory.create_car("ABC123", "Toyota", "Camry", "Red")
+        v = create_vehicle("ABC123", "Toyota", "Camry", "Red", VehicleType.CAR, False)
         self.assertEqual(v.vehicle_manufacturer, "Toyota")
         self.assertEqual(v.model, "Camry")
         self.assertEqual(v.color, "Red")
         self.assertEqual(v.registration_number, "ABC123")
+        self.assertEqual(v.vehicle_type, VehicleType.CAR)
+        self.assertFalse(v.is_electric)
 
     def test_car_type(self):
-        c = VehicleFactory.create_car("DEF456", "Honda", "Civic", "Blue")
+        c = create_vehicle("DEF456", "Honda", "Civic", "Blue", VehicleType.CAR, False)
         self.assertEqual(c.get_type(), "Car")
 
     def test_truck_type(self):
-        t = VehicleFactory.create_truck("GHI789", "Ford", "F-150", "Black")
+        t = create_vehicle("GHI789", "Ford", "F-150", "Black", VehicleType.TRUCK, False)
         self.assertEqual(t.get_type(), "Truck")
 
     def test_motorcycle_type(self):
-        m = VehicleFactory.create_motorcycle("JKL012", "Yamaha", "YZF", "Yellow")
+        m = create_vehicle("JKL012", "Yamaha", "YZF", "Yellow", VehicleType.MOTORCYCLE, False)
         self.assertEqual(m.get_type(), "Motorcycle")
 
     def test_bus_type(self):
-        b = VehicleFactory.create_bus("MNO345", "Mercedes", "Sprinter", "White")
+        b = create_vehicle("MNO345", "Mercedes", "Sprinter", "White", VehicleType.BUS, False)
         self.assertEqual(b.get_type(), "Bus")
 
 class TestElectricVehicle(unittest.TestCase):
     def test_electric_car_attributes(self):
-        electric_vehicle = VehicleFactory.create_electric_car("EV123", "Tesla", "Model 3", "White")
+        electric_vehicle = create_vehicle("EV123", "Tesla", "Model 3", "White", VehicleType.CAR, True)
         self.assertEqual(electric_vehicle.vehicle_manufacturer, "Tesla")
         self.assertEqual(electric_vehicle.model, "Model 3")
         self.assertEqual(electric_vehicle.color, "White")
@@ -37,13 +39,15 @@ class TestElectricVehicle(unittest.TestCase):
         self.assertEqual(electric_vehicle.battery_charge_level, 0)
         electric_vehicle.set_battery_charge_level(80)
         self.assertEqual(electric_vehicle.battery_charge_level, 80)
+        self.assertTrue(electric_vehicle.is_electric)
+        self.assertEqual(electric_vehicle.vehicle_type, VehicleType.CAR)
 
     def test_electric_car_type(self):
-        ec = VehicleFactory.create_electric_car("EV456", "Nissan", "Leaf", "Green")
+        ec = create_vehicle("EV456", "Nissan", "Leaf", "Green", VehicleType.CAR, True)
         self.assertEqual(ec.get_type(), "Electric Car")
 
     def test_electric_motorcycle_type(self):
-        em = VehicleFactory.create_electric_motorcycle("EV789", "Zero", "SR/F", "Black")
+        em = create_vehicle("EV789", "Zero", "SR/F", "Black", VehicleType.MOTORCYCLE, True)
         self.assertEqual(em.get_type(), "Electric Motorcycle")
 
 class TestParkingLot(unittest.TestCase):

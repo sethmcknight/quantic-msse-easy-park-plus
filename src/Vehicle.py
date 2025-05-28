@@ -14,8 +14,14 @@ class VehicleType(Enum):
     TRUCK = auto()
     MOTORCYCLE = auto()
     BUS = auto()
-    ELECTRIC_CAR = auto()
-    ELECTRIC_BIKE = auto()
+
+    @classmethod
+    def from_string(cls, type_str: str) -> 'VehicleType':
+        """Convert string to VehicleType enum"""
+        try:
+            return cls[type_str.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid vehicle type: {type_str}")
 
 @dataclass
 class Vehicle:
@@ -35,7 +41,8 @@ class Vehicle:
 
     def get_type(self) -> str:
         """Get vehicle type as string"""
-        return self.vehicle_type.name.lower()
+        type_str = self.vehicle_type.name.lower()
+        return f"electric_{type_str}" if self.is_electric else type_str
 
     def get_manufacturer(self) -> str:
         """Get vehicle manufacturer"""

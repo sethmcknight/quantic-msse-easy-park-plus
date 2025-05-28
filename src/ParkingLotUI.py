@@ -681,19 +681,14 @@ class ParkingLotUI(ParkingLotObserver):
         return int(item['values'][0])
     
     def _add_vehicle_to_tree(self, vehicle: Union[Vehicle, VehicleData], slot: int) -> None:
-        """Add a vehicle to the results tree
-        
-        Args:
-            vehicle: The vehicle to add
-            slot: The slot number
-        """
+        """Add a vehicle to the results tree"""
         # Get vehicle attributes
         registration_number: str = vehicle.registration_number
         manufacturer: str = vehicle.manufacturer
         model: str = vehicle.model
         color: str = vehicle.color
         is_ev: bool = vehicle.is_electric
-        is_motorcycle: bool = vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE]
+        is_motorcycle: bool = vehicle.vehicle_type == VehicleType.MOTORCYCLE
         
         # Handle charge status
         charge_status: str = "N/A"
@@ -938,7 +933,7 @@ class ParkingLotUI(ParkingLotObserver):
                     if filter_type == "Occupied Slots" and not slot.is_occupied:
                         continue
                     
-                    # Prepare values
+                    # Get slot details
                     slot_status: str = "Occupied" if slot.is_occupied else "Available"
                     registration: str = slot.vehicle.registration_number if slot.vehicle else ""
                     manufacturer: str = slot.vehicle.manufacturer if slot.vehicle else ""
@@ -946,10 +941,15 @@ class ParkingLotUI(ParkingLotObserver):
                     color: str = slot.vehicle.color if slot.vehicle else ""
                     slot_type: str = "EV" if slot.slot_type == SlotType.ELECTRIC else "Standard"
                     vehicle_type: str = (
-                        "EV Motorcycle" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE] else
-                        "EV" if slot.vehicle and slot.vehicle.is_electric else
-                        "Motorcycle" if slot.vehicle and slot.vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE] else
-                        "Standard" if slot.vehicle else "N/A"
+                        "Electric Motorcycle" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.MOTORCYCLE else
+                        "Electric Car" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.CAR else
+                        "Electric Truck" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.TRUCK else
+                        "Electric Bus" if slot.vehicle and slot.vehicle.is_electric and slot.vehicle.vehicle_type == VehicleType.BUS else
+                        "Motorcycle" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.MOTORCYCLE else
+                        "Car" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.CAR else
+                        "Truck" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.TRUCK else
+                        "Bus" if slot.vehicle and slot.vehicle.vehicle_type == VehicleType.BUS else
+                        "Unknown"
                     )
                     
                     # Handle charge status
@@ -989,18 +989,8 @@ class ParkingLotUI(ParkingLotObserver):
 
     def _get_vehicle_type(self) -> VehicleType:
         """Get the vehicle type based on UI selections"""
-        if self.is_electric_value.get():
-            if self.vehicle_type_value.get() == "Motorcycle":
-                return VehicleType.ELECTRIC_BIKE
-            return VehicleType.ELECTRIC_CAR
-        else:
-            if self.vehicle_type_value.get() == "Motorcycle":
-                return VehicleType.MOTORCYCLE
-            elif self.vehicle_type_value.get() == "Truck":
-                return VehicleType.TRUCK
-            elif self.vehicle_type_value.get() == "Bus":
-                return VehicleType.BUS
-            return VehicleType.CAR
+        type_str = self.vehicle_type_value.get()
+        return VehicleType.from_string(type_str)
 
     def _handle_load_sample_data(self):
         """Handle loading sample data button click"""
@@ -1086,7 +1076,7 @@ class ParkingLotUI(ParkingLotObserver):
                     color="Black",
                     is_electric=True,
                     is_motorcycle=False,
-                    vehicle_type=VehicleType.ELECTRIC_CAR
+                    vehicle_type=VehicleType.CAR
                 ),
                 VehicleData(
                     registration_number="DTN003",
@@ -1104,7 +1094,7 @@ class ParkingLotUI(ParkingLotObserver):
                     color="White",
                     is_electric=True,
                     is_motorcycle=True,
-                    vehicle_type=VehicleType.ELECTRIC_BIKE
+                    vehicle_type=VehicleType.MOTORCYCLE
                 ),
                 # Level 2 vehicles
                 VehicleData(
@@ -1164,7 +1154,7 @@ class ParkingLotUI(ParkingLotObserver):
                     color="Orange",
                     is_electric=True,
                     is_motorcycle=True,
-                    vehicle_type=VehicleType.ELECTRIC_BIKE
+                    vehicle_type=VehicleType.MOTORCYCLE
                 ),
                 # Level 2 vehicles
                 VehicleData(
@@ -1320,10 +1310,15 @@ class ParkingLotUI(ParkingLotObserver):
                         if slot_data.slot_number == slot and slot_data.vehicle:
                             vehicle = slot_data.vehicle
                             vehicle_type = (
-                                "Electric Motorcycle" if vehicle.is_electric and vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE] else
-                                "Electric Car" if vehicle.is_electric else
-                                "Motorcycle" if vehicle.vehicle_type in [VehicleType.MOTORCYCLE, VehicleType.ELECTRIC_BIKE] else
-                                "Car"
+                                "Electric Motorcycle" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.MOTORCYCLE else
+                                "Electric Car" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.CAR else
+                                "Electric Truck" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.TRUCK else
+                                "Electric Bus" if vehicle.is_electric and vehicle.vehicle_type == VehicleType.BUS else
+                                "Motorcycle" if vehicle.vehicle_type == VehicleType.MOTORCYCLE else
+                                "Car" if vehicle.vehicle_type == VehicleType.CAR else
+                                "Truck" if vehicle.vehicle_type == VehicleType.TRUCK else
+                                "Bus" if vehicle.vehicle_type == VehicleType.BUS else
+                                "Unknown"
                             )
                             info_text: str = (
                                 f"Vehicle Information:\n"
@@ -1372,4 +1367,60 @@ class ParkingLotUI(ParkingLotObserver):
         except Exception as e:
             logger.error(f"Error in _on_remove_slot_selected: {e}")
             self._show_error("Error updating vehicle info")
+
+    def _is_motorcycle(self, vehicle: VehicleData) -> bool:
+        """Check if vehicle is a motorcycle"""
+        return vehicle.vehicle_type == VehicleType.MOTORCYCLE
+
+    def _get_vehicle_type_display(self, vehicle: VehicleData) -> str:
+        """Get display string for vehicle type"""
+        type_str = vehicle.vehicle_type.name.lower()
+        return f"Electric {type_str.capitalize()}" if vehicle.is_electric else type_str.capitalize()
+
+    def _get_vehicle_type_from_ui(self) -> VehicleType:
+        """Get vehicle type from UI selection"""
+        type_str = self.vehicle_type_value.get()
+        return VehicleType.from_string(type_str)
+
+    def _create_vehicle_data(self) -> VehicleData:
+        """Create vehicle data from UI inputs"""
+        vehicle_type = self._get_vehicle_type_from_ui()
+        is_electric = self.is_electric_value.get()
+        
+        return VehicleData(
+            registration_number=self.registration_number_value.get(),
+            manufacturer=self.vehicle_manufacturer_value.get(),
+            model=self.vehicle_model_value.get(),
+            color=self.vehicle_color_value.get(),
+            vehicle_type=vehicle_type,
+            is_electric=is_electric,
+            is_motorcycle=self._is_motorcycle(VehicleData(
+                registration_number="",
+                manufacturer="",
+                model="",
+                color="",
+                vehicle_type=vehicle_type,
+                is_electric=is_electric
+            ))
+        )
+
+    def _update_results_tree(self, results: List[SearchResult]) -> None:
+        """Update search results tree"""
+        self.results_tree.delete(*self.results_tree.get_children())
+        for result in results:
+            vehicle_type = self._get_vehicle_type_display(result.vehicle)
+            self.results_tree.insert(
+                "",
+                "end",
+                values=(
+                    result.slot,
+                    result.vehicle.registration_number,
+                    result.vehicle.manufacturer,
+                    result.vehicle.model,
+                    result.vehicle.color,
+                    "Electric" if result.vehicle.is_electric else "Regular",
+                    vehicle_type,
+                    f"{result.vehicle.current_battery_charge}%" if result.vehicle.is_electric else "N/A"
+                )
+            )
 
