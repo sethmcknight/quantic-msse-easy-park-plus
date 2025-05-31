@@ -1,0 +1,324 @@
+---
+title: Easy Park Plus - Parking Operations Class Diagram (Proposed)
+---
+
+classDiagram
+    class Visit {
+        <<Aggregate Root>>
+        +VisitId visit_id
+        +VisitLifecycleStateMachine visit_lifecycle_state_machine
+        +VehicleRegistration vehicle_registration // From Vehicle Context
+        +TimeRange time_range
+        +SlotId assigned_slot_id // Optional
+        +VehicleCategory vehicle_category // Copied from Vehicle Context
+        +VisitType visit_type
+        +VisitOperationalStatus operational_status
+        +VisitBillingStatus billing_status
+        +List~FallbackLog~ fallback_logs
+        +Boolean requires_reconciliation
+        +List~String~ reconciliation_reasons
+        +ValetActivityId valet_activity_id // Optional, if valet visit
+        +FallbackPolicyId active_fallback_policy_id // Optional
+        +GracePeriodPolicyId active_grace_period_policy_id // Optional
+        +start_visit(vehicle_registration, entry_details, vehicle_category, active_fallback_policy, visit_type_hint)
+        +assign_slot_to_visit(slot_id, assignment_timestamp, vehicle_category, lot_policies)
+        +record_vehicle_exit(exit_details, active_grace_period_policy)
+        +complete_visit_pricing_phase()
+        +complete_visit_billing_phase()
+        +flag_for_reconciliation(reason)
+        +apply_manual_override(staff_id, reason, action_details)
+        +handle_abandoned_vehicle_protocol()
+        +activate_emergency_mode_procedures()
+        +record_valet_handoff(valet_operator_id, handoff_type, vehicle_location_notes)
+        +initiate_parking_validation(validation_code_or_identifier)
+        +handle_slot_conflict(conflicting_visit_id, resolution_method)
+        +detect_and_report_gate_fault(gate_id, fault_details)
+        +publish_vehicle_entered_lot_event(visit_id, vehicle_registration, entry_timestamp, lot_id)
+        +publish_vehicle_assigned_to_slot_event(visit_id, slot_id, assignment_timestamp)
+        +publish_vehicle_exited_lot_event(visit_id, vehicle_registration, exit_timestamp, lot_id)
+        +publish_visit_ready_for_pricing_event(visit_id, vehicle_category, duration)
+        +publish_visit_ready_for_billing_settlement_event(visit_id, billing_details)
+        +publish_gate_fault_detected_event(gate_id, fault_details, timestamp)
+    }
+
+    class Slot {
+        <<Entity>>
+        +SlotId slot_id // References SlotConfiguration in Infrastructure
+        +SlotOperationalStatus operational_status
+        +update_operational_status(new_status, source_event)
+    }
+
+    class Gate {
+        <<Entity>>
+        +GateId gate_id // References GateConfiguration in Infrastructure
+        +GateOperationalStatus operational_status
+        +record_interaction(vehicle_registration, interaction_type, timestamp)
+        +report_fault(fault_details, timestamp)
+    }
+
+    class VisitReconciliationJob {
+        <<Entity>>
+        +ReconciliationJobId reconciliation_job_id
+        +VisitId visit_id
+        +List~String~ issues_to_resolve
+        +ReconciliationStatus status
+        +String assigned_staff_id // Optional
+        +List~String~ resolution_steps_taken
+        +start_reconciliation()
+        +resolve_issue(issue, resolution_details, staff_id)
+        +complete_job(final_status)
+        +escalate_job(reason)
+    }
+
+    class ValetActivity {
+        <<Entity>>
+        +ValetActivityId valet_activity_id
+        +VisitId associated_visit_id // Optional, can be pre-arrival
+        +VehicleRegistration vehicle_registration
+        +CustomerId customer_id // Optional
+        +ValetActivityType activity_type
+        +ValetActivityStatus status
+        +UserId assigned_valet_operator_id // Optional
+        +TimeRange activity_time_window // Requested/Scheduled
+        +TimeRange actual_activity_times // Actual start/end
+        +String vehicle_location_notes // e.g., where parked, key location
+        +String customer_instructions
+        +request_valet_service(details)
+        +assign_operator(operator_id)
+        +record_vehicle_parked(location_notes)
+        +record_vehicle_retrieved()
+        +update_status(new_status)
+    }
+
+    class VisitId {
+        <<Value Object>>
+        +UUID id
+    }
+    class VehicleRegistration {
+        <<Value Object>>
+        +String plate_number
+        +String jurisdiction
+    }
+    class TimeRange {
+        <<Value Object>>
+        +DateTime entry_timestamp
+        +DateTime exit_timestamp
+    }
+    class SlotId {
+        <<Value Object>>
+        +UUID id
+    }
+    class GateId {
+        <<Value Object>>
+        +UUID id
+    }
+    class FallbackLog {
+        <<Value Object>>
+        +FallbackPolicyId fallback_policy_applied_id
+        +DateTime timestamp
+        +String original_event_data
+    }
+
+    class SlotOperationalStatus {
+        <<Enumeration>>
+        Available
+        Occupied_SingleVehicle
+        Occupied_SharedMotorcycle
+        ReservedForReservation
+        TemporarilyHeld
+        OutOfService_Maintenance
+        BlockedManually
+    }
+
+    class SensorData { // Assuming this might be used by Parking Ops for slot status updates
+        <<Value Object>>
+        +String sensor_id
+        +DateTime timestamp
+        +String type // e.g., "occupancy", "LPR"
+        +String value
+    }
+
+    class Location { // Used for ValetActivity or precise slot identification if needed
+        <<Value Object>>
+        +LotId lot_id
+        +String level_identifier // Optional
+        +SlotId slot_id_ref // Optional
+        +String descriptive_location // e.g. "Zone A, Row 3, Space 12"
+    }
+
+    class VehicleCategory {
+        <<Value Object>> // Copied from Vehicle Context
+        +String category // Motorcycle, Standard, Oversized
+    }
+
+    class GateInteractionDetails {
+        <<Value Object>>
+        +GateId gate_id
+        +DateTime timestamp
+        +EntryExitMethod method
+        +UserId staff_id_override // Optional
+    }
+
+    class ReconciliationStatus {
+        <<Enumeration>>
+        Pending
+        InProgress
+        Resolved_Manually
+        Resolved_System
+        Failed
+        Escalated
+    }
+
+    class GateOperationalStatus {
+        <<Enumeration>>
+        Online
+        Offline
+        ANPR_Degraded
+        Barrier_Open
+        Barrier_Closed
+        Maintenance
+        Faulted
+    }
+
+    class EntryExitMethod {
+        <<Enumeration>>
+        ANPR_Scan
+        Ticket_Issued
+        Ticket_Validated
+        App_CheckIn
+        App_CheckOut
+        Manual_Staff_Override
+        Gate_Forced_Open
+    }
+
+    class ReconciliationJobId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class VisitType {
+        <<Enumeration>>
+        Public
+        Passholder
+        ValidatedCustomer
+        RentedSlotUser
+        ValetPark
+        ValetRetrieval
+        BusinessExclusiveUser
+    }
+
+    class ValetActivityId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class ValetActivityType {
+        <<Enumeration>>
+        ParkRequest
+        RetrieveRequest
+        VehicleParked
+        VehicleRetrieved
+        InternalMove
+    }
+
+    class ValetActivityStatus {
+        <<Enumeration>>
+        PendingPark
+        ParkingInProgress
+        Parked
+        PendingRetrieval
+        RetrievalInProgress
+        Retrieved
+        Cancelled
+        IssueReported
+    }
+
+    class VisitOperationalStatus {
+        <<Enumeration>>
+        Planned
+        PendingEntry
+        EnteredLot
+        ActiveInLot
+        AwaitingSlotAssignment
+        SlotAssigned
+        ExitedLot
+        Interrupted
+        Abandoned
+        EmergencyEvacuated
+    }
+
+    class VisitBillingStatus {
+        <<Enumeration>>
+        PendingPriceQuote
+        PriceQuoteReceived
+        PendingPayment
+        PaymentInProgress
+        PaymentConfirmed
+        PaymentFailed
+        GraceExempt_NoCharge
+        BillingFinalized_Paid
+        BillingFinalized_Unpaid
+        RequiresManualBillingIntervention
+    }
+
+    class FallbackPolicyId { // Assuming this is an ID from Policy Management
+        <<Value Object>>
+        +UUID id
+    }
+
+    class GracePeriodPolicyId { // ID from Policy Management
+        <<Value Object>>
+        +UUID id
+    }
+
+    class VisitLifecycleStateMachine {
+        <<Value Object>>
+        +VisitOperationalStatus current_operational_status
+        +VisitBillingStatus current_billing_status
+        +transition_operational_status(new_status, trigger_event)
+        +transition_billing_status(new_status, trigger_event)
+        +can_transition_to(target_status) Boolean
+    }
+
+    class LotId { // Referenced by Location
+        <<Value Object>>
+        +UUID id
+    }
+
+    class UserId { // For staff_id_override, assigned_valet_operator_id
+        <<Value Object>>
+        +UUID id
+    }
+
+    class CustomerId { // For ValetActivity
+        <<Value Object>>
+        +UUID id
+    }
+
+    Visit "1" *-- "1" VisitId : has
+    Visit "1" *-- "1" VisitLifecycleStateMachine : manages_lifecycle_via
+    Visit "1" *-- "1" VehicleRegistration : for_vehicle
+    Visit "1" *-- "1" TimeRange : during
+    Visit "1" -- "0..1" Slot : assigned_to_slot_operational_view
+    Visit "1" *-- "0..*" FallbackLog : logs
+    Visit "1" -- "0..1" ValetActivity : has_valet_activity
+    Visit "1" -- "0..1" FallbackPolicyId : applies_fallback_policy
+    Visit "1" -- "0..1" GracePeriodPolicyId : applies_grace_policy
+
+    VisitReconciliationJob "1" *-- "1" ReconciliationJobId : has
+    VisitReconciliationJob "1" -- "1" Visit : for_visit
+
+    ValetActivity "1" *-- "1" ValetActivityId : has
+    ValetActivity "1" -- "0..1" Visit : associated_with_visit
+    ValetActivity "1" *-- "1" VehicleRegistration : for_vehicle
+    ValetActivity "1" -- "0..1" CustomerId : for_customer
+
+    Slot "1" *-- "1" SlotId : has
+    Gate "1" *-- "1" GateId : has
+
+    note for Visit "Manages the lifecycle of a vehicle's physical presence and related operational activities."
+    note for Slot "Operational view of a parking slot's real-time status."
+    note for Gate "Operational view of a physical gate's real-time status and interactions."
+    note for VisitReconciliationJob "Manages validation of visits under fallback or with missing info."
+    note for ValetActivity "Tracks a specific valet operation."
+```

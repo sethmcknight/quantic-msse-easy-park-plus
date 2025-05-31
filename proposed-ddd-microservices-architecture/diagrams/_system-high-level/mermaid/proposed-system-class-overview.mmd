@@ -1,0 +1,307 @@
+---
+title: Easy Park Plus - System Class Overview (Proposed)
+---
+
+classDiagram
+    %% Parking Operations Context
+    namespace ParkingOperations {
+        class Visit {
+            +VisitId visit_id
+            +VehicleRegistration vehicle_registration
+            +TimeRange time_range
+            +SlotId assigned_slot_id
+            +VisitStatus current_status
+            +VisitLifecycleStateMachine state_machine
+            +start_visit(vehicle_registration, entry_details, vehicle_category, active_fallback_policy, visit_type_hint)
+            +assign_slot_to_visit(slot_id, assignment_timestamp, vehicle_category, lot_policies)
+            +record_vehicle_exit(exit_details, active_grace_period_policy)
+            +complete_visit_pricing_phase()
+            +complete_visit_billing_phase()
+            +flag_for_reconciliation(reason)
+            +apply_manual_override(staff_id, reason, action_details)
+            +handle_abandoned_vehicle_protocol()
+            +activate_emergency_mode_procedures()
+            +record_valet_handoff(valet_operator_id, handoff_type, vehicle_location_notes)
+            +initiate_parking_validation(validation_code_or_identifier)
+            +handle_slot_conflict(conflicting_visit_id, resolution_method)
+            +detect_and_report_gate_fault(gate_id, fault_details)
+        }
+        class Slot_OperationalView {
+            +SlotId slot_id
+            +SlotOperationalStatus operational_status
+        }
+        class Gate_OperationalView {
+            +GateId gate_id
+            +GateOperationalStatus operational_status
+        }
+        class VisitReconciliationJob {
+            +ReconciliationJobId job_id
+            +VisitId visit_id
+            +ReconciliationStatus status
+        }
+        class ValetActivity {
+            +ValetActivityId activity_id
+            +VisitId visit_id
+            +UserId valet_operator_id
+        }
+    }
+
+    %% ElectricVehicle Charging Context
+    namespace ElectricVehicleCharging {
+        class ChargingSession {
+            +ChargingSessionId charging_session_id
+            +ChargerId charger_id
+            +VehicleRegistration vehicle_registration
+            +TimeRange session_time_range
+            +Energy energy_consumed
+            +ChargingSessionStatus current_status
+            +ChargingInterruptionInfo interruption_details
+            +VisitId visit_id
+            +start_charging_session(charger_id, vehicle_registration, visit_id, plug_in_time, connector_type, active_grace_period_policy)
+            +record_energy_delivery(kilowatt_hours_delivered_increment, current_power_output_kilowatt)
+            +charging_delivery_completed(charge_complete_time)
+            +handle_session_interruption(interruption_time, reason, partial_energy_consumed)
+            +track_idle_time(current_time)
+            +complete_charging_session(unplug_time)
+            +report_session_fault(fault_code, description, fault_time)
+        }
+        class Charger_OperationalView {
+            +ChargerId charger_id
+            +ChargerOperationalStatus operational_status
+        }
+    }
+
+    %% Reservations Context
+    namespace Reservations {
+        class Reservation {
+            +ReservationId reservation_id
+            +CustomerId customer_id
+            +TimeRange time_window
+            +ReservedResourceId reserved_resource_id
+            +ReservationStatus status
+            +HoldId originating_hold_id_optional
+            +create_dynamic_reservation(customer_id, vehicle_registration, lot_id, resource_request, time_window, occupancy_forecast, active_event_windows, available_slot_types_for_reservation)
+            +create_multi_slot_reservation_group(customer_id, lot_id, resource_requests_List_ReservedResource, time_window)
+            +confirm_reservation_from_hold(hold_id, payment_confirmation_details)
+            +confirm_reservation()
+            +cancel_reservation()
+            +update_reservation_details(new_time_window, new_vehicle_registration)
+            +mark_as_fulfilled(visit_id)
+            +mark_as_expired()
+            +mark_as_no_show()
+            +handle_reservation_mismatch(actual_lot_id, proposed_resolution)
+        }
+        class SlotHold {
+            +SlotHoldId hold_id
+            +SlotId slot_id
+            +TimeRange hold_duration
+            +ReservationId associated_reservation_id_optional
+            +create_hold(lot_id, resource_details, customer_id, hold_type, duration)
+            +extend_hold(additional_duration)
+            +release_hold(reason)
+            +convert_hold_to_reservation(vehicle_registration, customer_details)
+        }
+    }
+
+    %% Customer Context
+    namespace CustomerContext {
+        class Customer {
+            +CustomerId customer_id
+            +CustomerProfile profile
+            +List~VehicleRegistration~ linked_vehicles
+            +PassholderInfo passholder_details
+            +AccountStatus account_status
+        }
+        class Passholder {
+            +PassholderId passholder_id
+            +CustomerId customer_id
+            +PassValidity validity
+        }
+    }
+
+    %% Vehicle Context
+    namespace VehicleContext {
+        class Vehicle {
+            +VehicleRegistration vehicle_registration
+            +VehicleDetails vehicle_details
+            +ElectricVehicleCapability ev_capability
+            +VehicleSystemStatus system_status
+        }
+    }
+
+    %% Pricing Context
+    namespace Pricing {
+        class PricingRuleSet {
+            +RuleSetId rule_set_id
+            +List~PricingCondition~ conditions
+            +List~RateDefinition~ rates
+        }
+        class ChargeEstimate {
+            +EstimateId estimate_id
+            +Money amount
+            +String details
+        }
+    }
+
+    %% Billing Context
+    namespace Billing {
+        class Bill {
+            +BillId bill_id
+            +CustomerId customer_id
+            +List~BillableItemLink~ related_items
+            +List~LineItem~ line_items
+            +Money total_amount
+            +BillStatus status
+        }
+        class Invoice {
+            +InvoiceId invoice_id
+            +BillId bill_id
+            +PaymentStatus payment_status
+        }
+        class PaymentTransaction {
+            +TransactionId transaction_id
+            +BillId bill_id
+            +Money amount
+            +PaymentGatewayDetails gateway_details
+        }
+    }
+    %% Infrastructure Management Context
+    namespace InfrastructureManagement {
+        class Lot {
+            +LotId lot_id
+            +LotStaticDetails details
+            +List~Floor~ floors
+            +LotPolicies policies
+        }
+        class Floor {
+            +FloorId floor_id
+            +List~SlotConfiguration~ slots
+        }
+        class SlotConfiguration {
+            +SlotId slot_id
+            +SlotType type
+            +SlotConfigStatus status
+        }
+        class GateConfiguration {
+            +GateId gate_id
+            +GateType type
+            +Location location
+        }
+        class ChargerConfiguration {
+            +ChargerId charger_id
+            +ChargerCapabilities capabilities
+            +Location location
+        }
+    }
+
+    %% Policy Management Context
+    namespace PolicyManagement {
+        class PolicySet {
+            +PolicySetId policy_set_id
+            +PolicyType type
+            +List~PolicyRule~ rules
+        }
+        class GracePeriodPolicy {
+            +PolicyId policy_id
+            +Duration grace_duration
+        }
+        class ValidationProgram {
+            +ProgramId program_id
+            +List~ValidationRule~ rules
+        }
+    }
+
+    %% Staff & User Access Context
+    namespace StaffUserAccess {
+        class UserAccount {
+            +UserId user_id
+            +UserDetails details
+            +List~Role~ roles
+        }
+        class Role {
+            +RoleId role_id
+            +List~Permission~ permissions
+        }
+        class AuditLog_StaffAction {
+            +LogId log_id
+            +UserId staff_id
+            +String action_details
+            +Timestamp timestamp
+        }
+    }
+
+    %% System Configuration Context
+    namespace SystemConfiguration {
+        class SystemParameter {
+            +ParameterKey key
+            +ParameterValue value
+        }
+        class FallbackPolicy {
+            +FallbackPolicyId policy_id
+            +String description
+            +List~FallbackRule~ rules
+        }
+    }
+
+    %% External Integrations Context
+    namespace ExternalIntegrations {
+        class ExternalService {
+            +ServiceId service_id
+            +String name
+            +ApiContract contract
+            +ConnectionStatus status
+        }
+        class DeviceConfiguration {
+            +DeviceId device_id
+            +DeviceType type
+            +ApiEndpoint endpoint
+        }
+    }
+
+    %% Incident & Enforcement Context
+    namespace IncidentEnforcement {
+        class IncidentReport {
+            +ReportId report_id
+            +IncidentType type
+            +List~EnforcementAction~ actions_taken
+            +TowJobId associated_tow_job_id
+        }
+        class FaultReport {
+            +FaultId fault_id
+            +DeviceId affected_device_id
+            +String description
+        }
+        class TowJob {
+            +TowJobId tow_job_id
+            +DispatchDetails dispatch_details
+            +TowJobStatus status
+        }
+    }
+
+    %% Analytics & Reporting Context
+    namespace AnalyticsReporting {
+        class Report {
+            +ReportId report_id
+            +String title
+            +ReportType type
+            +Timestamp generated_time
+            +Object data_payload
+        }
+        class OccupancyForecast {
+            +ForecastId forecast_id
+            +LotId lot_id
+            +TimeRange forecast_period
+            +List~PredictedOccupancy~ predictions
+        }
+    }
+    
+    %% Internal Audit & Event Trace Context
+    namespace InternalAuditEventTrace {
+        class AuditEventLog {
+            +EventId event_id
+            +Timestamp timestamp
+            +String service_source
+            +String event_type
+            +String payload_summary
+        }
+    }

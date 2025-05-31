@@ -1,0 +1,61 @@
+---
+title: Easy Park Plus - Lot State Diagram (Proposed)
+---
+
+stateDiagram-v2
+    [*] --> Operational : Lot is open and operational
+
+    Operational --> Degraded_PartialService : Some systems degraded but lot operational
+    Operational --> MaintenanceMode : Scheduled maintenance
+    Operational --> EmergencyMode : Emergency situation (fire, security, etc.)
+    Operational --> Closed : Lot closed for operations
+
+    Degraded_PartialService --> Operational : All systems restored
+    Degraded_PartialService --> MaintenanceMode : Degradation requires maintenance
+    Degraded_PartialService --> EmergencyMode : Degradation escalates to emergency
+    Degraded_PartialService --> Closed : Too many systems down, close lot
+
+    MaintenanceMode --> Operational : Maintenance complete
+    MaintenanceMode --> Degraded_PartialService : Maintenance partially complete
+    MaintenanceMode --> EmergencyMode : Emergency during maintenance
+    MaintenanceMode --> Closed : Extended maintenance requires closure
+
+    EmergencyMode --> Operational : Emergency resolved, normal operations
+    EmergencyMode --> Degraded_PartialService : Emergency contained, partial operations
+    EmergencyMode --> MaintenanceMode : Emergency requires maintenance
+    EmergencyMode --> Closed : Emergency requires lot closure
+
+    Closed --> Operational : Lot reopened, all systems operational
+    Closed --> MaintenanceMode : Reopening with maintenance mode
+    Closed --> Degraded_PartialService : Reopening with limited systems
+
+    note right of Operational
+        Lot Operational Status based on:
+        - Gate operational status
+        - Charger availability
+        - System health from System Configuration
+        - No active emergency policies
+    end note
+    
+    note right of Degraded_PartialService
+        Some systems degraded but lot functional:
+        - Some gates in ANPR_Degraded mode
+        - Some chargers faulted
+        - FallbackPolicy active
+        - VisitReconciliationJobs may be created
+    end note
+    
+    note right of EmergencyMode
+        EmergencyMode policy from System Configuration:
+        - Fire alarm, security threat
+        - May involve all gates open
+        - No charges, immediate evacuation
+        - All visits moved to EmergencyEvacuated status
+    end note
+    
+    note right of MaintenanceMode
+        Scheduled or emergency maintenance:
+        - May affect specific areas/levels
+        - Some slots OutOfService_Maintenance
+        - Limited access and operations
+    end note

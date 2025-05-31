@@ -1,0 +1,170 @@
+classDiagram
+    class ExternalSystem {
+        <<aggregate_root>>
+        -SystemId system_id
+        -String system_name
+        -ExternalSystemTypeEnum system_type
+        -String description
+        -String base_url
+        -ApiContractDetails api_contract
+        -AuthenticationConfiguration auth_config
+        -ConnectivitySettings connectivity_settings
+        -SystemStatusEnum current_status
+        -DateTime last_status_update_timestamp
+        -List~HealthCheckLog~ health_check_history
+        -Map~String,String~ custom_properties
+        +registerSystem(name, type, description, base_url, contract, auth_config, conn_settings)
+        +updateConfiguration(updates)
+        +performHealthCheck() HealthCheckLog
+        +updateStatus(new_status, details)
+        +getApiContract() ApiContractDetails
+        +getAuthenticationDetails() AuthenticationConfiguration
+        +publish_external_api_status_changed_event(system_id, new_status, details)
+        +publish_hardware_status_update_event(system_id, hardware_type, status)
+    }
+
+    class ApiContractDetails {
+        -ContractId contract_id
+        -String version
+        -String specification_url // Link to OpenAPI/Swagger or similar
+        -DataFormatEnum request_format
+        -DataFormatEnum response_format
+        -List~MonitoredEndpoint~ monitored_endpoints
+        +addMonitoredEndpoint(endpoint_details)
+        +validatePayloadAgainstSchema(payload, schema_type) Boolean
+    }
+
+    class MonitoredEndpoint {
+        -String path_template
+        -String http_method
+        -Map~String,String~ expected_response_codes
+        -LatencyThresholds latency_thresholds
+    }
+
+    class LatencyThresholds {
+        -Integer warning_ms
+        -Integer critical_ms
+    }
+
+    class AuthenticationConfiguration {
+        -AuthConfigId auth_config_id
+        -AuthenticationTypeEnum auth_type
+        -Map~String,String~ credentials_map // Securely store references or encrypted values
+        -String token_url // For OAuth
+        -String scopes // For OAuth
+        +refreshCredentials() // For refreshable tokens
+        +getHeadersForRequest() Map~String,String~
+    }
+
+    class ConnectivitySettings {
+        -Integer connection_timeout_ms
+        -Integer read_timeout_ms
+        -RetryPolicy retry_policy
+    }
+
+    class RetryPolicy {
+        -Integer max_attempts
+        -Integer backoff_delay_ms
+        -BackoffStrategyEnum backoff_strategy
+    }
+
+    class HealthCheckLog {
+        -LogId log_id
+        -DateTime timestamp
+        -Boolean is_successful
+        -Integer response_time_ms
+        -Integer status_code_received
+        -String details // Error message or success confirmation
+    }
+
+    class ExternalSystemTypeEnum {
+        <<enumeration>>
+        PaymentGateway
+        ANPR_Hardware
+        EVChargingNetworkProvider
+        MappingServiceAPI
+        WeatherServiceAPI
+        GovernmentRegistryAPI
+        NotificationService // SMS, Email provider
+        GenericRestAPI
+    }
+
+    class SystemStatusEnum {
+        <<enumeration>>
+        Online
+        Offline_PlannedMaintenance
+        Offline_UnplannedOutage
+        DegradedPerformance
+        ConfigurationError
+        Unknown
+        MonitoringPaused
+    }
+
+    class DataFormatEnum {
+        <<enumeration>>
+        JSON
+        XML
+        FormUrlEncoded
+        PlainText
+    }
+
+    class AuthenticationTypeEnum {
+        <<enumeration>>
+        APIKey_Header
+        APIKey_QueryParam
+        OAuth2_ClientCredentials
+        OAuth2_AuthorizationCode
+        BasicAuth
+        NoAuth
+        CustomToken
+    }
+
+    class BackoffStrategyEnum {
+        <<enumeration>>
+        Fixed
+        Exponential
+        Linear
+    }
+
+    class SystemId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class ContractId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class AuthConfigId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class LogId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    ExternalSystem -- SystemId : has_id
+    ExternalSystem "1" -- "1" ApiContractDetails : defines
+    ExternalSystem "1" -- "1" AuthenticationConfiguration : uses
+    ExternalSystem "1" -- "1" ConnectivitySettings : has
+    ExternalSystem "1" -- "0..*" HealthCheckLog : logs
+    ApiContractDetails -- ContractId : has_id
+    ApiContractDetails "1" -- "0..*" MonitoredEndpoint : includes
+    MonitoredEndpoint "1" -- "1" LatencyThresholds : has
+    ConnectivitySettings "1" -- "1" RetryPolicy : employs
+    AuthenticationConfiguration -- AuthConfigId : has_id
+    HealthCheckLog -- LogId : has_id
+
+    ExternalSystem -- ExternalSystemTypeEnum : is_of_type
+    ExternalSystem -- SystemStatusEnum : has_status
+    ApiContractDetails -- DataFormatEnum : uses_request_format
+    ApiContractDetails -- DataFormatEnum : uses_response_format
+    AuthenticationConfiguration -- AuthenticationTypeEnum : uses_auth_type
+    RetryPolicy -- BackoffStrategyEnum : uses_strategy

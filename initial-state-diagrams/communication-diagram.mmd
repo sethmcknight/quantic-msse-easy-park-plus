@@ -1,0 +1,16 @@
+flowchart TD
+    User((User))
+    GUI["GUI (Tkinter)"]
+    ParkingLot[ParkingLot]
+    VehicleClass[Vehicle / Car / Truck / Motorcycle / Bus]
+    ElectricVehicleClass[ElectricVehicle / ElectricCar / ElectricBike]
+
+    User -- inputs/commands --> GUI
+    GUI -- createParkingLot(), parkCar(), removeCar(), etc. --> ParkingLot
+    ParkingLot -- creates/updates --> VehicleClass
+    ParkingLot -- creates/updates --> ElectricVehicleClass
+    GUI -- status, search results --> User
+    ParkingLot -- status, search data --> GUI
+
+    classDef actor fill:#f9f,stroke:#333,stroke-width:2px;
+    class User actor;

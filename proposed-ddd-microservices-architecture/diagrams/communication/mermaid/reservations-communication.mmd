@@ -1,0 +1,33 @@
+---
+title: Easy Park Plus - Reservations Communication Diagram (Proposed)
+---
+
+graph TD
+    subgraph "Reservations Service (RS)"
+        RS[(RS)]
+    end
+
+    %% Data & Events Consumed by RS
+    CS[Customer Service] -->|Provides: Customer Details for Reservation| RS
+    VS[Vehicle Service] -->|Provides: Vehicle Details for Reservation| RS
+    ARS[Analytics & Reporting Service] -->|Provides: OccupancyForecast| RS
+    PMS[Policy Management Service] -->|Provides: Reservation Policies, EventWindow| RS
+    IMS[Infrastructure Management Service] -->|Provides: Slot Types, Lot Layout| RS
+    POS[Parking Operations Service] -->|Provides: Real-time Slot Availability| RS
+    BS[Billing Service] -->|Event: PaymentConfirmationForReservation| RS
+
+    %% Services Called & Events Published by RS
+    RS -->|API: Request Price Quote for Reservation| PS[Pricing Service]
+    RS -->|Event: ReservationRequiresPayment| BS
+    RS -->|Event: SlotHeldEvent, SlotReleasedEvent| POS
+    RS -->|Events: ReservationCreated, ReservationConfirmed, ReservationCancelled| EventBroker[Event Broker]
+
+    %% General Event Publishing by RS
+    EventBroker -->|Consumed by| ARS
+    EventBroker -->|Consumed by| IAETS[Internal Audit & Event Trace Service]
+    %% e.g., to notify customer
+    EventBroker -->|Consumed by| CS
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class RS,CS,VS,PS,BS,PMS,ARS,IMS,POS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;

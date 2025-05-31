@@ -1,0 +1,119 @@
+classDiagram
+    class Bill {
+        <<Aggregate Root>>
+        +BillId bill_id
+        +CustomerId customer_id
+        +List~BillableItemLink~ related_items
+        +List~LineItem~ line_items
+        +Money total_amount
+        +Money amount_due
+        +BillStatus status
+        +Date due_date
+        +List~PaymentRecord~ payments_received
+        +generate_bill_for_visit(visit_id)
+        +generate_bill_for_charging_session(session_id)
+        +generate_monthly_passholder_bill(customer_id, pass_details, usage_data)
+        +apply_payment_to_bill(payment_amount, payment_method_id, transaction_id)
+        +issue_refund(amount, reason)
+        +mark_as_paid()
+        +mark_as_overdue()
+        +void_bill(reason)
+        +apply_adaptive_rate_adjustment(adjustment_details_event)
+        +publish_bill_generated_event() DomainEvent
+        +publish_payment_confirmed_event() DomainEvent
+        +publish_payment_failed_event() DomainEvent
+        +publish_invoice_issued_event() DomainEvent
+        +publish_refund_processed_event() DomainEvent
+    }
+
+    class BillId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class CustomerId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class LineItem {
+        <<Value Object>>
+        +String description
+        +Decimal quantity
+        +Money unit_price
+        +Money sub_total
+        +TaxInfo tax_applied
+    }
+
+    class Money {
+        <<Value Object>>
+        +Decimal amount
+        +String currency_code
+        +add(other_money)
+        +multiply(factor)
+        +format_display()
+    }
+
+    class PaymentRecord {
+        <<Value Object>>
+        +PaymentId payment_id
+        +DateTime payment_timestamp
+        +Money amount_paid
+        +String payment_method_used
+        +String external_transaction_id
+        +PaymentStatus payment_status
+    }
+
+    class PaymentId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class PaymentStatus {
+        <<Enumeration>>
+        Pending
+        Confirmed
+        Failed
+        Cancelled
+        Refunded
+    }
+
+    class BillStatus {
+        <<Enumeration>>
+        Draft
+        Issued_AwaitingPayment
+        PartiallyPaid
+        PaidInFull
+        Overdue
+        Voided
+        Refunded
+    }
+
+    class BillableItemLink {
+        <<Value Object>>
+        +BillableItemType item_type
+        +String item_id
+    }
+
+    class BillableItemType {
+        <<Enumeration>>
+        Visit
+        ChargingSession
+        PassSubscription
+        Reservation
+    }
+
+    class TaxInfo {
+        <<Value Object>>
+        +String tax_type
+        +Decimal tax_rate_percentage
+        +Money tax_amount
+    }
+
+    Bill "1" *-- "1" BillId : has
+    Bill "1" *-- "1" CustomerId : for_customer
+    Bill "1" *-- "0..*" LineItem : contains
+    Bill "1" *-- "0..*" PaymentRecord : has
+    Bill "1" *-- "0..*" BillableItemLink : links_to
+
+    note for Bill "Manages billing lifecycle including payment processing and refunds."

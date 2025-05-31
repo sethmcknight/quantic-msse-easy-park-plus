@@ -1,0 +1,26 @@
+---
+title: Easy Park Plus - Infrastructure Management Use Case Diagram (Proposed)
+---
+
+
+graph TD
+    SystemAdmin((System Admin))
+    Staff((Parking Staff))
+
+    subgraph "Infrastructure Management"
+        UC1[Configure Lots & Levels]
+        UC2[Manage Slot Configuration]
+        UC3[Manage Gate Configuration]
+        UC4[Manage Equipment Inventory]
+        UC5[Set Slot Maintenance Status]
+        UC6[View Physical Layout]
+    end
+
+    SystemAdmin --> UC1
+    SystemAdmin --> UC2
+    SystemAdmin --> UC3
+    SystemAdmin --> UC4
+    SystemAdmin --> UC5
+    SystemAdmin --> UC6
+    Staff --> UC5
+    Staff --> UC6

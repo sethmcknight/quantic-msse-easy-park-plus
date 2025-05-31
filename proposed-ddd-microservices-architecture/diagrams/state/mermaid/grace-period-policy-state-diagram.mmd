@@ -1,0 +1,32 @@
+---
+title: Easy Park Plus - Grace Period Policy State Diagram (Proposed)
+---
+
+stateDiagram-v2
+    [*] --> NotApplicable : Default state before any policy check
+
+    NotApplicable --> Active_GracePeriod : Policy applied, grace period started (e.g., on entry, on charge completion)
+    Active_GracePeriod --> Expired_GracePeriod : Grace duration elapsed
+    Active_GracePeriod --> Cleared_GracePeriod : Action completed within grace (e.g., exit within entry grace, unplug within charge grace)
+    
+    Expired_GracePeriod --> FeesApplicable : Policy dictates fees after grace (e.g., idle fees, short-stay parking fees)
+    Cleared_GracePeriod --> NoFeesApplicable : Policy dictates no fees due to timely action
+    
+    FeesApplicable --> [*]
+    NoFeesApplicable --> [*]
+
+    note right of Active_GracePeriod
+        Timer running for the duration specified in the GracePeriodPolicy (e.g., for parking entry/exit, EV charging idle time).
+    end note
+    note right of Expired_GracePeriod
+        Grace period ended. Further actions may incur penalties or fees as defined by the policy.
+    end note
+    note right of Cleared_GracePeriod
+        The condition for the grace period was met before expiry. (e.g. vehicle exited quickly, EV unplugged promptly).
+    end note
+    note right of FeesApplicable
+        Outcome after grace period expiry where fees are now due according to the specific policy (idle fees, etc.).
+    end note
+    note right of NoFeesApplicable
+        Outcome where action was taken within grace, so no associated penalty fees apply for this specific grace instance.
+    end note

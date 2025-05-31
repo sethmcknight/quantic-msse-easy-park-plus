@@ -1,0 +1,170 @@
+---
+title: Easy Park Plus - Context Map Diagram (Proposed)
+---
+
+graph TB
+    %% Define Bounded Contexts
+    PO["`**Parking Operations (PO)**
+    Core Domain
+    Real-time vehicle lifecycle, slot status
+    *Visit, SlotOperationalStatus*`"]
+
+    EV["`**Electric Vehicle Charging (EV)**
+    Core Domain
+    Manages charging sessions & hardware
+    *ChargingSession, ChargerOperationalStatus*`"]
+
+    RES["`**Reservations (RES)**
+    Supporting Domain
+    Pre-booking, slot holds
+    *DynamicReservation, SlotHold*`"]
+
+    CUST["`**Customer (CUST)**
+    Supporting Domain
+    Profiles, vehicles, passholders
+    *Customer, PassholderInfo*`"]
+
+    VEH["`**Vehicle (VEH)**
+    Supporting Domain
+    Vehicle registry, system status
+    *Vehicle, VehicleSystemStatus*`"]
+
+    PRICE["`**Pricing (PRICE)**
+    Financial Domain (Core)
+    Determines charges, estimates, previews
+    *PricingRuleSet, ChargeEstimate*`"]
+
+    BILL["`**Billing (BILL)**
+    Financial Domain (Core)
+    Settlements, payments, invoices
+    *Bill, Transaction, Invoice*`"]
+
+    IM["`**Infrastructure Management (IM)**
+    Infra & Policy Domain (Supporting)
+    Physical assets: lots, levels, slots, gates
+    *Lot, SlotConfiguration, EquipmentItem*`"]
+
+    PM["`**Policy Management (PM)**
+    Infra & Policy Domain (Supporting)
+    Operational rules & policies
+    *GracePeriodPolicy, ValidationProgram*`"]
+
+    SUA["`**Staff & User Access (SUA)**
+    Ops Support Domain (Supporting)
+    Roles, permissions, staff action audits
+    *UserAccount, Role, UserActivityLog*`"]
+
+    SC["`**System Configuration (SC)**
+    Ops Support Domain (Supporting)
+    System params, fallback modes, health
+    *FallbackPolicy, SystemParameter*`"]
+
+    EXTINT["`**External Integrations (EXTINT)**
+    Ops Support Domain (Supporting)
+    3rd-party API/hardware mgmt & contracts
+    *DeviceConfiguration, IntegrationContract*`"]
+
+    INC["`**Incident & Enforcement (INC)**
+    Supporting Domain
+    Violations, faults, towing, enforcement
+    *IncidentReport, FaultReport, TowJob*`"]
+
+    ANA["`**Analytics & Reporting (ANA)**
+    Cross-Cutting Domain (Generic)
+    BI, forecasts, operational reports
+    *OccupancyForecast, RevenueReport*`"]
+
+    AUDIT["`**Internal Audit & Event Trace (AUDIT)**
+    Cross-Cutting Domain (Generic)
+    Comprehensive event logging, compliance
+    *AuditEventLog*`"]
+
+    %% Relationships based on Architecture Plan Section 8
+    %% Parking Operations (PO)
+    IM -->|CS: Infra Config| PO
+    PM -->|CS: Operational Policies| PO
+    SC -->|CS: Fallback Config| PO
+    EXTINT -->|CS: Device API Status| PO
+    PO -->|ACL: Pricing Request| PRICE
+    PO -->|ACL: Billing Trigger| BILL
+    VEH -->|CS: Vehicle Status| PO
+    CUST -->|CS: Customer Profile - Pass Status| PO
+    RES -->|CF: Slot Availability Query| PO
+    ANA -->|CS: Occupancy Forecast| PO
+
+    %% EV Charging (EV)
+    IM -->|CS: Charger & Slot Config| EV
+    PM -->|CS: EV & Grace Policies| EV
+    SC -->|CS: System Params| EV
+    EXTINT -->|CS: Charger API Status| EV
+    VEH -->|CS: EV Capability| EV
+    PO <-->|P: Visit/Session Sync| EV
+
+    %% Pricing (PRICE)
+    PM -->|CS: Pricing-Affecting Policies| PRICE
+    ANA -->|CS: Demand Data - Forecasts| PRICE
+    INC -->|OHS: Fine Details for Pricing| PRICE
+
+    %% Billing (BILL)
+    PRICE -->|CS: Charge Estimates| BILL
+    EXTINT -->|CS: Payment Gateway Config| BILL
+    CUST -->|CS: Customer & Payment Info| BILL
+    PM -->|CS: Billing Policies| BILL
+    INC -->|OHS: Fine for Billing| BILL
+
+
+    %% Customer (CUST)
+    CUST -->|CS: Customer Profile| RES
+
+    %% Vehicle (VEH)
+    BILL -->|OHS: Payment Status - Bans| VEH
+    INC -->|OHS: Enforcement Actions - Bans| VEH
+    VEH -->|OHS: Plate Cloning Alert| INC
+
+    %% Staff & User Access (SUA) - Examples
+    SUA -->|CS: AuthN/AuthZ| PO
+    SUA -->|CS: AuthN/AuthZ| BILL
+    SUA -->|CS: AuthN/AuthZ| CUST
+
+    %% Incident & Enforcement (INC)
+    PO -->|OHS: Fault Events| INC
+    EV -->|OHS: Charger Fault Events| INC
+    IM -->|CS: Equipment Details for Faults| INC
+
+    %% Analytics & Reporting (ANA) - Consumes from many, publishes forecasts
+    PO -->|OHS: Operational Data| ANA
+    EV -->|OHS: Charging Data| ANA
+    BILL -->|OHS: Financial Data| ANA
+    PRICE -->|OHS: Pricing Data| ANA
+    INC -->|OHS: Incident & Fault Data| ANA
+    CUST -->|OHS: Customer Data| ANA
+    RES -->|OHS: Reservation Data| ANA
+    VEH -->|OHS: Vehicle Data| ANA
+    IM -->|OHS: Infra Data| ANA
+    PM -->|OHS: Policy Data| ANA
+    SUA -->|OHS: Staff Activity Data| ANA
+
+
+    %% Internal Audit & Event Trace (AUDIT) - Consumes from all
+    PO -->|OHS: Events| AUDIT
+    EV -->|OHS: Events| AUDIT
+    BILL -->|OHS: Events| AUDIT
+    PRICE -->|OHS: Events| AUDIT
+    CUST -->|OHS: Events| AUDIT
+    %% (Implied: All other services also publish events to AUDIT)
+
+
+    %% Styling
+    classDef coreContext fill:#ff6b6b,stroke:#d63031,stroke-width:2px,color:#fff
+    classDef supportingContext fill:#4ecdc4,stroke:#00b894,stroke-width:2px,color:#000
+    classDef financialContext fill:#feca57,stroke:#ff9f43,stroke-width:2px,color:#333
+    classDef infraPolicyContext fill:#54a0ff,stroke:#2e86de,stroke-width:2px,color:#fff
+    classDef opsSupportContext fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
+    classDef genericContext fill:#1dd1a1,stroke:#10ac84,stroke-width:2px,color:#fff
+
+    class PO,EV coreContext
+    class PRICE,BILL financialContext
+    class RES,CUST,VEH,INC supportingContext
+    class IM,PM infraPolicyContext
+    class SUA,SC,EXTINT opsSupportContext
+    class ANA,AUDIT genericContext

@@ -1,0 +1,132 @@
+---
+title: Easy Park Plus - Vehicle Exit Sequence Diagram (Proposed)
+---
+
+sequenceDiagram
+    participant V as Vehicle
+    participant GateHW as Gate Hardware (ANPR)
+    participant ExtInt as External Integrations Service
+    participant PO as Parking Operations Service
+    participant PS as Pricing Service
+    participant BS as Billing Service
+    participant PolMS as Policy Management Service
+    participant IAET as Internal Audit & Event Trace Service
+    participant EVCS as EV Charging Service (Optional)
+    participant MB as Message Broker
+    participant IES as Incident & Enforcement Service
+
+    Note over V, IES:  Vehicle Exit Flow
+
+    %% Vehicle Detection & ANPR Processing at Exit
+    rect rgb(230, 245, 255)
+    Note over V, IES: Vehicle Detection at Exit Gate
+    V->>GateHW: Approaches exit gate
+    
+    alt ANPR System Functional
+        GateHW->>ExtInt: Raw ANPR data & exit request
+        ExtInt->>MB: Publish(VehicleExitDetectedEvent)
+        ExtInt->>PO: Vehicle detected for exit (plate, timestamp)
+    else ANPR System Degraded/Faulted
+        GateHW->>ExtInt: ANPR fault detected at exit
+        ExtInt->>IES: ReportANPRFault(gateId, faultType, timestamp)
+        ExtInt->>MB: Publish(ANPRFaultEvent)
+        
+        alt Emergency Mode Activated
+            ExtInt->>PolMS: GetEmergencyPolicy(lotId)
+            PolMS-->>ExtInt: EmergencyOpenGatePolicy
+            ExtInt->>GateHW: Emergency Open Gate
+            ExtInt->>MB: Publish(EmergencyModeActivatedEvent)
+            GateHW-->>V: Gate opens (emergency evacuation mode)
+            Note over ExtInt: Manual intervention/reconciliation required
+        else Manual Exit Required
+            ExtInt-->>V: Display: Manual Exit Required
+            Note over V: Driver must use manual process
+        end
+    end
+    end
+
+    %% Visit Validation & Exit Authorization
+    rect rgb(255, 245, 230)
+    Note over PO, IES: Visit Validation & Exit Authorization
+    opt Normal Operation Continues
+        PO->>PO: GetActiveVisit(plate, lotId)
+        Note over PO: VisitOperationalStatus: ActiveInLot or SlotAssigned
+
+        alt No Active Visit Found (Error or Tailgating)
+            PO->>MB: Publish(UnauthorizedExitAttemptEvent)
+            PO->>IES: ReportUnauthorizedExit(plate, gateId, timestamp)
+            PO->>ExtInt: DenyExitCommand (or flag for review)
+            ExtInt-->>GateHW: Keep Gate Closed
+            GateHW-->>V: Gate remains closed
+            PO-->>IAET: Publish(PotentialFraudulentExitAttemptEvent)
+        else Active Visit Found
+            PO->>PolMS: GetApplicableExitPolicies(lotId, visitType, timestamp)
+            PolMS-->>PO: ExitPolicies (e.g., GracePeriodPolicy, PaymentRequiredBeforeExitPolicy)
+        end
+    end
+    end
+
+    %% Pricing & Billing Calculation
+    rect rgb(255, 235, 255)
+    Note over PO, EVCS: Pricing Calculation & Billing Integration
+
+    opt Pricing Service Available
+        PO->>PS: RequestFinalPricingForVisit(visitId, entryTime, exitTime, vehicleCategory, anyValidationsApplied)
+        PS-->>PO: FinalChargeDetails
+        PS->>MB: Publish(FinalPricingCalculatedEvent)
+        PO->>PO: UpdateVisitWithPricing(visitId, finalChargeDetails)
+        PO-->>IAET: Publish(VisitPriceCalculatedEvent)
+    end
+
+    alt EV Charging Session Active/Recent for this Visit
+        PO->>EVCS: GetOutstandingChargingSessionDetails(visitId)
+        EVCS-->>PO: ChargingSessionSummary (if any, includes cost)
+        EVCS->>MB: Publish(ChargingSessionCompletedEvent)
+        PO->>BS: ConsolidateCharges(visitId, parkingCharge, evCharge_optional)
+    else
+        PO->>BS: NotifyFinalCharge(visitId, finalChargeDetails)
+    end
+    
+    alt Billing Service Available
+        BS->>BS: ProcessPaymentForVisit(visitId, customerId_if_known, totalAmount)
+        BS-->>PO: PaymentStatus (Paid, PaymentFailed, PayAtExitMachine)
+        BS->>MB: Publish(PaymentProcessedEvent)
+    else Billing Service Degraded
+        PO->>PolMS: GetFallbackPolicy(lotId, "BillingDegraded")
+        PolMS-->>PO: FallbackPolicy (allow exit with deferred billing)
+        PO->>MB: Publish(FallbackPolicyAppliedEvent)
+    end
+    end
+
+    %% Exit Processing & Gate Control
+    rect rgb(240, 255, 240)
+    Note over PO, BS: Exit Processing & Final Authorization
+    alt Payment Successful or Not Required At Gate
+        PO->>PO: RecordVehicleExit(visitId, exitTime, exitMethod)
+        PO->>PO: UpdateSlotStatusToAvailable(slotId)
+        PO->>MB: Publish(VehicleExitedLotEvent)
+        PO->>MB: Publish(SlotAvailableEvent)
+        PO-->>IAET: Publish(VehicleExitedLotEvent)
+        PO-->>ExtInt: AuthorizeExitCommand
+        ExtInt-->>GateHW: Open Gate
+        GateHW-->>V: Exit granted
+        
+        opt Billing Service Available
+            PO->>BS: ConfirmVisitCompletionForBilling(visitId)
+            BS-->>PO: Acknowledged
+            BS->>MB: Publish(VisitCompletedEvent)
+        end
+        
+        Note over PO: VisitOperationalStatus: ExitedLot
+        Note over PO: VisitBillingStatus: Settled (or similar)
+    else Payment Failed or Required At Exit Machine
+        PO->>MB: Publish(PaymentRequiredAtExitEvent)
+        PO-->>ExtInt: InstructPayAtExitMachine(visitId, amountDue)
+        ExtInt-->>GateHW: Display "Payment Required" / Route to Pay Station
+        GateHW-->>V: Payment required message
+        PO-->>IAET: Publish(PaymentPendingAtExitEvent)
+        Note over PO: VisitBillingStatus: PaymentPending
+    end
+    end
+
+    Note over MB: All domain events published for downstream consumers

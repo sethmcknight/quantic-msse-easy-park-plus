@@ -1,0 +1,244 @@
+classDiagram
+    class Report {
+        <<aggregate_root>>
+        -ReportId report_id
+        -String title
+        -ReportType type
+        -DateTime generated_time
+        -String content
+        +generate_report(type, parameters)
+        +update_report_content(new_content)
+        +publish_report_ready_event(report_id, title, generated_time)
+    }
+
+    class Dashboard {
+        -DashboardId dashboard_id
+        -String name
+        -List~Report~ linked_reports
+        +add_report_to_dashboard(report)
+        +remove_report_from_dashboard(report_id)
+    }
+
+    class ReportType {
+        <<enumeration>>
+        Daily
+        Weekly
+        Monthly
+        Custom
+    }
+
+    class ReportDefinition {
+        -ReportDefinitionId report_definition_id
+        -String name
+        -String description
+        -ReportSubjectEnum report_subject
+        -Map~String,Any~ parameters
+        -ReportOutputFormatEnum output_format
+        -String generation_schedule
+        +create_definition(name, description, subject, params, format, schedule)
+        +update_definition(definition_id, updates)
+    }
+
+    class GeneratedReport {
+        -GeneratedReportId generated_report_id
+        -ReportDefinitionId report_definition_id_ref
+        -String title
+        -DateTime generation_timestamp
+        -String data_snapshot_details
+        -Any report_content // Could be structured data, link to file, etc.
+        -ReportStatusEnum status
+        +generate(definition_id, execution_params) GeneratedReport
+        +get_content() Any
+        +get_status() ReportStatusEnum
+    }
+
+    class ForecastDefinition {
+        -ForecastDefinitionId forecast_definition_id
+        -String name
+        -String description
+        -ForecastSubjectEnum forecast_subject
+        -String target_scope // E.g., "Lot:L001", "FacilityWide"
+        -Integer horizon_minutes
+        -Integer granularity_minutes
+        -Map~String,Any~ model_parameters
+        +create_definition(name, description, subject, scope, horizon, granularity, params)
+        +update_definition(definition_id, updates)
+    }
+
+    class GeneratedForecast {
+        <<aggregate_root>>
+        -GeneratedForecastId generated_forecast_id
+        -ForecastDefinitionId forecast_definition_id_ref
+        -DateTime generation_timestamp
+        -DateTime forecast_start_time
+        -DateTime forecast_end_time
+        -List~ForecastDataPoint~ forecast_data_points
+        -ForecastStatusEnum status
+        +generate(definition_id, current_data_inputs) GeneratedForecast
+        +get_data_points(time_window) List~ForecastDataPoint~
+        +get_status() ForecastStatusEnum
+        +publish_forecast_generated_event(forecast_id, subject, generation_timestamp)
+    }
+
+    class ForecastDataPoint {
+        -DateTime timestamp
+        -Decimal predicted_value
+        -Decimal confidence_interval_lower
+        -Decimal confidence_interval_upper
+    }
+
+    class AnalyticsDashboard {
+        -DashboardId dashboard_id
+        -String name
+        -String description
+        -String layout_configuration // JSON or similar
+        +create_dashboard(name, description)
+        +add_widget(widget_config) DashboardWidget
+        +remove_widget(widget_id)
+        +update_layout(config)
+        +get_widgets() List~DashboardWidget~
+    }
+
+    class DashboardWidget {
+        -WidgetId widget_id
+        -String title
+        -WidgetTypeEnum widget_type
+        -DataSourceTypeEnum data_source_type
+        -String source_definition_id_ref // ReportDefinitionId or ForecastDefinitionId
+        -Map~String,Any~ display_options
+        +configure_widget(title, type, source_type, source_id, options)
+        +refresh_data()
+        +get_display_data() Any
+    }
+
+    class ReportSubjectEnum {
+        <<enumeration>>
+        Occupancy
+        Revenue
+        EVUsage
+        Incidents
+        SlotAvailability
+        SystemHealth
+        Custom
+    }
+
+    class ReportOutputFormatEnum {
+        <<enumeration>>
+        PDF
+        CSV
+        JSON
+        DashboardView
+    }
+
+    class ReportStatusEnum {
+        <<enumeration>>
+        Queued
+        Generating
+        Completed
+        Failed
+        Archived
+    }
+
+    class ForecastSubjectEnum {
+        <<enumeration>>
+        SlotAvailability
+        EVChargerDemand
+        RevenueProjection
+        StaffingNeeds
+    }
+
+    class ForecastStatusEnum {
+        <<enumeration>>
+        Queued
+        Generating
+        Completed
+        Failed
+        Active // Continuously updated forecast
+    }
+
+    class WidgetTypeEnum {
+        <<enumeration>>
+        LineChart
+        BarChart
+        PieChart
+        KPIValue
+        DataTable
+        ForecastTrendGraph
+        Heatmap
+        TextBlock
+    }
+
+    class DataSourceTypeEnum {
+        <<enumeration>>
+        ReportDefinition
+        ForecastDefinition
+    }
+
+    class ReportId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class DashboardId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class ReportDefinitionId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class GeneratedReportId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class ForecastDefinitionId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class GeneratedForecastId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class WidgetId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    Report -- ReportId : has
+    Report -- ReportType : categorized_as
+    Dashboard -- DashboardId : has
+    Dashboard --o Report : contains
+    ReportDefinition -- ReportDefinitionId : has_id
+    ReportDefinition "1" -- "0..*" GeneratedReport : defines >
+    GeneratedReport -- GeneratedReportId : has_id
+    ForecastDefinition -- ForecastDefinitionId : has_id
+    ForecastDefinition "1" -- "0..*" GeneratedForecast : defines >
+    GeneratedForecast -- GeneratedForecastId : has_id
+    GeneratedForecast "1" -- "0..*" ForecastDataPoint : contains >
+    AnalyticsDashboard "1" -- "0..*" DashboardWidget : contains >
+    DashboardWidget -- WidgetId : has_id
+
+    DashboardWidget -- ReportDefinition : uses (if Report)
+    DashboardWidget -- ForecastDefinition : uses (if Forecast)
+
+    GeneratedReport -- ReportStatusEnum : has
+    ReportDefinition -- ReportSubjectEnum : concerns
+    ReportDefinition -- ReportOutputFormatEnum : formatted_as
+
+    GeneratedForecast -- ForecastStatusEnum : has
+    ForecastDefinition -- ForecastSubjectEnum : concerns
+
+    DashboardWidget -- WidgetTypeEnum : is_of_type
+    DashboardWidget -- DataSourceTypeEnum : has_data_source_type

@@ -1,0 +1,33 @@
+---
+title: Easy Park Plus - Billing & Payments Communication Diagram (Proposed)
+---
+
+graph TD
+    subgraph "Billing Service (BS)"
+        BS[(BS)]
+    end
+
+    %% Data & Events Consumed by BS
+    POS[Parking Operations Service] -->|Event: VisitReadyForBillingSettlement| BS
+    EVCS[EV Charging Service] -->|Event: ChargingSessionReadyForBilling| BS
+    RS[Reservations Service] -->|Event: ReservationRequiresPayment, ConfirmedReservationDetails| BS
+    PS[Pricing Service] -->|Event: FinalPriceCalculated| BS
+    CS[Customer Service] -->|Provides: Customer Payment Methods, Billing Profile| BS
+    EIS[External Integrations Service] -->|Response: Payment Gateway Transaction Status| BS
+
+    %% Services Called & Events Published by BS
+    %% To Payment Gateway
+    BS -->|API: ProcessPayment| EIS
+    BS -->|Event: PaymentConfirmed, PaymentFailed, InvoiceGenerated, RefundProcessed| EventBroker[Event Broker]
+    BS -->|Event: PaymentStatusForVisit| POS
+    BS -->|Event: PaymentStatusForChargingSession| EVCS
+    BS -->|Event: PaymentConfirmationForReservation| RS
+    BS -->|Event: InvoiceIssuedToCustomer| CS
+
+    %% General Event Publishing by BS
+    EventBroker -->|Consumed by| ARS[Analytics & Reporting Service]
+    EventBroker -->|Consumed by| IAETS[Internal Audit & Event Trace Service]
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class BS,POS,EVCS,RS,PS,CS,EIS,ARS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;
