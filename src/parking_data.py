@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from typing import List, Optional
-from src.Vehicle import Vehicle
-from src.ElectricVehicle import ElectricVehicle
 
 @dataclass
 class VehicleInfo:
