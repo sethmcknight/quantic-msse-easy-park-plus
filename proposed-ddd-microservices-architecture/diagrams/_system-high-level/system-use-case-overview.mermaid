@@ -14,9 +14,14 @@ graph TD
             UC_ExitLot["Exit Lot (ANPR/Manual)"]
             UC_ManageValet["Manage Valet Parking"]
             UC_ViewLotOccupancy["View Lot Occupancy"]
-            UC_Staff_HandleManualOverride["(Staff) Handle Entry/Exit Override"]
-            UC_HandleAbandonedVehicle["(Staff) Handle Abandoned Vehicle"]
+            UC_Staff_HandleManualOverride["(Staff) Apply Manual Override Procedures"]
+            UC_HandleAbandonedVehicle["(Staff) Handle Abandoned Vehicle Protocol"]
             UC_InitiateParkingValidation["Initiate Parking Validation"]
+            UC_DetectReportGateFault["Detect and Report Gate Fault"]
+            UC_ActivateFallbackMode["Activate Fallback Mode Procedures"]
+            UC_ReconcileVisit["(Staff) Reconcile Fallback Visit"]
+            UC_HandleSlotConflict["(Staff) Handle Slot Conflict Resolution"]
+            UC_ManageEmergencyMode["(Staff) Activate Emergency Mode Procedures"]
         end
 
         subgraph EVCharging["EV Charging"]
@@ -24,6 +29,9 @@ graph TD
             UC_MonitorEVCharge["Monitor EV Charging"]
             UC_StopEVCharge["Stop EV Charging"]
             UC_HandleSessionInterruption["Handle Charging Session Interruption"]
+            UC_HandleChargerFault["(Staff) Handle Charger Equipment Fault"]
+            UC_ManageGracePeriod["Manage Charging Grace Period"]
+            UC_HandleChargingConflict["(Staff) Handle Charging Conflict Resolution"]
         end
 
         subgraph Reservations["Reservations"]
@@ -33,6 +41,8 @@ graph TD
             UC_CheckInReservation["Check-In with Reservation"]
             UC_CreateSlotHold["Create Temporary Slot Hold"]
             UC_HandleReservationMismatch["(Staff) Handle Reservation Mismatch"]
+            UC_ManageSoftHolds["Manage Soft Reservation Holds"]
+            UC_HandleReservationConflict["(Staff) Handle Reservation Conflict"]
         end
     end
 
@@ -180,6 +190,16 @@ graph TD
     ParkingStaff --> UC_HandleReservationMismatch
     ParkingStaff --> UC_ProcessPaymentSettlement
     ParkingStaff --> UC_GenerateOccupancyForecast
+    ParkingStaff --> UC_DetectReportGateFault
+    ParkingStaff --> UC_ActivateFallbackMode
+    ParkingStaff --> UC_ReconcileVisit
+    ParkingStaff --> UC_HandleSlotConflict
+    ParkingStaff --> UC_ManageEmergencyMode
+    ParkingStaff --> UC_HandleChargerFault
+    ParkingStaff --> UC_ManageGracePeriod
+    ParkingStaff --> UC_HandleChargingConflict
+    ParkingStaff --> UC_ManageSoftHolds
+    ParkingStaff --> UC_HandleReservationConflict
 
     %% System Admin Interactions
     SystemAdmin --> UC_Admin_ConfigLots

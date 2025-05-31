@@ -63,26 +63,35 @@ stateDiagram-v2
     note right of VisitActive
         Core operational state where vehicle
         is actively using parking facilities.
-        May include charging sessions, incidents,
-        valet services, and policy applications.
+        Detailed in: visit_lifecycle_state_machine.mermaid
+        Includes: slot assignment, valet handoff,
+        validation, manual overrides, and conflicts.
     end note
     
     note right of Degraded
         System operating under FallbackPolicy.
         Some microservices degraded but core
-        functionality maintained. May create
-        VisitReconciliationJobs.
+        functionality maintained. Creates
+        VisitReconciliationJobs for data recovery.
     end note
     
     note right of EmergencyMode
         Critical failure requiring emergency
-        procedures. All gates may open, no charges,
-        immediate evacuation protocols active.
+        procedures. VisitLifecycleStateMachine
+        transitions to emergency mode. Gates may
+        open, evacuation protocols active.
+    end note
+    
+    note right of ChargingActive
+        EV charging session in progress.
+        Detailed in: ev_charging_session_state_machine.mermaid
+        Includes: authentication, monitoring, faults,
+        grace periods, and billing integration.
     end note
     
     note right of BillingSettlement
         Involves Pricing Service for charge
         calculation and Billing Service for
         payment processing. May include grace
-        period exemptions.
+        period exemptions and validation redemptions.
     end note

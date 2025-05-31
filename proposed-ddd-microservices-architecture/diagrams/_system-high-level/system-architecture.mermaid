@@ -6,8 +6,8 @@ architecture-beta
     
     %% Core Operations Services
     group core_ops(cloud)[Core Operations]
-    service parking_ops(server)[Parking Options API] in core_ops
-    service parking_ops_db(database)[Parking Ops Ops DB] in core_ops
+    service parking_ops(server)[Parking Operations API] in core_ops
+    service parking_ops_db(database)[Parking Operations DB] in core_ops
     service ev_charging(server)[EV Charging API] in core_ops
     service ev_charging_db(database)[EV Charging DB] in core_ops
     service reservations(server)[Reservations API] in core_ops
