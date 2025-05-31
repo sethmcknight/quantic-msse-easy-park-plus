@@ -1,0 +1,57 @@
+---
+title: Easy Park Plus Initial Park Car Sequence Diagram
+---
+
+sequenceDiagram
+    actor User
+    participant UI as ParkingLotUI
+    participant State as UIStateManager
+    participant Valid as ValidationManager
+    participant Manager as ParkingLotManager
+    participant Lot as ParkingLot
+    participant Msg as MessageManager
+
+    User->>UI: Enter vehicle details & click park
+    UI->>UI: _handle_park()
+    
+    UI->>UI: _get_vehicle_data()
+    UI->>State: Get input values from StringVar/BooleanVar
+    State-->>UI: Return form values
+    UI->>UI: Create VehicleData object
+    
+    UI->>Valid: validate_vehicle_data(vehicle_data)
+    Valid-->>UI: Validation result
+    
+    alt Invalid Input
+        UI->>Msg: show_error(error_message)
+        Msg-->>User: Display error dialog
+    else Valid Input
+        UI->>UI: Get lot_name and level from state
+        
+        alt Missing lot/level
+            UI->>Msg: show_error("Please select lot and level")
+            Msg-->>User: Display error
+        else Valid lot/level
+            UI->>Manager: park_vehicle(lot_name, level, vehicle_data)
+            Manager->>Lot: find_available_slot(level, is_electric, is_motorcycle)
+            Lot-->>Manager: Return slot number or None
+            
+            alt No available slot
+                Manager-->>UI: Return None
+                UI->>Msg: show_error("No available slots")
+                Msg-->>User: Display error
+            else Slot available
+                Manager->>Lot: park_vehicle(level, slot, vehicle_data)
+                Lot-->>Manager: Return success
+                Manager->>Manager: _notify_observers(lot_name)
+                Manager-->>UI: Return slot number
+                
+                UI->>Msg: show_message("Parked in slot X")
+                UI->>UI: _update_remove_slots(lot_name, level)
+                UI->>UI: update_ui_after_operation()
+                Msg-->>User: Display success message
+            end
+        end
+    end
+    
+    Note over UI,Lot: Exception handling with ValidationError<br/>and OperationError throughout flow 
