@@ -1,0 +1,110 @@
+---
+title: Easy Park Plus - Use Case Diagram (Implemented)
+---
+flowchart TD
+    %% Actors
+    User([User])
+    System([System])
+    
+    %% Main Use Cases
+    Park[Park Vehicle]
+    Remove[Remove Vehicle]
+    Search[Search Vehicles]
+    CreateLot[Create Parking Lot]
+    ViewStatus[View Lot Status]
+    ViewDetails[View Lot Details]
+    LoadSample[Load Sample Data]
+    
+    %% Extended Use Cases for Park Vehicle
+    SelectSlot[Select Available Slot]
+    ValidateVehicle[Validate Vehicle Data]
+    UpdateUI[Update UI Display]
+    NotifyObservers[Notify Observers]
+    
+    %% Extended Use Cases for Remove Vehicle
+    FindVehicle[Find Parked Vehicle]
+    FreeSlot[Free Parking Slot]
+    CalculateFee[Calculate Parking Fee]
+    
+    %% Extended Use Cases for Search
+    FilterByType[Filter by Vehicle Type]
+    FilterByLicense[Filter by License Plate]
+    FilterBySlot[Filter by Slot ID]
+    DisplayResults[Display Search Results]
+    
+    %% Extended Use Cases for Create Lot
+    ConfigureLevels[Configure Levels]
+    ConfigureSlots[Configure Slots per Level]
+    SetEVSlots[Set EV Charging Slots]
+    InitializeLot[Initialize Empty Lot]
+    
+    %% System Use Cases
+    ManageState[Manage System State]
+    HandleErrors[Handle Validation Errors]
+    UpdateTree[Update Tree View]
+    SaveData[Save Lot Data]
+    
+    %% User interactions
+    User --> Park
+    User --> Remove
+    User --> Search
+    User --> CreateLot
+    User --> ViewStatus
+    User --> ViewDetails
+    User --> LoadSample
+    
+    %% Park Vehicle extensions
+    Park --> SelectSlot
+    Park --> ValidateVehicle
+    Park --> UpdateUI
+    Park --> NotifyObservers
+    
+    %% Remove Vehicle extensions
+    Remove --> FindVehicle
+    Remove --> FreeSlot
+    Remove --> CalculateFee
+    Remove --> UpdateUI
+    Remove --> NotifyObservers
+    
+    %% Search extensions
+    Search --> FilterByType
+    Search --> FilterByLicense
+    Search --> FilterBySlot
+    Search --> DisplayResults
+    
+    %% Create Lot extensions
+    CreateLot --> ConfigureLevels
+    CreateLot --> ConfigureSlots
+    CreateLot --> SetEVSlots
+    CreateLot --> InitializeLot
+    CreateLot --> UpdateTree
+    
+    %% System interactions
+    System --> ManageState
+    System --> HandleErrors
+    System --> UpdateTree
+    System --> SaveData
+    
+    %% Include relationships (dotted lines)
+    Park -.-> ManageState
+    Remove -.-> ManageState
+    Search -.-> ManageState
+    CreateLot -.-> ManageState
+    
+    ValidateVehicle -.-> HandleErrors
+    ConfigureLevels -.-> HandleErrors
+    ConfigureSlots -.-> HandleErrors
+    
+    UpdateUI -.-> UpdateTree
+    NotifyObservers -.-> UpdateTree
+    
+    %% Styling
+    classDef actor fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef usecase fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef extend fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef system fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    
+    class User,System actor
+    class Park,Remove,Search,CreateLot,ViewStatus,ViewDetails,LoadSample usecase
+    class SelectSlot,ValidateVehicle,FindVehicle,FreeSlot,CalculateFee,FilterByType,FilterByLicense,FilterBySlot,DisplayResults,ConfigureLevels,ConfigureSlots,SetEVSlots,InitializeLot extend
+    class ManageState,HandleErrors,UpdateTree,SaveData,UpdateUI,NotifyObservers system
