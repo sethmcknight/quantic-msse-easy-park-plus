@@ -1,0 +1,138 @@
+sequenceDiagram
+    participant Monitor as System Monitor
+    participant Incident as Incident & Enforcement
+    participant Policy as Policy Management
+    participant Gate as Gate Controller
+    participant Charger as EV Charger
+    participant ParkingOps as Parking Operations
+    participant Staff as Staff Service
+    participant Analytics as Analytics Service
+    
+    Note over Monitor, Analytics: System Fault Management & Recovery Flow
+
+    %% Fault Detection Phase
+    rect rgb(255, 235, 235)
+    Note over Monitor, Charger: Fault Detection Phase
+    
+    par Concurrent Monitoring
+        Gate->>Monitor: Health check heartbeat
+        alt Gate Malfunction
+            Gate--xMonitor: Heartbeat timeout
+            Monitor->>Monitor: Detect gate failure
+        end
+    and
+        Charger->>Monitor: Status update
+        alt Charger Fault
+            Charger--xMonitor: Error status
+            Monitor->>Monitor: Detect charger failure
+        end
+    end
+    
+    Monitor->>+Incident: Report system fault
+    Note right of Incident: Fault Classification:<br/>- Critical (safety)<br/>- High (revenue)<br/>- Medium (service)<br/>- Low (cosmetic)
+    end
+
+    %% Incident Assessment & Response
+    rect rgb(255, 245, 230)
+    Note over Incident, Policy: Incident Assessment Phase
+    Incident->>Incident: Classify fault severity
+    Incident->>+Policy: Query fault response policy
+    Policy-->>-Incident: Response procedures
+    
+    alt Critical Fault (Safety Risk)
+        Incident->>+Staff: Alert security team
+        Staff->>Staff: Dispatch emergency response
+        Incident->>ParkingOps: Activate emergency mode
+        ParkingOps->>Gate: Open all entry/exit gates
+        Note right of Gate: Allow free egress<br/>for safety
+        
+    else High Priority Fault (Revenue Impact)
+        Incident->>+Staff: Alert maintenance team
+        Staff->>Staff: Prioritize repair dispatch
+        Incident->>Policy: Apply fallback policy
+        
+    else Medium/Low Priority Fault
+        Incident->>Staff: Schedule maintenance
+        Incident->>Policy: Apply degraded service policy
+    end
+    end
+
+    %% Fallback Policy Activation
+    rect rgb(240, 255, 240)
+    Note over Policy, ParkingOps: Fallback Policy Activation
+    Policy->>+ParkingOps: Activate fallback mode
+    
+    alt Gate Controller Failure
+        ParkingOps->>Gate: Switch to manual override
+        ParkingOps->>Staff: Deploy manual gate operation
+        Staff->>Staff: Position staff at gates
+        
+    else EV Charger Failure
+        ParkingOps->>Charger: Disable failed charger
+        ParkingOps->>ParkingOps: Redirect to backup chargers
+        Policy->>Policy: Adjust EV slot availability
+        
+    else Network Connectivity Issue
+        ParkingOps->>ParkingOps: Switch to offline mode
+        ParkingOps->>Gate: Use cached permissions
+        Note right of Gate: Allow known vehicles<br/>based on local cache
+    end
+    
+    ParkingOps-->>-Policy: Fallback mode active
+    end
+
+    %% Recovery Procedures
+    rect rgb(245, 240, 255)
+    Note over Staff, Analytics: Recovery Phase
+    Staff->>+Incident: Begin repair procedures
+    
+    loop Recovery Process
+        Staff->>Staff: Execute repair steps
+        Staff->>Monitor: Test system component
+        
+        alt Component Restored
+            Monitor->>Incident: Component health confirmed
+            Incident->>Incident: Mark component as operational
+        else Component Still Faulty
+            Staff->>Staff: Continue troubleshooting
+        end
+    end
+    
+    Staff-->>-Incident: Repair completed
+    
+    %% System Recovery Validation
+    Incident->>+Policy: Request recovery validation
+    Policy->>Monitor: Initiate system health check
+    Monitor->>Gate: Comprehensive gate test
+    Monitor->>Charger: Comprehensive charger test
+    
+    alt All Systems Operational
+        Monitor-->>Policy: All systems healthy
+        Policy->>ParkingOps: Exit fallback mode
+        ParkingOps->>ParkingOps: Resume normal operations
+        Policy-->>Incident: Recovery confirmed
+        
+        Incident->>Staff: Notify recovery complete
+        Incident->>Analytics: Log incident resolution
+        
+    else Partial Recovery
+        Monitor-->>Policy: Some systems still degraded
+        Policy->>Policy: Maintain limited fallback mode
+        Policy-->>-Incident: Partial recovery noted
+        Incident->>Staff: Continue monitoring
+    end
+    end
+
+    %% Post-Incident Analysis
+    rect rgb(250, 250, 235)
+    Note over Incident, Analytics: Post-Incident Analysis
+    Incident->>+Analytics: Submit incident data
+    Analytics->>Analytics: Analyze failure patterns
+    Analytics->>Analytics: Generate improvement recommendations
+    Analytics-->>-Incident: Analysis complete
+    
+    Incident->>Policy: Update fault response procedures
+    Note right of Policy: Learn from incident<br/>to improve future response
+    end
+
+    Note over Monitor, Analytics: Normal Operations Resumed

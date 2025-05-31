@@ -1,0 +1,207 @@
+classDiagram
+    class DynamicReservation {
+        <<Aggregate Root>>
+        +ReservationId reservation_id
+        +CustomerId customer_id
+        +VehicleRegistration vehicle_registration // Optional, can be added later
+        +LotId lot_id
+        +List~ReservedResource~ reserved_resources
+        +TimeRange requested_time_window
+        +TimeRange confirmed_time_window // Optional, if different from requested
+        +ReservationStatus status
+        +Money pre_auth_amount // Optional
+        +String payment_transaction_id // Optional, if pre-paid or deposit taken
+        +HoldId originating_hold_id // Optional
+        +ReservationGroupId reservation_group_id // Optional, for multi-slot
+        +create_dynamic_reservation(customer_id, vehicle_registration, lot_id, resource_request, time_window, occupancy_forecast, active_event_windows, available_slot_types_for_reservation)
+        +create_multi_slot_reservation_group(customer_id, lot_id, resource_requests, time_window)
+        +confirm_reservation_from_hold(hold_id, payment_confirmation_details)
+        +confirm_reservation()
+        +cancel_reservation(reason, user_type)
+        +update_reservation_details(new_time_window, new_vehicle_registration, new_resource_requests)
+        +mark_as_fulfilled(visit_id, actual_arrival_time)
+        +mark_as_expired()
+        +mark_as_no_show()
+        +handle_reservation_mismatch(actual_lot_id, proposed_resolution)
+        +publish_reservation_created_event(reservation_id, customer_id, lot_id, time_window)
+        +publish_reservation_confirmed_event(reservation_id, confirmed_details)
+        +publish_reservation_cancelled_event(reservation_id, cancellation_reason)
+        +publish_reservation_requires_payment_event(reservation_id, payment_amount)
+    }
+
+    class ReservationGroup {
+        <<Aggregate Root>>
+        +ReservationGroupId reservation_group_id
+        +CustomerId customer_id
+        +LotId lot_id
+        +List~ReservationId~ grouped_reservations
+        +TimeRange shared_time_window
+        +ReservationGroupStatus group_status
+        +create_group(customer_id, lot_id, time_window)
+        +add_reservation_to_group(reservation_id)
+        +remove_reservation_from_group(reservation_id)
+        +cancel_entire_group(reason)
+        +confirm_entire_group()
+    }
+
+    class SlotHold {
+        <<Aggregate Root>>
+        +HoldId hold_id
+        +LotId lot_id
+        +List~ReservedResource~ resources_on_hold
+        +CustomerId customer_id // Optional, system holds might not have one
+        +SlotHoldTypeEnum hold_type
+        +DateTime creation_time
+        +DateTime expiry_time
+        +SlotHoldStatusEnum status
+        +ReservationId associated_reservation_id // Optional, if converted
+        +create_hold(lot_id, resource_details, customer_id, hold_type, duration)
+        +extend_hold(additional_duration)
+        +release_hold(reason)
+        +convert_hold_to_reservation(vehicle_registration, customer_details)
+        +publish_slot_held_event(hold_id, lot_id, resources_on_hold)
+        +publish_slot_released_event(hold_id, lot_id, release_reason)
+    }
+
+    class ReservationId {
+        <<Value Object>>
+        +UUID id
+    }
+    class CustomerId {
+        <<Value Object>>
+        +UUID id
+    }
+    class VehicleRegistration {
+        <<Value Object>>
+        +String plate_number
+        +String jurisdiction
+    }
+    class LotId {
+        <<Value Object>>
+        +UUID id
+    }
+    class SlotId {
+        <<Value Object>>
+        +UUID id
+    }
+    class TimeRange {
+        <<Value Object>>
+        +DateTime start_timestamp
+        +DateTime end_timestamp
+    }
+    class HoldId {
+        <<Value Object>>
+        +UUID id
+    }
+    class ReservedResource {
+        <<Value Object>>
+        +ResourceType resource_type
+        +SlotId specific_slot_id // Optional, if specific_slot type
+        +ChargerId specific_charger_id // Optional, if specific_charger type
+        +SlotAttributes slot_attributes_preference // Optional
+        +Integer quantity // For multi-slot of same type
+    }
+
+    class ResourceType {
+        <<Enumeration>>
+        AnyStandardSlot
+        AnyElectricVehicleSlot
+        SpecificSlot
+        SpecificCharger
+        MotorcycleSlot
+        OversizedSlot
+    }
+
+    class SlotAttributes {
+        <<Value Object>>
+        +Boolean is_covered // Optional
+        +String proximity_to // e.g., "elevator", "entrance_A" (Optional)
+        +Boolean requires_ev_charging // Implicit if EV slot type, explicit for others
+    }
+
+    class ReservationStatus {
+        <<Enumeration>>
+        PendingConfirmation // User initiated, awaiting payment or system confirmation
+        Confirmed // Locked in
+        Cancelled_ByUser
+        Cancelled_System // e.g., payment failed, operational issue
+        Fulfilled // Vehicle arrived and matched
+        Expired_NoShow // Reservation window passed, vehicle did not arrive
+        Active_VehicleArrived // Vehicle has arrived, reservation is active
+        Mismatch_Reported // e.g. wrong lot, needs resolution
+        ConvertedFromHold
+        PendingPayment // If payment is part of confirmation flow
+    }
+
+    class ReservationGroupId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class SlotHoldTypeEnum {
+        <<Enumeration>>
+        PaymentConfirmation
+        FleetTemporaryAssignment
+        ValetPreAllocation
+        AdminHold
+        SystemInternal // e.g. during slot reassignment
+    }
+
+    class SlotHoldStatusEnum {
+        <<Enumeration>>
+        Active
+        Expired
+        ConvertedToReservation
+        ReleasedManually
+        ReleasedSystem
+    }
+
+    class Money { // Referenced by DynamicReservation
+        <<Value Object>>
+        +Decimal amount
+        +String currency_code
+    }
+
+    class ChargerId { // Referenced by ReservedResource
+        <<Value Object>>
+        +UUID id
+    }
+
+    class ReservationGroupStatus {
+        <<Enumeration>>
+        PendingConfirmation
+        Confirmed
+        PartiallyFulfilled
+        FullyFulfilled
+        Cancelled
+        Expired
+    }
+
+    class VisitId { // For mark_as_fulfilled
+        <<Value Object>>
+        +UUID id
+    }
+
+    DynamicReservation "1" *-- "1" ReservationId : has
+    DynamicReservation "1" *-- "1" CustomerId : for_customer
+    DynamicReservation "1" -- "0..1" VehicleRegistration : for_vehicle
+    DynamicReservation "1" *-- "1" LotId : for_lot
+    DynamicReservation "1" *-- "1" TimeRange : during
+    DynamicReservation "1" -- "0..1" HoldId : from_hold
+    DynamicReservation "1" -- "0..1" ReservationGroupId : part_of_group
+    DynamicReservation "1" *-- "1..*" ReservedResource : reserves
+
+    ReservationGroup "1" *-- "1" ReservationGroupId : has
+    ReservationGroup "1" *-- "1" CustomerId : for_customer
+    ReservationGroup "1" *-- "1" LotId : for_lot
+    ReservationGroup "1" *-- "1" TimeRange : during
+    ReservationGroup "1" -- "1..*" DynamicReservation : contains
+
+    SlotHold "1" *-- "1" HoldId : has
+    SlotHold "1" *-- "1" LotId : for_lot
+    SlotHold "1" -- "0..1" CustomerId : by_customer
+    SlotHold "1" -- "0..1" ReservationId : converted_to_reservation
+    SlotHold "1" *-- "1..*" ReservedResource : holds
+
+    note for DynamicReservation "Manages short-term reservations for parking slots and/or EV chargers."
+    note for SlotHold "Represents a temporary hold on a resource, often pending confirmation."

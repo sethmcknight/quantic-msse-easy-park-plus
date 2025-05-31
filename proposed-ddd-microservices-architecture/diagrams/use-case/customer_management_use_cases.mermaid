@@ -1,0 +1,28 @@
+graph TD
+    Customer((Customer))
+    Admin((System Admin))
+
+    subgraph "Customer Management"
+        UC1[Register Account]
+        UC2[Update Profile]
+        UC3[Manage Payment Methods]
+        UC4[Purchase Parking Pass]
+        UC5[View Parking History]
+        UC6[Deactivate Account]
+        UC7[Manage Vehicle Registration]
+        UC8[Update Passholder Status]
+        UC9[View Customer Interaction History]
+    end
+
+    Customer --> UC1
+    Customer --> UC2
+    Customer --> UC3
+    Customer --> UC4
+    Customer --> UC5
+    Customer --> UC6
+    Customer --> UC7
+    Admin --> UC6
+    Admin --> UC8
+    Admin --> UC9
+    Staff --> UC8
+    Staff --> UC9

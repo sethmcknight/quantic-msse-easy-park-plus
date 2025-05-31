@@ -1,0 +1,108 @@
+stateDiagram-v2
+    %% Visit Operational Status
+    state "VisitOperationalStatus" as VisitOperational {
+        [*] --> Planned : Reservation Confirmed
+        Planned --> PendingEntry : Vehicle Nearing Lot (via Geofence or similar)
+        PendingEntry --> EnteredLot : Vehicle ANPR Confirmed at Entry Gate / Gate Opened
+        PendingEntry --> Cancelled : Reservation NoShow / Expired before entry
+        
+        EnteredLot --> ActiveInLot : Vehicle Passed Entry Gate, Awaiting Slot Assignment or In Free-Roam
+        ActiveInLot --> SlotAssigned : Slot Assigned (manually or by system)
+        ActiveInLot --> AwaitingSlotAssignment : Vehicle in lot, but no slot yet (e.g. Valet Queue)
+        AwaitingSlotAssignment --> SlotAssigned : Slot Assigned for Valet Park
+        
+        SlotAssigned --> ActiveInLot : Vehicle leaves slot, becomes Free-Roam (e.g. Valet Retrieval Start)
+        SlotAssigned --> ExitedLot : Vehicle ANPR Confirmed at Exit Gate / Gate Opened
+        ActiveInLot --> ExitedLot : Vehicle ANPR Confirmed at Exit Gate / Gate Opened (from free-roam)
+
+        ExitedLot --> CompletedOperational : Post-exit processing complete (e.g. slot freed)
+        
+        %% Error / Exception States for Operational
+        Planned --> FailedToEnter : Technical issue at gate, reservation remains
+        PendingEntry --> FailedToEnter
+        EnteredLot --> Interrupted : e.g., System outage, vehicle stuck in lot
+        ActiveInLot --> Interrupted
+        SlotAssigned --> Interrupted
+        AwaitingSlotAssignment --> Interrupted
+        Interrupted --> ExitedLot : Manual Override Exit
+        Interrupted --> Abandoned : Vehicle left in lot after prolonged interruption
+        Interrupted --> EmergencyEvacuated : Emergency Mode activated, forced evacuation
+        
+        %% Emergency evacuation can happen from any active state
+        EnteredLot --> EmergencyEvacuated : Emergency Mode activated
+        ActiveInLot --> EmergencyEvacuated : Emergency Mode activated  
+        SlotAssigned --> EmergencyEvacuated : Emergency Mode activated
+        AwaitingSlotAssignment --> EmergencyEvacuated : Emergency Mode activated
+        
+        Abandoned --> [*]
+        CompletedOperational --> [*]
+        Cancelled --> [*]
+        FailedToEnter --> [*]
+        EmergencyEvacuated --> [*]
+    }
+
+    %% Visit Billing Status (Parallel State)
+    state "VisitBillingStatus" as VisitBilling {
+        [*] --> PendingPriceQuote : Visit Started (EnteredLot)
+        PendingPriceQuote --> PriceQuoteReceived : Pricing Service responds
+        PriceQuoteReceived --> PendingPayment : Price confirmed, awaiting customer payment
+        PendingPayment --> PaymentInProgress : Customer initiates payment
+        PaymentInProgress --> PaymentConfirmed : Payment successful (via Billing Service)
+        PaymentInProgress --> PaymentFailed : Payment attempt failed
+        PaymentFailed --> PendingPayment : Retry Payment
+        PaymentFailed --> RequiresManualBillingIntervention : Multiple failures or issue
+        
+        PaymentConfirmed --> BillingFinalized_Paid : Billing cycle complete for this visit
+        
+        %% Alternative Billing Flows
+        PendingPriceQuote --> GraceExempt_NoCharge : Visit qualifies for no charge (e.g. quick pass-through within grace)
+        GraceExempt_NoCharge --> BillingFinalized_Paid : (Still finalized, just with zero amount)
+
+        PriceQuoteReceived --> RequiresManualBillingIntervention : Price calculation error or dispute
+        RequiresManualBillingIntervention --> BillingFinalized_Paid : Manual resolution leads to payment
+        RequiresManualBillingIntervention --> BillingFinalized_Unpaid : Manual resolution leads to write-off or deferral
+        
+        BillingFinalized_Paid --> [*]
+        BillingFinalized_Unpaid --> [*]
+    }
+    
+    note right of VisitOperational
+      VisitOperationalStatus:
+      - Planned
+      - PendingEntry
+      - EnteredLot
+      - ActiveInLot
+      - AwaitingSlotAssignment
+      - SlotAssigned
+      - ExitedLot
+      - Interrupted
+      - Abandoned
+      - EmergencyEvacuated
+      - CompletedOperational (internal, signals op tasks done)
+      - Cancelled (e.g. no-show)
+      - FailedToEnter 
+    end note
+
+    note right of VisitBilling
+      VisitBillingStatus:
+      - PendingPriceQuote
+      - PriceQuoteReceived
+      - PendingPayment
+      - PaymentInProgress
+      - PaymentConfirmed
+      - PaymentFailed
+      - GraceExempt_NoCharge
+      - BillingFinalized_Paid
+      - BillingFinalized_Unpaid
+      - RequiresManualBillingIntervention
+    end note
+
+    %% Linking Operational and Billing states (Conceptual)
+    %% This is hard to show perfectly in Mermaid for parallel states that are not time-synchronized
+    %% but conceptually:
+    %% ExitedLot (Operational) often triggers final billing actions if not already paid.
+    %% PaymentConfirmed (Billing) can influence ExitedLot (Operational) if exit is gated by payment.
+    %% For simplicity, they are shown as parallel, managed by the VisitLifecycleStateMachine.
+    
+    %% VisitOperational : Visit Lifecycle Management
+    %% VisitBilling : Financial Lifecycle Management

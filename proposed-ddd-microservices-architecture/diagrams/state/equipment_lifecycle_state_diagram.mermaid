@@ -1,0 +1,60 @@
+stateDiagram-v2
+    [*] --> Installed : Equipment installed and configured
+
+    Installed --> Operational : Equipment passes initial testing
+    Installed --> Failed_Installation : Installation testing fails
+
+    Operational --> UnderMaintenance : Scheduled or emergency maintenance
+    Operational --> Faulted : Equipment fault detected
+    Operational --> Offline : Communication lost or power failure
+    Operational --> Retired : Equipment end-of-life
+
+    UnderMaintenance --> Operational : Maintenance complete, equipment restored
+    UnderMaintenance --> Faulted : Maintenance reveals faults requiring repair
+    UnderMaintenance --> Retired : Maintenance determines equipment beyond repair
+
+    Faulted --> UnderMaintenance : Fault requires maintenance intervention
+    Faulted --> Operational : Fault self-resolved or remotely fixed
+    Faulted --> Offline : Fault causes equipment to go offline
+    Faulted --> Retired : Fault irreparable, equipment retired
+
+    Offline --> Operational : Communication/power restored, equipment functional
+    Offline --> Faulted : Offline due to equipment fault
+    Offline --> UnderMaintenance : Offline requires maintenance intervention
+    Offline --> Retired : Equipment unable to be restored
+
+    Retired --> [*]
+    Failed_Installation --> [*]
+
+    note right of Operational
+        Equipment fully functional and available:
+        - Gates: ANPR working, barrier operational
+        - Chargers: Available for charging sessions
+        - Sensors: Providing accurate data
+        Triggers EquipmentItemStatusChanged events
+    end note
+    
+    note right of UnderMaintenance
+        Equipment temporarily unavailable:
+        - Scheduled maintenance windows
+        - Emergency repairs
+        - Software updates
+        - Safety inspections
+    end note
+    
+    note right of Faulted
+        Equipment fault detected:
+        - Hardware malfunction
+        - Software errors
+        - Safety violations
+        - Performance degradation
+        Triggers fault events to Incident & Enforcement
+    end note
+    
+    note right of Offline
+        Equipment unreachable:
+        - Network connectivity issues
+        - Power failures
+        - Communication hardware faults
+        - Security system isolation
+    end note

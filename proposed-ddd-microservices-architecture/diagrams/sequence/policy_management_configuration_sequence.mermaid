@@ -1,0 +1,199 @@
+sequenceDiagram
+    participant Admin as System Administrator
+    participant PolicyMgmt as Policy Management
+    participant ParkingOps as Parking Operations
+    participant Billing as Billing Service
+    participant Pricing as Pricing Service
+    participant Access as Access Control
+    participant EV as EV Charging Service
+    participant Analytics as Analytics Service
+    participant Notification as Notification Service
+    
+    Note over Admin, Notification: Policy Management & Configuration Flow
+
+    %% Policy Creation & Definition
+    rect rgb(230, 245, 255)
+    Note over Admin, PolicyMgmt: Policy Creation Phase
+    Admin->>+PolicyMgmt: Create new policy configuration
+    PolicyMgmt->>PolicyMgmt: Validate policy parameters
+    
+    alt Pricing Policy
+        PolicyMgmt->>PolicyMgmt: Define pricing rules
+        Note right of PolicyMgmt: Pricing Configuration:<br/>- Base rates by zone/time<br/>- Dynamic pricing triggers<br/>- Discount structures<br/>- Surge pricing rules<br/>- EV charging rates
+        
+    else Access Control Policy
+        PolicyMgmt->>PolicyMgmt: Define access permissions
+        Note right of PolicyMgmt: Access Rules:<br/>- Passholder access levels<br/>- Time-based restrictions<br/>- Vehicle type permissions<br/>- Zone access controls<br/>- Emergency overrides
+        
+    else Operational Policy
+        PolicyMgmt->>PolicyMgmt: Define operational rules
+        Note right of PolicyMgmt: Operations Config:<br/>- Capacity management<br/>- Reservation rules<br/>- Valet service parameters<br/>- EV charging priorities<br/>- Maintenance schedules
+        
+    else Emergency Policy
+        PolicyMgmt->>PolicyMgmt: Define emergency procedures
+        Note right of PolicyMgmt: Emergency Config:<br/>- Evacuation protocols<br/>- System failover rules<br/>- Communication procedures<br/>- Recovery processes
+    end
+    
+    PolicyMgmt->>PolicyMgmt: Version and timestamp policy
+    PolicyMgmt-->>-Admin: Policy configuration saved
+    end
+
+    %% Policy Validation & Testing
+    rect rgb(255, 245, 230)
+    Note over PolicyMgmt, Analytics: Policy Validation Phase
+    Admin->>+PolicyMgmt: Request policy validation
+    PolicyMgmt->>+Analytics: Simulate policy impact
+    
+    Analytics->>Analytics: Run policy simulation models
+    Note right of Analytics: Simulation scenarios:<br/>- Revenue impact analysis<br/>- Operational efficiency<br/>- Customer experience impact<br/>- Resource utilization<br/>- Conflict detection
+    
+    Analytics->>Analytics: Generate impact assessment
+    Analytics-->>-PolicyMgmt: Simulation results
+    
+    alt Policy Issues Detected
+        PolicyMgmt-->>Admin: Policy conflicts/issues identified
+        Admin->>PolicyMgmt: Revise policy configuration
+        
+    else Policy Validation Successful
+        PolicyMgmt->>PolicyMgmt: Mark policy as validated
+        PolicyMgmt-->>-Admin: Policy ready for deployment
+    end
+    end
+
+    %% Policy Distribution & Propagation
+    rect rgb(240, 255, 240)
+    Note over PolicyMgmt, Notification: Policy Distribution Phase
+    Admin->>+PolicyMgmt: Deploy policy configuration
+    PolicyMgmt->>PolicyMgmt: Prepare policy distribution package
+    
+    critical Policy Propagation to Services
+        par Operational Services
+            PolicyMgmt->>+ParkingOps: Update operational policies
+            ParkingOps->>ParkingOps: Apply new operational rules
+            ParkingOps->>ParkingOps: Update capacity management
+            ParkingOps-->>-PolicyMgmt: Operational policies updated
+            
+        and Billing & Pricing Services
+            PolicyMgmt->>+Billing: Update billing policies
+            Billing->>Billing: Apply new billing rules
+            Billing-->>-PolicyMgmt: Billing policies updated
+            
+            PolicyMgmt->>+Pricing: Update pricing algorithms
+            Pricing->>Pricing: Load new pricing matrices
+            Pricing->>Pricing: Recalibrate dynamic pricing
+            Pricing-->>-PolicyMgmt: Pricing policies updated
+            
+        and Access Control
+            PolicyMgmt->>+Access: Update access control rules
+            Access->>Access: Refresh permission matrices
+            Access->>Access: Update gate control logic
+            Access-->>-PolicyMgmt: Access policies updated
+            
+        and EV Charging Service
+            PolicyMgmt->>+EV: Update charging policies
+            EV->>EV: Apply new charging rules
+            EV->>EV: Update priority algorithms
+            EV-->>-PolicyMgmt: EV policies updated
+        end
+    end
+    
+    PolicyMgmt->>PolicyMgmt: Verify all services updated
+    PolicyMgmt-->>-Admin: Policy deployment complete
+    end
+
+    %% Real-time Policy Application
+    rect rgb(255, 240, 255)
+    Note over ParkingOps, EV: Policy Application in Operations
+    Note over ParkingOps, EV: Example: Dynamic Pricing Policy Application
+    
+    ParkingOps->>+Pricing: Request current pricing
+    Pricing->>Pricing: Apply active pricing policies
+    Note right of Pricing: Real-time factors:<br/>- Current occupancy<br/>- Time of day<br/>- Special events<br/>- Weather conditions<br/>- Historical patterns
+    
+    Pricing->>Analytics: Get demand forecasting data
+    Analytics-->>Pricing: Demand predictions
+    
+    Pricing->>Pricing: Calculate dynamic pricing
+    Pricing-->>-ParkingOps: Current pricing rates
+    
+    ParkingOps->>+Access: Validate customer access
+    Access->>Access: Apply access control policies
+    Note right of Access: Access validation:<br/>- Customer status check<br/>- Vehicle permissions<br/>- Time restrictions<br/>- Zone access rights
+    
+    Access-->>-ParkingOps: Access authorization
+    
+    opt EV Charging Request
+        ParkingOps->>+EV: Request charging authorization
+        EV->>EV: Apply EV charging policies
+        Note right of EV: EV policy factors:<br/>- Charging priority rules<br/>- Power allocation limits<br/>- Customer charging preferences<br/>- Grid demand response
+        EV-->>-ParkingOps: Charging authorization
+    end
+    end
+
+    %% Policy Monitoring & Adjustment
+    rect rgb(235, 255, 235)
+    Note over Analytics, Notification: Policy Performance Monitoring
+    loop Continuous Policy Monitoring
+        Analytics->>+PolicyMgmt: Policy performance data
+        PolicyMgmt->>PolicyMgmt: Analyze policy effectiveness
+        
+        alt Policy Performance Issues
+            PolicyMgmt->>PolicyMgmt: Identify policy adjustments needed
+            PolicyMgmt->>+Admin: Recommend policy changes
+            Note right of Admin: Automated alerts for:<br/>- Revenue anomalies<br/>- Operational inefficiencies<br/>- Customer complaints<br/>- System conflicts
+            Admin-->>-PolicyMgmt: Review recommendations
+            
+        else Policy Performing Well
+            PolicyMgmt->>PolicyMgmt: Continue monitoring
+        end
+        
+        PolicyMgmt-->>-Analytics: Monitoring feedback recorded
+    end
+    end
+
+    %% Emergency Policy Override
+    rect rgb(255, 235, 235)
+    Note over Admin, Notification: Emergency Policy Override
+    opt Emergency Situation
+        Admin->>+PolicyMgmt: Emergency policy override
+        PolicyMgmt->>PolicyMgmt: Activate emergency policy set
+        
+        critical Emergency Policy Propagation
+            par Immediate Updates
+                PolicyMgmt->>ParkingOps: Emergency operational mode
+                PolicyMgmt->>Access: Emergency access rules
+                PolicyMgmt->>Billing: Emergency billing suspension
+                PolicyMgmt->>EV: Emergency charging protocols
+            end
+        end
+        
+        PolicyMgmt->>+Notification: Alert staff of policy changes
+        Notification->>Notification: Send emergency policy notifications
+        Notification-->>-PolicyMgmt: Staff notified
+        
+        PolicyMgmt->>Analytics: Log emergency policy activation
+        PolicyMgmt-->>-Admin: Emergency policies active
+    end
+    end
+
+    %% Policy Audit & Compliance
+    rect rgb(255, 255, 235)
+    Note over PolicyMgmt, Analytics: Policy Audit & Compliance
+    Admin->>+PolicyMgmt: Generate policy audit report
+    PolicyMgmt->>+Analytics: Request policy compliance data
+    
+    Analytics->>Analytics: Analyze policy adherence
+    Note right of Analytics: Audit metrics:<br/>- Policy compliance rates<br/>- Exception frequencies<br/>- Performance against SLAs<br/>- Regulatory compliance<br/>- Financial impact
+    
+    Analytics->>Analytics: Generate compliance report
+    Analytics-->>-PolicyMgmt: Audit data compiled
+    
+    PolicyMgmt->>PolicyMgmt: Prepare comprehensive audit report
+    PolicyMgmt-->>-Admin: Policy audit complete
+    
+    Admin->>+Notification: Distribute audit results
+    Notification->>Notification: Send reports to stakeholders
+    Notification-->>-Admin: Audit distribution complete
+    end
+
+    Note over Admin, Notification: Policy Management Cycle Complete

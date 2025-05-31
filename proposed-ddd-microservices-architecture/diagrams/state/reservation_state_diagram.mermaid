@@ -1,0 +1,61 @@
+stateDiagram-v2
+    [*] --> Requested : Customer initiates reservation request
+
+    Requested --> PendingConfirmation : System checking availability and policies
+    PendingConfirmation --> Tentative_Hold : Resources soft-held, awaiting payment or final user confirmation
+    PendingConfirmation --> Failed_NoAvailability : No resources match request
+    PendingConfirmation --> Failed_PolicyRestriction : Request violates policy (e.g. event window)
+
+    Tentative_Hold --> Confirmed : Payment successful (if required), or final confirmation received
+    Tentative_Hold --> ConvertedFromHold : Hold converted to reservation with additional details
+    Tentative_Hold --> Expired_Hold : Hold duration passed without confirmation
+    Tentative_Hold --> Cancelled_ByUser : User cancelled during hold period
+
+    ConvertedFromHold --> Confirmed : Conversion complete, reservation confirmed
+
+    Confirmed --> Active_AwaitingArrival : Reservation is active, vehicle expected
+    Confirmed --> Cancelled_ByUser : User cancelled after confirmation (may incur fee)
+    Confirmed --> Cancelled_BySystem : System cancelled (e.g. operational issue at lot)
+    
+    Active_AwaitingArrival --> Active_VehicleArrived : Vehicle detected at lot entry, reservation being processed
+    Active_AwaitingArrival --> NoShow : Reservation window passed, vehicle did not arrive
+    Active_AwaitingArrival --> Cancelled_ByUser : User cancelled just before/during arrival window
+    Active_AwaitingArrival --> Cancelled_BySystem : System cancelled due to unforeseen issue at arrival
+    Active_AwaitingArrival --> Mismatch_Reported : Vehicle arrived at wrong lot or resource mismatch detected
+
+    Active_VehicleArrived --> Fulfilled : Reservation successfully used for entry/resource assignment
+    Active_VehicleArrived --> Mismatch_Reported : Mismatch detected during processing
+    
+    Mismatch_Reported --> Fulfilled : Mismatch resolved, reservation fulfilled
+    Mismatch_Reported --> Cancelled_BySystem : Mismatch could not be resolved
+    
+    Fulfilled --> Completed : Visit associated with reservation has ended
+    NoShow --> Archived_NoShow : Processed for records, potential fee application
+    Expired_Hold --> Archived_ExpiredHold : Processed for records
+    Failed_NoAvailability --> Archived_Failed : Processed for records
+    Failed_PolicyRestriction --> Archived_Failed : Processed for records
+    Cancelled_ByUser --> Archived_Cancelled : Processed for records, potential fee refund/charge
+    Cancelled_BySystem --> Archived_Cancelled : Processed for records, likely full refund
+
+    Completed --> [*]
+    Archived_NoShow --> [*]
+    Archived_ExpiredHold --> [*]
+    Archived_Failed --> [*]
+    Archived_Cancelled --> [*]
+
+    note right of Tentative_Hold
+        SlotHold active.
+        Awaiting payment or final user action.
+        Limited duration.
+    end note
+
+    note right of Confirmed 
+        DynamicReservation created.
+        Awaiting vehicle arrival.
+        Cancellation policies apply.
+    end note
+    
+    note right of NoShow
+        Reservation window passed.
+        May trigger NoShowFeePolicy.
+    end note

@@ -1,0 +1,63 @@
+stateDiagram-v2
+    [*] --> Available : Charger is ready for use
+
+    Available --> Preparing : EV Driver initiates session (e.g. app, plug-in)
+    Preparing --> Reserved : System reserves charger for specific user/vehicle
+    Reserved --> Preparing : User arrives and activates reserved charger
+    Reserved --> Available : Reservation timed out or cancelled
+
+    Preparing --> Charging : Vehicle connected, handshake complete, power flowing
+    Preparing --> SuspendedEVSE : Charger paused by system/operator
+    Preparing --> SuspendedEV : Vehicle paused charging
+    Preparing --> Faulted : Error during initiation
+
+    Charging --> Finishing : Charge nearing completion (e.g. battery full, user stop request)
+    Charging --> SuspendedEVSE : Charger paused by system/operator during charge
+    Charging --> SuspendedEV : Vehicle paused charging during charge
+    Charging --> Faulted : Error during charging
+
+    SuspendedEVSE --> Charging : System/operator resumes charging
+    SuspendedEVSE --> Available : Session cancelled by system/operator
+    SuspendedEVSE --> Faulted : Fault occurs while suspended by EVSE
+
+    SuspendedEV --> Charging : Vehicle resumes charging
+    SuspendedEV --> Available : Session cancelled by user (unplug)
+    SuspendedEV --> Faulted : Fault occurs while suspended by EV
+
+    Finishing --> Available : Session complete, vehicle unplugged, charger reset
+    Finishing --> ChargingComplete_GracePeriodActive : Vehicle fully charged, still plugged in (if grace policy applies)
+    Finishing --> Faulted : Error during finishing phase
+
+    ChargingComplete_GracePeriodActive --> ChargingComplete_IdleDetected : Grace period expires, vehicle still plugged in
+    ChargingComplete_GracePeriodActive --> Available : Vehicle unplugged within grace period
+
+    ChargingComplete_IdleDetected --> Available : Vehicle finally unplugged (idle fees may have accrued)
+    ChargingComplete_IdleDetected --> Faulted : Fault occurs while idle
+
+    Faulted --> Unavailable_Faulted : Fault confirmed, charger needs attention
+    Unavailable_Faulted --> Available : Fault resolved, charger back online
+    
+    Available --> Unavailable_Maintenance : Scheduled for maintenance
+    Unavailable_Maintenance --> Available : Maintenance complete
+    
+    Available --> Unavailable_Offline : Lost communication
+    Unavailable_Offline --> Available : Communication restored
+
+    note right of Charging
+      Energy transfer in progress.
+      Monitors kWh, power, duration.
+    end note
+    
+    note right of ChargingComplete_GracePeriodActive
+      As per LotElectricVehiclePolicySnapshot.
+      Allows time to unplug before idle fees.
+    end note
+
+    note right of ChargingComplete_IdleDetected
+      Idle fees may apply based on policy.
+    end note
+    
+    note right of Unavailable_Faulted
+        ChargerOperationalStatus: Unavailable_Faulted
+        Reported to Incident & Enforcement Service.
+    end note

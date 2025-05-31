@@ -1,0 +1,22 @@
+graph TD
+    subgraph "Analytics & Reporting Service (ARS)"
+        ARS[(ARS)]
+    end
+
+    %% Data & Events Consumed by ARS
+    EventBroker[Event Broker] -->|Consumes Events from POS, EVCS, RS, CS, VS, PS, BS, IMS, PMS, SUS, SCS, EIS, IES| ARS
+
+    %% Services Called & Events Published by ARS
+    ARS -->|Provides: OccupancyForecast| POS[Parking Operations Service]
+    ARS -->|Provides: OccupancyForecast, AvailabilityWarnings| RS[Reservations Service]
+    ARS -->|Provides: Reports, Dashboards| AdminUI[Admin UIs / Staff Tools]
+    ARS -->|Event: ForecastGenerated, ReportReady| EventBroker 
+    %% If other services need to react
+
+    %% General Event Publishing by ARS
+    EventBroker -->|Audit of report generation| IAETS[Internal Audit & Event Trace Service]
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class ARS,POS,RS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;
+    class AdminUI fill:#lightgreen,stroke:#333,stroke-width:2px;

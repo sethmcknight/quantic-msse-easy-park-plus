@@ -1,0 +1,53 @@
+stateDiagram-v2
+    [*] --> Available : Slot is ready for use
+
+    Available --> ReservedForReservation : Slot reserved via Reservations Service
+    Available --> TemporarilyHeld : Slot held during payment/booking process
+    Available --> Occupied_SingleVehicle : Vehicle parks in slot
+    Available --> OutOfService_Maintenance : Maintenance required
+    Available --> BlockedManually : Staff manually blocks slot
+
+    ReservedForReservation --> Occupied_SingleVehicle : Reserved vehicle arrives and parks
+    ReservedForReservation --> Available : Reservation cancelled or expired
+    ReservedForReservation --> TemporarilyHeld : Reservation converted to hold
+
+    TemporarilyHeld --> Available : Hold released or expired
+    TemporarilyHeld --> ReservedForReservation : Hold converted to reservation
+    TemporarilyHeld --> Occupied_SingleVehicle : Vehicle parks during hold
+
+    Occupied_SingleVehicle --> Available : Vehicle leaves slot
+    Occupied_SingleVehicle --> Occupied_SharedMotorcycle : Motorcycle shares slot with another
+    Occupied_SingleVehicle --> OutOfService_Maintenance : Maintenance required while occupied
+
+    Occupied_SharedMotorcycle --> Occupied_SingleVehicle : One motorcycle leaves
+    Occupied_SharedMotorcycle --> Available : All motorcycles leave
+    Occupied_SharedMotorcycle --> OutOfService_Maintenance : Maintenance required
+
+    OutOfService_Maintenance --> Available : Maintenance complete
+    OutOfService_Maintenance --> BlockedManually : Maintenance reveals need for manual block
+
+    BlockedManually --> Available : Manual block removed
+    BlockedManually --> OutOfService_Maintenance : Manual block for maintenance work
+
+    note right of Available
+        SlotOperationalStatus from Parking Operations Context.
+        Real-time status managed by sensor data,
+        visit events, and reservation events.
+    end note
+    
+    note right of TemporarilyHeld
+        Short-term hold from Reservations Context
+        during payment processing or brief 
+        fleet pre-assignments.
+    end note
+    
+    note right of Occupied_SharedMotorcycle
+        Special case for motorcycle slots that
+        can accommodate multiple vehicles based
+        on slot configuration and policies.
+    end note
+    
+    note right of OutOfService_Maintenance
+        Triggered by SlotMaintenanceStatusChanged
+        events from Infrastructure Management Context.
+    end note

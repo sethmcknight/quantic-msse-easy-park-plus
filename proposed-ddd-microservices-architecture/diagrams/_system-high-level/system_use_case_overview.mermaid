@@ -1,0 +1,233 @@
+graph TD
+    %% Actors positioned at top
+    Customer((Customer))
+    ParkingStaff((Parking Staff))
+    SystemAdmin((System Admin))
+    Auditor((Internal Auditor))
+
+    %% ===== TIER 1: OPERATIONAL SERVICES =====
+    subgraph Tier1["TIER 1: OPERATIONAL SERVICES"]
+        direction TB
+        subgraph ParkingOps["Parking Operations"]
+            UC_EnterLot["Enter Lot (ANPR/Manual)"]
+            UC_ParkVehicle["Park Vehicle & Occupy Slot"]
+            UC_ExitLot["Exit Lot (ANPR/Manual)"]
+            UC_ManageValet["Manage Valet Parking"]
+            UC_ViewLotOccupancy["View Lot Occupancy"]
+            UC_Staff_HandleManualOverride["(Staff) Handle Entry/Exit Override"]
+            UC_HandleAbandonedVehicle["(Staff) Handle Abandoned Vehicle"]
+            UC_InitiateParkingValidation["Initiate Parking Validation"]
+        end
+
+        subgraph EVCharging["EV Charging"]
+            UC_StartEVCharge["Start EV Charging"]
+            UC_MonitorEVCharge["Monitor EV Charging"]
+            UC_StopEVCharge["Stop EV Charging"]
+            UC_HandleSessionInterruption["Handle Charging Session Interruption"]
+        end
+
+        subgraph Reservations["Reservations"]
+            UC_MakeReservation["Make Parking/Charger Reservation"]
+            UC_ModifyReservation["Modify Reservation"]
+            UC_CancelReservation["Cancel Reservation"]
+            UC_CheckInReservation["Check-In with Reservation"]
+            UC_CreateSlotHold["Create Temporary Slot Hold"]
+            UC_HandleReservationMismatch["(Staff) Handle Reservation Mismatch"]
+        end
+    end
+
+    %% ===== TIER 2: CUSTOMER & FINANCIAL SERVICES =====
+    subgraph Tier2["TIER 2: CUSTOMER & FINANCIAL SERVICES"]
+        direction TB
+        subgraph CustomerMgmt["Customer Management"]
+            UC_RegisterAccount["Register Account"]
+            UC_ManageProfile["Manage Profile & Vehicles"]
+            UC_ManagePasses["Manage Parking Passes"]
+            UC_ViewHistory["View Parking & Charging History"]
+            UC_RegisterVehicle["Register Vehicle"]
+            UC_UpdateVehicleDetails["Update Vehicle Details"]
+        end
+
+        subgraph BillingPayments["Billing & Payments"]
+            UC_ViewParkingFees["View Parking Fees/Quotes"]
+            UC_PayForParking["Pay for Parking"]
+            UC_ViewChargingFees["View EV Charging Fees/Quotes"]
+            UC_PayForCharging["Pay for EV Charging"]
+            UC_ManagePaymentMethods["Manage Payment Methods"]
+            UC_ViewInvoices["View Invoices"]
+            UC_RedeemValidation["Redeem Validation/Discount"]
+            UC_RequestPriceQuote["Request Price Quote"]
+            UC_ProcessPaymentSettlement["(Staff) Process Payment Settlement"]
+        end
+    end
+
+    %% ===== TIER 3: INFRASTRUCTURE & MANAGEMENT =====
+    subgraph Tier3["TIER 3: INFRASTRUCTURE & MANAGEMENT"]
+        direction TB
+        subgraph SystemConfig["System Configuration"]
+            UC_Admin_ConfigLots["(Admin) Configure Lots & Slots"]
+            UC_Admin_ConfigGates["(Admin) Configure Gates & ANPR"]
+            UC_Admin_ConfigEVChargers["(Admin) Configure EV Chargers"]
+            UC_Admin_SetParkingPolicies["(Admin) Set Parking Policies"]
+            UC_Admin_SetPricingRules["(Admin) Set Pricing Rules & Validations"]
+            UC_Admin_ManageStaffAccounts["(Admin) Manage Staff Accounts & Permissions"]
+            UC_Admin_MonitorSystemHealth["(Admin) Monitor System Health & Fallbacks"]
+            UC_Staff_ManageSlotOperationalStatus["(Staff) Manage Slot Operational Status"]
+            UC_Admin_ManageExternalIntegrations["(Admin) Manage External Integrations"]
+        end
+
+        subgraph IncidentMgmt["Incident & Enforcement"]
+            UC_Customer_ReportViolation["(Customer) Report Parking Violation"]
+            UC_Customer_ReportDamageIncident["(Customer) Report Damage/Incident"]
+            UC_Staff_ReportViolation["(Staff) Report Parking Violation"]
+            UC_Staff_ProcessViolation["(Staff) Process Violation"]
+            UC_Staff_IssueFine["(Staff) Issue Fine"]
+            UC_Staff_ManageTowing["(Staff) Manage Towing"]
+            UC_Staff_ManageEquipmentFault["(Staff) Manage Equipment Fault Report"]
+            UC_Staff_ReportGateIssue["(Staff) Report Gate Issue"]
+            UC_Customer_ReportGateIssue["(Customer) Report Gate Issue"]
+            UC_Staff_ReportChargerIssue["(Staff) Report Charger Issue"]
+            UC_Customer_ReportChargerIssue["(Customer) Report Charger Issue"]
+            UC_Staff_ReconcileVisit["(Staff) Reconcile Fallback Visit"]
+        end
+    end
+
+    %% ===== TIER 4: ANALYTICS & AUDIT =====
+    subgraph Tier4["TIER 4: ANALYTICS & AUDIT"]
+        direction TB
+        subgraph Analytics["Analytics & Reporting"]
+            UC_Admin_GenerateReports["(Admin) Generate Operational Reports"]
+            UC_Admin_ViewAnalyticsDashboards["(Admin) View Analytics Dashboards"]
+            UC_ViewPredictedAvailability["View Predicted Slot Availability"]
+            UC_GenerateOccupancyForecast["(Staff) Generate Occupancy Forecast"]
+        end
+
+        subgraph Audit["Internal Audit & Event Trace"]
+            UC_Auditor_ViewEventTrace["(Auditor) View Event Trace Logs"]
+            UC_Auditor_AuditSystemEvents["(Auditor) Audit System Events"]
+            UC_Auditor_GenerateComplianceReports["(Auditor) Generate Compliance Reports"]
+            UC_Auditor_InvestigateOverrides["(Auditor) Investigate Manual Overrides"]
+        end
+    end
+
+    %% Force vertical layout by creating dependencies between tiers
+    %% Tier1 ~~~ Tier2 %% Using invisible links for direct vertical stacking
+    %% Tier2 ~~~ Tier3
+    %% Tier3 ~~~ Tier4
+
+    %% Create invisible spacer nodes to force vertical positioning
+    TierSpacer1[" "]:::spacer
+    TierSpacer2[" "]:::spacer  
+    TierSpacer3[" "]:::spacer
+    
+    %% Force vertical dependencies between tiers using spacers
+    Tier1 -.-> TierSpacer1
+    TierSpacer1 -.-> Tier2
+    Tier2 -.-> TierSpacer2
+    TierSpacer2 -.-> Tier3
+    Tier3 -.-> TierSpacer3
+    TierSpacer3 -.-> Tier4
+
+    %% Customer Interactions
+    Customer --> UC_EnterLot
+    Customer --> UC_ParkVehicle
+    Customer --> UC_ExitLot
+    Customer --> UC_StartEVCharge
+    Customer --> UC_MonitorEVCharge
+    Customer --> UC_StopEVCharge
+    Customer --> UC_MakeReservation
+    Customer --> UC_ModifyReservation
+    Customer --> UC_CancelReservation
+    Customer --> UC_CheckInReservation
+    Customer --> UC_CreateSlotHold
+    Customer --> UC_RegisterAccount
+    Customer --> UC_ManageProfile
+    Customer --> UC_ManagePasses
+    Customer --> UC_ViewHistory
+    Customer --> UC_RegisterVehicle
+    Customer --> UC_UpdateVehicleDetails
+    Customer --> UC_ViewParkingFees
+    Customer --> UC_PayForParking
+    Customer --> UC_ViewChargingFees
+    Customer --> UC_PayForCharging
+    Customer --> UC_ManagePaymentMethods
+    Customer --> UC_ViewInvoices
+    Customer --> UC_RedeemValidation
+    Customer --> UC_RequestPriceQuote
+    Customer --> UC_Customer_ReportViolation
+    Customer --> UC_Customer_ReportDamageIncident
+    Customer --> UC_ViewPredictedAvailability
+    Customer --> UC_ViewLotOccupancy
+    Customer --> UC_Customer_ReportChargerIssue
+    Customer --> UC_Customer_ReportGateIssue
+    Customer --> UC_InitiateParkingValidation
+
+    %% Parking Staff Interactions
+    ParkingStaff --> UC_ManageValet
+    ParkingStaff --> UC_Staff_ReportGateIssue
+    ParkingStaff --> UC_Staff_ReportChargerIssue
+    ParkingStaff --> UC_Staff_ReportViolation
+    ParkingStaff --> UC_Staff_ProcessViolation
+    ParkingStaff --> UC_Staff_IssueFine
+    ParkingStaff --> UC_Staff_ManageTowing
+    ParkingStaff --> UC_Staff_ManageSlotOperationalStatus
+    ParkingStaff --> UC_ViewLotOccupancy
+    ParkingStaff --> UC_Staff_HandleManualOverride
+    ParkingStaff --> UC_Staff_ReconcileVisit
+    ParkingStaff --> UC_Staff_ManageEquipmentFault
+    ParkingStaff --> UC_HandleAbandonedVehicle
+    ParkingStaff --> UC_HandleSessionInterruption
+    ParkingStaff --> UC_HandleReservationMismatch
+    ParkingStaff --> UC_ProcessPaymentSettlement
+    ParkingStaff --> UC_GenerateOccupancyForecast
+
+    %% System Admin Interactions
+    SystemAdmin --> UC_Admin_ConfigLots
+    SystemAdmin --> UC_Admin_ConfigGates
+    SystemAdmin --> UC_Admin_ConfigEVChargers
+    SystemAdmin --> UC_Admin_SetParkingPolicies
+    SystemAdmin --> UC_Admin_SetPricingRules
+    SystemAdmin --> UC_Admin_ManageStaffAccounts
+    SystemAdmin --> UC_Admin_MonitorSystemHealth
+    SystemAdmin --> UC_Admin_GenerateReports
+    SystemAdmin --> UC_Admin_ViewAnalyticsDashboards
+    SystemAdmin --> UC_Admin_ManageExternalIntegrations
+
+    %% Auditor Interactions
+    Auditor --> UC_Auditor_ViewEventTrace
+    Auditor --> UC_Auditor_AuditSystemEvents
+    Auditor --> UC_Auditor_GenerateComplianceReports
+    Auditor --> UC_Auditor_InvestigateOverrides
+
+    %% Key Relationships
+    UC_EnterLot -.-> UC_ParkVehicle
+    UC_ParkVehicle -.-> UC_ExitLot
+    UC_ExitLot -.-> UC_PayForParking
+    
+    UC_StartEVCharge -.-> UC_MonitorEVCharge
+    UC_MonitorEVCharge -.-> UC_StopEVCharge
+    UC_StopEVCharge -.-> UC_PayForCharging
+    
+    UC_MakeReservation -.-> UC_CheckInReservation
+    UC_CheckInReservation -.-> UC_ParkVehicle
+    UC_CreateSlotHold -.-> UC_MakeReservation
+
+    UC_Customer_ReportViolation --> UC_Staff_ProcessViolation
+    UC_Staff_ReportViolation --> UC_Staff_ProcessViolation
+    UC_Staff_ProcessViolation --> UC_Staff_IssueFine
+
+    UC_RedeemValidation -.-> UC_ViewParkingFees
+    UC_RedeemValidation -.-> UC_ViewChargingFees
+
+    UC_Customer_ReportChargerIssue --> UC_Staff_ManageEquipmentFault
+    UC_Staff_ReportChargerIssue --> UC_Staff_ManageEquipmentFault
+    UC_Customer_ReportGateIssue --> UC_Staff_ManageEquipmentFault
+    UC_Staff_ReportGateIssue --> UC_Staff_ManageEquipmentFault
+
+    %% Additional cross-tier relationships to enforce vertical flow (optional, can be adjusted)
+    UC_ExitLot -.-> UC_Admin_ConfigLots 
+    UC_PayForParking -.-> UC_Auditor_GenerateComplianceReports
+    UC_StopEVCharge -.-> UC_Admin_ConfigEVChargers
+    UC_CheckInReservation -.-> UC_Auditor_ViewEventTrace
+    
+    classDef spacer fill:transparent,stroke:transparent,color:transparent

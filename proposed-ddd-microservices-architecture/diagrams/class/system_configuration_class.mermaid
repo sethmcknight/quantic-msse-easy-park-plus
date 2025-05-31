@@ -1,0 +1,291 @@
+classDiagram
+    class SystemConfiguration {
+        <<aggregate_root>>
+        -ConfigurationId configuration_id
+        -String configuration_name
+        -ConfigurationCategoryEnum category
+        -String configuration_value
+        -ConfigurationStatusEnum status
+        -SystemConfigVersionId version_id
+        -DateTime last_updated_timestamp
+        -UserId last_updated_by
+        -String description
+        +create_configuration(name, category, value, description)
+        +update_configuration_value(new_value, updated_by)
+        +activate_configuration()
+        +deactivate_configuration()
+        +create_new_version(new_value, updated_by)
+        +publish_system_config_updated_event(config_id, category, new_value, affected_services)
+    }
+
+    class FallbackPolicy {
+        <<aggregate_root>>
+        -FallbackPolicyId fallback_policy_id
+        -String policy_name
+        -FallbackTriggerEnum trigger_condition
+        -List~ServiceDegradationScenario~ degradation_scenarios
+        -FallbackBehavior fallback_behavior
+        -FallbackPolicyStatusEnum status
+        -Integer priority_level
+        -List~LotId~ applicable_lot_ids // Optional, if lot-specific
+        +create_fallback_policy(name, trigger, scenarios, behavior)
+        +update_fallback_behavior(new_behavior)
+        +activate_policy()
+        +deactivate_policy()
+        +apply_policy_to_lots(lot_ids)
+        +publish_fallback_mode_activated_event(policy_id, trigger_condition, affected_services)
+    }
+
+    class RetryPolicy {
+        <<aggregate_root>>
+        -RetryPolicyId retry_policy_id
+        -String policy_name
+        -RetryStrategyEnum strategy
+        -Integer max_retry_attempts
+        -Duration retry_interval
+        -Duration backoff_multiplier
+        -List~ServiceType~ applicable_services
+        -Boolean exponential_backoff_enabled
+        +create_retry_policy(name, strategy, max_attempts, interval)
+        +update_retry_strategy(new_strategy, new_attempts, new_interval)
+        +apply_to_services(service_types)
+        +validate_retry_parameters()
+    }
+
+    class SystemHealthParameter {
+        <<aggregate_root>>
+        -HealthParameterId health_parameter_id
+        -String parameter_name
+        -HealthMetricTypeEnum metric_type
+        -Decimal threshold_warning
+        -Decimal threshold_critical
+        -Duration measurement_window
+        -Boolean monitoring_enabled
+        -List~LotId~ applicable_lot_ids // Optional
+        +create_health_parameter(name, metric_type, warning_threshold, critical_threshold)
+        +update_thresholds(new_warning, new_critical)
+        +enable_monitoring()
+        +disable_monitoring()
+        +apply_to_lots(lot_ids)
+        +publish_system_health_parameter_changed_event(parameter_id, metric_type, new_thresholds)
+    }
+
+    class ServiceDegradationScenario {
+        -ScenarioId scenario_id
+        -ServiceType degraded_service
+        -DegradationLevelEnum degradation_level
+        -String description
+        -FallbackBehavior specific_behavior // Override default policy behavior
+        +create_scenario(service, level, description, behavior)
+        +update_behavior(new_behavior)
+    }
+
+    class FallbackBehavior {
+        <<value_object>>
+        -FallbackActionEnum primary_action
+        -Map~String,String~ action_parameters
+        -Duration timeout_duration
+        -Boolean alert_staff
+        -String notification_message
+        +execute_fallback(context_data)
+        +validate_parameters()
+    }
+
+    class ConfigurationCategoryEnum {
+        <<enumeration>>
+        SystemSecurity
+        ServiceEndpoints
+        DatabaseConnections
+        PaymentGatewaySettings
+        ExternalAPIConfigurations
+        NotificationSettings
+        OperationalPolicies
+        MaintenanceWindows
+        EmergencyProcedures
+        PerformanceTuning
+    }
+
+    class ConfigurationStatusEnum {
+        <<enumeration>>
+        Active
+        Inactive
+        PendingActivation
+        Deprecated
+        UnderReview
+    }
+
+    class FallbackTriggerEnum {
+        <<enumeration>>
+        ServiceUnavailable
+        ServiceDegraded
+        HighLatency
+        DatabaseConnectionLoss
+        PaymentGatewayFailure
+        ExternalAPIFailure
+        SystemOverload
+        EmergencyMode
+    }
+
+    class FallbackPolicyStatusEnum {
+        <<enumeration>>
+        Active
+        Inactive
+        Testing
+        Emergency
+    }
+
+    class RetryStrategyEnum {
+        <<enumeration>>
+        FixedInterval
+        ExponentialBackoff
+        LinearBackoff
+        ImmediateRetry
+        NoRetry
+    }
+
+    class ServiceType {
+        <<enumeration>>
+        ParkingOperations
+        ElectricVehicleCharging
+        Reservations
+        Customer
+        Vehicle
+        Billing
+        Pricing
+        PolicyManagement
+        Infrastructure
+        ExternalIntegrations
+        IncidentEnforcement
+        Analytics
+        InternalAudit
+        StaffUserAccess
+    }
+
+    class HealthMetricTypeEnum {
+        <<enumeration>>
+        ResponseTime
+        Throughput
+        ErrorRate
+        CPUUsage
+        MemoryUsage
+        DiskUsage
+        NetworkLatency
+        DatabaseConnections
+        ActiveSessions
+        QueueDepth
+    }
+
+    class DegradationLevelEnum {
+        <<enumeration>>
+        Minimal
+        Moderate
+        Severe
+        CompleteFailure
+    }
+
+    class FallbackActionEnum {
+        <<enumeration>>
+        UseDefaultValues
+        CacheLastKnownGood
+        DeferOperation
+        AlertStaffOnly
+        EmergencyMode
+        GracefulDegradation
+        SkipNonCritical
+        RedirectToBackup
+    }
+
+    class ConfigurationId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class FallbackPolicyId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class RetryPolicyId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class HealthParameterId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class ScenarioId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class SystemConfigVersionId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class LotId {
+        <<value_object>>
+        -UUID id
+        +toString() String
+    }
+
+    class UserId {
+        <<value_object>>
+        -UUID id
+        +toString() String
+    }
+
+    class Duration {
+        <<value_object>>
+        -Integer value
+        -String unit // e.g., "minutes", "seconds", "hours"
+        +toMilliseconds() Long
+    }
+
+    class Decimal {
+        <<value_object>>
+        -BigDecimal value
+        +getValue() BigDecimal
+    }
+
+    SystemConfiguration "1" *-- "1" ConfigurationId : has
+    SystemConfiguration "1" *-- "1" SystemConfigVersionId : versioned_by
+    SystemConfiguration "1" *-- "1" UserId : last_updated_by
+    SystemConfiguration -- ConfigurationCategoryEnum : categorized_as
+    SystemConfiguration -- ConfigurationStatusEnum : has_status
+
+    FallbackPolicy "1" *-- "1" FallbackPolicyId : has
+    FallbackPolicy "1" *-- "1..*" ServiceDegradationScenario : contains
+    FallbackPolicy "1" *-- "1" FallbackBehavior : defines
+    FallbackPolicy -- FallbackTriggerEnum : triggered_by
+    FallbackPolicy -- FallbackPolicyStatusEnum : has_status
+    FallbackPolicy "1" -- "0..*" LotId : applies_to_lots
+
+    RetryPolicy "1" *-- "1" RetryPolicyId : has
+    RetryPolicy "1" *-- "1" Duration : has_retry_interval
+    RetryPolicy "1" *-- "1" Duration : has_backoff_multiplier
+    RetryPolicy -- RetryStrategyEnum : uses_strategy
+    RetryPolicy "1" -- "1..*" ServiceType : applies_to_services
+
+    SystemHealthParameter "1" *-- "1" HealthParameterId : has
+    SystemHealthParameter "1" *-- "1" Decimal : has_warning_threshold
+    SystemHealthParameter "1" *-- "1" Decimal : has_critical_threshold
+    SystemHealthParameter "1" *-- "1" Duration : measured_over
+    SystemHealthParameter -- HealthMetricTypeEnum : measures
+    SystemHealthParameter "1" -- "0..*" LotId : monitors_lots
+
+    ServiceDegradationScenario "1" *-- "1" ScenarioId : has
+    ServiceDegradationScenario "1" *-- "1" FallbackBehavior : overrides_with
+    ServiceDegradationScenario -- ServiceType : affects_service
+    ServiceDegradationScenario -- DegradationLevelEnum : at_level
+
+    FallbackBehavior -- FallbackActionEnum : performs_action
+    FallbackBehavior "1" *-- "1" Duration : has_timeout

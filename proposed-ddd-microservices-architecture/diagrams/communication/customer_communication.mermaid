@@ -1,0 +1,29 @@
+graph TD
+    subgraph "Customer Service (CS)"
+        CS[(CS)]
+    end
+
+    %% Data & Events Consumed by CS
+    BS[Billing Service] -->|Event: PaymentMethodAdded, InvoiceIssued| CS
+    RS[Reservations Service] -->|Event: ReservationMadeForCustomer| CS
+
+    %% Services Called & Events Published by CS
+    CS -->|Provides: Customer Details| POS[Parking Operations Service]
+    CS -->|Provides: Customer Details| RS
+    CS -->|Provides: Customer Tier/Passholder Status| PS[Pricing Service]
+    CS -->|Provides: Customer Passholder Status| PMS[Policy Management Service]
+    CS -->|Provides: Customer Payment Methods, Billing Profile| BS[Billing Service]
+    CS -->|Event: CustomerProfileUpdated, PassholderStatusChanged| EventBroker[Event Broker]
+
+    %% General Event Publishing by CS
+    EventBroker -->|Consumed by| ARS[Analytics & Reporting Service]
+    EventBroker -->|Consumed by| IAETS[Internal Audit & Event Trace Service]
+    EventBroker -->|Consumed by| BS
+
+    %% External Interactions
+    ExternalUserInterface[User Facing Applications] -->|API: Manage Profile, View History| CS
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class CS,BS,RS,POS,PS,PMS,ARS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;
+    class ExternalUserInterface fill:#lightgreen,stroke:#333,stroke-width:2px;

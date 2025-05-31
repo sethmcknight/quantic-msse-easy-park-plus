@@ -1,0 +1,33 @@
+graph TD
+    subgraph "Parking Operations Service (POS)"
+        POS[(POS)]
+    end
+
+    %% Data & Events Consumed by POS
+    IMS[Infrastructure Management Service] -->|Provides: Slot/Gate Config, Events: SlotMaintenanceStatusChanged, GateStatusChanged| POS
+    PMS[Policy Management Service] -->|Provides: Operational Policies| POS
+    SCS[System Configuration Service] -->|Provides: FallbackPolicy, System Modes| POS
+    EIS[External Integrations Service] -->|Provides: ANPR Data, Sensor Data, Gate Control Ack| POS
+    RS[Reservations Service] -->|Provides: Reservation Details, Events: SlotHoldStatus, SlotHeldEvent, SlotReleasedEvent| POS
+    VS[Vehicle Service] -->|Provides: Vehicle Details, Category| POS
+    BS[Billing Service] -->|Event: PaymentStatusForVisit| POS
+    IES[Incident & Enforcement Service] -->|Event: GateFaultReportStatusUpdated| POS
+    ARS[Analytics & Reporting Service] -->|Provides: OccupancyForecast| POS
+    CS[Customer Service] -->|Provides: Customer Info for Visit| POS
+
+    %% Services Called & Events Published by POS
+    POS -->|API: Request Pricing for Visit| PS[Pricing Service]
+    POS -->|Event: VisitReadyForBillingSettlement| BS
+    POS -->|Event: GateFaultDetected| IES
+    POS -->|Updates: Slot Operational Status| RS
+
+    %% General Event Publishing by POS
+    POS -->|"Events: VehicleEnteredLot, VehicleAssignedToSlot, VehicleExitedLot, VisitReadyForPricing"| EventBroker[Event Broker]
+    EventBroker -->|Consumed by| ARS
+    EventBroker -->|Consumed by| IAETS[Internal Audit & Event Trace Service]
+    EventBroker -->|Consumed by| BS
+    EventBroker -->|Consumed by| PS
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class POS,IMS,PMS,SCS,EIS,RS,VS,PS,BS,IES,ARS,CS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;

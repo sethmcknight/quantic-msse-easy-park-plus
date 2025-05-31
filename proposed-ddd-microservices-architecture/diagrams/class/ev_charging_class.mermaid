@@ -1,0 +1,193 @@
+classDiagram
+    class ChargingSession {
+        <<Aggregate Root>>
+        +ChargingSessionId charging_session_id
+        +ChargerId charger_id // Links to operational view of Charger
+        +VehicleRegistration vehicle_registration // From Vehicle Context
+        +VisitId visit_id // Optional, if linked to a parking visit
+        +DateTime plug_in_time
+        +DateTime charge_complete_time // Optional
+        +DateTime unplug_time // Optional
+        +ConnectorType connector_type_used
+        +Energy total_energy_delivered
+        +Power current_power_output_kilowatt // For real-time monitoring
+        +ChargingSessionStatus status
+        +GracePeriodInfo grace_period_info // Snapshot or calculated
+        +LotElectricVehiclePolicySnapshot applicable_lot_ev_policy
+        +ChargingInterruptionInfo interruption_details // Optional
+        +start_charging_session(charger_id, vehicle_registration, visit_id, plug_in_time, connector_type, active_grace_period_policy)
+        +record_energy_delivery(kilowatt_hours_delivered_increment, current_power_output_kilowatt)
+        +charging_delivery_completed(charge_complete_time)
+        +handle_session_interruption(interruption_time, reason, partial_energy_consumed)
+        +track_idle_time(current_time)
+        +complete_charging_session(unplug_time)
+        +report_session_fault(fault_code, description, fault_time)
+        +publish_charging_session_started_event() DomainEvent
+        +publish_energy_delivered_update_event() DomainEvent
+        +publish_charging_completed_grace_period_active_event() DomainEvent
+        +publish_idle_time_started_event() DomainEvent
+        +publish_charging_session_ended_event() DomainEvent
+        +publish_charger_fault_detected_event() DomainEvent
+    }
+
+    class Charger {
+        <<Entity>>
+        +ChargerId charger_id // References EquipmentInventoryItem in Infrastructure
+        +ChargerOperationalStatus operational_status
+        +ChargerHardwareInfo hardware_info // Snapshot from Infrastructure or External Integrations
+        +ChargerCapabilities capabilities // Snapshot from Infrastructure
+        +update_operational_status(new_status, source_event)
+        +report_fault(fault_details, timestamp)
+    }
+
+    class ChargingSessionId {
+        <<Value Object>>
+        +UUID id
+    }
+    class ChargerId {
+        <<Value Object>>
+        +UUID id
+    }
+    class VehicleRegistration {
+        <<Value Object>>
+        +String plate_number
+        +String jurisdiction
+    }
+    class Energy {
+        <<Value Object>>
+        +Decimal value
+        +String unit // e.g. kWh
+    }
+    class ChargerHardwareInfo {
+        <<Value Object>>
+        +String vendor
+        +String model
+        +String firmware_version
+    }
+
+    class ChargerCapabilities {
+        <<Value Object>>
+        +ChargerType charger_type
+        +Power max_power_output_kilowatt
+        +List~ConnectorType~ supported_connector_types
+    }
+
+    class ChargerType {
+        <<Enumeration>>
+        Level1AC
+        Level2AC
+        Level3DCFast
+    }
+
+    class ConnectorType {
+        <<Enumeration>>
+        J1772
+        CCS_Combo1
+        CCS_Combo2
+        CHAdeMO
+        Tesla_NACS
+        Type2_Mennekes
+    }
+
+    class ChargerOperationalStatus {
+        <<Enumeration>>
+        Available
+        Preparing // Initializing, handshaking
+        Charging
+        SuspendedEV // Vehicle paused charging
+        SuspendedEVSE // Charger paused (e.g. grid event, user action)
+        Finishing // Ramping down, session ending
+        Reserved
+        Unavailable_Faulted
+        Unavailable_Maintenance
+        Unavailable_Offline
+    }
+
+    class Power {
+        <<Value Object>>
+        +Decimal value
+        +String unit // e.g. kW
+    }
+
+    class Duration {
+        <<Value Object>>
+        +Integer value
+        +String unit // e.g., "minutes", "seconds"
+    }
+
+    class ChargingSessionStatus {
+        <<Enumeration>>
+        Requested
+        Initializing
+        ChargingInProgress
+        Suspended
+        Completed_EnergyDelivered
+        IdlePeriodActive // After charging, before grace period expiry or if no grace period
+        Completed_GracePeriodExpired
+        Completed_Unplugged
+        Faulted
+        Interrupted
+        Cancelled
+    }
+
+    class GracePeriodInfo {
+        <<Value Object>>
+        +Duration grace_period_duration
+        +DateTime grace_period_start_time // Optional
+        +DateTime grace_period_end_time // Optional
+        +Boolean is_active
+        +Boolean has_expired
+    }
+
+    class FaultCode { // Standardized or internal fault codes
+        <<Value Object>>
+        +String code
+        +String description
+    }
+
+    class LotElectricVehiclePolicySnapshot {
+        <<Value Object>>
+        +LotId lot_id
+        +PolicyVersionId policy_version_id // From Policy Management
+        +Duration idle_grace_period_duration
+        +Money idle_fee_rate // Per minute/hour after grace
+        // Other relevant EV policies for this session
+    }
+
+    class ChargingInterruptionInfo {
+        <<Value Object>>
+        +DateTime interruption_timestamp
+        +String reason // e.g., PowerOutage, UserRequest, EVDisconnected, EVSEFault
+        +Energy energy_delivered_before_interruption
+    }
+
+    class VisitId { // Referenced by ChargingSession
+        <<Value Object>>
+        +UUID id
+    }
+
+    class LotId { // Referenced by LotElectricVehiclePolicySnapshot
+        <<Value Object>>
+        +UUID id
+    }
+
+    class PolicyVersionId { // Referenced by LotElectricVehiclePolicySnapshot
+        <<Value Object>>
+        +UUID id
+    }
+    class Money { // Referenced by LotElectricVehiclePolicySnapshot
+        <<Value Object>>
+        +Decimal amount
+        +String currency_code
+    }
+
+    ChargingSession "1" *-- "1" ChargingSessionId : has
+    ChargingSession "1" *-- "1" ChargerId : uses_charger_operational_view
+    ChargingSession "1" *-- "1" VehicleRegistration : for_vehicle
+    ChargingSession "1" -- "0..1" VisitId : associated_with_visit
+
+    Charger "1" *-- "1" ChargerId : has
+
+    note for ChargingSession "Manages the lifecycle of an EV charging session, including energy and idle time."
+    note for Charger "Operational view of an EV charger's real-time status and capabilities."
+```

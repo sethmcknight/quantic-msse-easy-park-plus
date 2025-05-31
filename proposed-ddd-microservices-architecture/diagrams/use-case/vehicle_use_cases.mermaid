@@ -1,0 +1,22 @@
+graph TD
+    Customer((Customer))
+    Staff((Parking Staff))
+    Admin((System Admin))
+
+    subgraph "Vehicle Management"
+        UC1[Register Vehicle]
+        UC2[Update Vehicle Details]
+        UC3[View Vehicle Status]
+        UC4[Flag Plate Cloning]
+        UC5[View Vehicle Interaction History]
+    end
+
+    Customer --> UC1
+    Customer --> UC2
+    Customer --> UC3
+    Staff --> UC3
+    Staff --> UC4
+    Staff --> UC5
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5

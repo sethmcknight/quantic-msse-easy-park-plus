@@ -1,0 +1,137 @@
+sequenceDiagram
+    participant EV_Driver as EV Driver
+    participant ChargerHW as Charger Hardware
+    participant ExtInt as External Integrations Service
+    participant EVCS as EV Charging Service
+    participant PO as Parking Operations Service
+    participant IMS as Infrastructure Management Service
+    participant PolMS as Policy Management Service
+    participant PS as Pricing Service
+    participant BS as Billing Service
+    participant IAET as Internal Audit & Event Trace Service
+    participant IES as Incident & Enforcement Service
+    participant MB as Message Broker
+
+    %% Vehicle Plug-in & Session Initialization
+    rect rgb(230, 245, 255)
+    Note over EV_Driver, EVCS: Charging Session Initialization
+    EV_Driver->>ChargerHW: Plugs in vehicle
+    ChargerHW->>ExtInt: PlugInEvent (chargerId, timestamp)
+    ExtInt->>MB: Publish(VehiclePluggedInEvent)
+    ExtInt->>EVCS: NotifyPlugIn(chargerId, timestamp)
+
+    EVCS->>PO: GetActiveVisitForCharger(chargerId) // Assumes charger is in a slot
+    PO-->>EVCS: VisitDetails (visitId, vehicleRegistration)
+
+    EVCS->>IMS: GetChargerDetails(chargerId)
+    IMS-->>EVCS: ChargerConfig (type, capabilities)
+    
+    alt Infrastructure Service Degraded
+        IMS-->>EVCS: ServiceDegradedResponse
+        EVCS->>PolMS: GetFallbackPolicy(lotId, "ChargerInfoUnavailable")
+        PolMS-->>EVCS: FallbackPolicy (use default charger config)
+        EVCS->>MB: Publish(FallbackPolicyAppliedEvent)
+    end
+    end
+
+    %% Policy Application & Session Creation
+    rect rgb(255, 245, 230)
+    Note over EVCS, PolMS: Policy Application & Authorization
+    EVCS->>PolMS: GetApplicableChargingPolicies(lotId, chargerType, customerType_if_known)
+    PolMS-->>EVCS: ChargingPolicies (e.g., GracePeriodPolicy for idle time)
+
+    EVCS->>EVCS: CreateChargingSession(visitId, vehicleRegistration, chargerId, policies)
+    EVCS->>MB: Publish(ChargingSessionStartedEvent)
+    EVCS-->>IAET: Publish(ChargingSessionStartedEvent)
+    EVCS-->>ExtInt: AuthorizeChargingCommand(chargerId)
+    ExtInt-->>ChargerHW: StartPowerDelivery
+    ChargerHW-->>EV_Driver: Charging initiated
+
+    Note over EVCS: ChargingSessionStatus: Charging
+    end
+
+    %% Active Charging Monitoring
+    rect rgb(240, 255, 240)
+    Note over ChargerHW, IAET: Energy Delivery Monitoring
+    loop Periodically during charging
+        ChargerHW->>ExtInt: EnergyDeliveryUpdate(chargerId, kWh_delivered)
+        ExtInt->>EVCS: NotifyEnergyUpdate(chargerId, kWh_delivered)
+        EVCS->>EVCS: RecordEnergyConsumption(sessionId, kWh_delivered)
+        EVCS->>MB: Publish(EnergyDeliveredUpdateEvent)
+        EVCS-->>IAET: Publish(EnergyDeliveredUpdateEvent)
+    end
+    end
+
+    %% Charging Completion & Grace Period
+    rect rgb(255, 240, 255)
+    Note over ChargerHW, IAET: Charging Session Completion
+    alt Charging completes (vehicle full or stopped by user via car/app)
+        ChargerHW->>ExtInt: ChargingCompletedEvent(chargerId, completionTime, totalEnergy)
+        ExtInt->>EVCS: NotifyChargingCompleted(chargerId, completionTime, totalEnergy)
+        EVCS->>EVCS: FinalizeEnergyDelivery(sessionId, totalEnergy, completionTime)
+        EVCS->>EVCS: ApplyGracePeriodPolicy(sessionId, policies)
+        EVCS->>MB: Publish(ChargingCompletedEvent)
+        EVCS-->>IAET: Publish(ChargingCompletedGracePeriodActiveEvent)
+        Note over EVCS: ChargingSessionStatus: GracePeriodActive
+        
+        alt Grace period expires and vehicle still plugged in
+            EVCS->>EVCS: StartIdleTimeTracking(sessionId)
+            EVCS->>MB: Publish(IdleTimeStartedEvent)
+            EVCS-->>IAET: Publish(IdleTimeStartedEvent)
+            Note over EVCS: ChargingSessionStatus: Idle
+        end
+    end
+    end
+
+    %% Fault Handling & Emergency Procedures
+    rect rgb(255, 235, 235)
+    Note over ChargerHW, IES: Charger Fault Management
+    alt Charger Fault Detected
+        ChargerHW->>ExtInt: FaultEvent(chargerId, faultCode, timestamp)
+        ExtInt->>EVCS: NotifyChargerFault(chargerId, faultCode, timestamp)
+        EVCS->>EVCS: HandleChargerFault(sessionId_if_active, chargerId, faultCode)
+        EVCS->>MB: Publish(ChargerFaultDetectedEvent)
+        EVCS-->>IAET: Publish(ChargerFaultDetectedEvent)
+        EVCS->>IES: ReportChargerFault(chargerId, faultDetails)
+        
+        alt Critical Charger Fault
+            EVCS->>PolMS: GetEmergencyPolicy(lotId, "ChargerFault")
+            PolMS-->>EVCS: EmergencyPolicy (safe shutdown procedures)
+            EVCS->>ExtInt: EmergencyStopCharging(chargerId)
+            EVCS->>MB: Publish(EmergencyChargingStopEvent)
+        end
+    end
+    end
+
+    %% Vehicle Unplug & Session Finalization
+    rect rgb(235, 255, 235)
+    Note over EV_Driver, MB: Session Completion & Billing
+    EV_Driver->>ChargerHW: Unplugs vehicle
+    ChargerHW->>ExtInt: UnplugEvent(chargerId, unplugTime)
+    ExtInt->>MB: Publish(VehicleUnpluggedEvent)
+    ExtInt->>EVCS: NotifyUnplug(chargerId, unplugTime)
+
+    EVCS->>EVCS: CompleteChargingSession(sessionId_or_chargerId, unplugTime)
+    
+    alt Pricing Service Available
+        EVCS->>PS: RequestChargingPrice(sessionId, energyConsumed, idleTime, chargingDuration, policies)
+        PS-->>EVCS: ChargingCostDetails
+        PS->>MB: Publish(ChargingPriceCalculatedEvent)
+    else Pricing Service Degraded
+        EVCS->>PolMS: GetFallbackPolicy(lotId, "PricingDegraded")
+        PolMS-->>EVCS: FallbackPolicy (use standard rates)
+        EVCS->>MB: Publish(FallbackPolicyAppliedEvent)
+    end
+    
+    opt Billing Service Available
+        EVCS->>BS: FinalizeBillForChargingSession(sessionId, visitId, chargingCostDetails)
+        BS-->>EVCS: BillingAcknowledged
+        BS->>MB: Publish(ChargingBillingFinalizedEvent)
+    end
+    
+    EVCS->>MB: Publish(ChargingSessionEndedEvent)
+    EVCS-->>IAET: Publish(ChargingSessionEndedEvent)
+
+    Note over EVCS: ChargingSessionStatus: Ended
+    Note over MB: All domain events published for downstream consumers
+    end

@@ -1,0 +1,253 @@
+graph TD
+    subgraph "User Layer / Clients"
+        MobileApp[Customer Mobile App]
+        WebPortal[Customer Web Portal]
+        StaffApps[Staff Mobile/Web Portal]
+        AdminPortal[Admin Web Portal]
+    end
+
+    subgraph "Gateway & Broker"
+        APIGateway[API Gateway]
+        MessageBroker["Message Broker (Kafka/RabbitMQ)"]
+    end
+
+    subgraph "Core Microservices"
+        ParkingOps[Parking Operations]
+        EVCharging[EV Charging]
+        Reservations[Reservations]
+        CustomerSvc[Customer Context]
+        VehicleSvc[Vehicle Context]
+        PricingSvc[Pricing Service]
+        BillingSvc[Billing Service]
+        InfraMgmtSvc[Infrastructure Mgmt]
+        PolicyMgmtSvc[Policy Mgmt]
+        StaffAccessSvc[Staff User & Access]
+        SysConfigSvc[System Configuration]
+        ExtIntSvc[External Integrations]
+        IncidentSvc[Incident & Enforcement]
+        AnalyticsSvc[Analytics & Reporting]
+        NotificationSvc[Notification Service]
+        AuditEventSvc[Internal Audit & Event Trace]
+    end
+
+    subgraph "External Systems"
+        LPRCameras[LPR Camera Systems]
+        OccupancySensors[Occupancy Sensors]
+        EVChargerHW[EV Charger Hardware]
+        PaymentGateway[Payment Gateway]
+        TowingServices[Towing Services API]
+        MappingServices[Mapping Services API]
+        EmergencyServices[Emergency Services API]
+    end
+
+    subgraph "Data Persistence Layer"
+        EventStoreDb[(Central Event Store)]
+        ServiceCmdDbs[(Service Command DBs)]
+        ServiceQueryDbs[(Service Query DBs)]
+        AnalyticsDb[(Analytics DW/Lake)]
+        GlobalCache[(Global Cache)]
+    end
+
+    %% Client Interactions
+    MobileApp -->|HTTPS/REST| APIGateway
+    WebPortal -->|HTTPS/REST| APIGateway
+    StaffApps -->|HTTPS/REST| APIGateway
+    AdminPortal -->|HTTPS/REST| APIGateway
+
+    %% API Gateway to Services (Synchronous Requests)
+    APIGateway -->|REST/gRPC| ParkingOps
+    APIGateway -->|REST/gRPC| EVCharging
+    APIGateway -->|REST/gRPC| Reservations
+    APIGateway -->|REST/gRPC| CustomerSvc
+    APIGateway -->|REST/gRPC| VehicleSvc
+    APIGateway -->|REST/gRPC| PricingSvc
+    APIGateway -->|REST/gRPC| BillingSvc
+    APIGateway -->|REST/gRPC| InfraMgmtSvc
+    APIGateway -->|REST/gRPC| PolicyMgmtSvc
+    APIGateway -->|REST/gRPC| StaffAccessSvc
+    APIGateway -->|REST/gRPC| SysConfigSvc
+    APIGateway -->|REST/gRPC| IncidentSvc
+    APIGateway -->|REST/gRPC| NotificationSvc
+    APIGateway -->|REST/gRPC| AnalyticsSvc
+
+    %% Services Publishing Events to Message Broker
+    ParkingOps          --Parking Events-->         MessageBroker
+    EVCharging          --EV Charging Events-->     MessageBroker
+    Reservations        --Reservation Events-->     MessageBroker
+    CustomerSvc         --Customer Events-->        MessageBroker
+    VehicleSvc          --Vehicle Events-->         MessageBroker
+    PricingSvc          --Pricing Events-->         MessageBroker
+    BillingSvc          --Billing Events-->         MessageBroker
+    InfraMgmtSvc        --Infra Events-->           MessageBroker
+    PolicyMgmtSvc       --Policy Events-->          MessageBroker
+    IncidentSvc         --Incident Events-->        MessageBroker
+    SysConfigSvc        --Config Events-->          MessageBroker
+    NotificationSvc     --Notification Status Events--> MessageBroker
+
+
+    %% Message Broker Distributing Events to Subscribing Services
+    MessageBroker --Parking Events--> PricingSvc
+    MessageBroker --Parking Events--> BillingSvc
+    MessageBroker --Parking Events--> AnalyticsSvc
+    MessageBroker --Parking Events--> NotificationSvc
+    MessageBroker --Parking Events--> AuditEventSvc
+    MessageBroker --Parking Events--> EVCharging
+
+    MessageBroker --EV Charging Events--> PricingSvc
+    MessageBroker --EV Charging Events--> BillingSvc
+    MessageBroker --EV Charging Events--> AnalyticsSvc
+    MessageBroker --EV Charging Events--> NotificationSvc
+    MessageBroker --EV Charging Events--> AuditEventSvc
+
+    MessageBroker --Reservation Events--> ParkingOps
+    MessageBroker --Reservation Events--> PricingSvc
+    MessageBroker --Reservation Events--> BillingSvc
+    MessageBroker --Reservation Events--> NotificationSvc
+    MessageBroker --Reservation Events--> AnalyticsSvc
+    MessageBroker --Reservation Events--> AuditEventSvc
+    MessageBroker --Reservation Events--> CustomerSvc
+    MessageBroker --Reservation Events--> AuditEventSvc
+    MessageBroker --Reservation Events--> CustomerSvc
+
+
+    MessageBroker --Customer Events--> PricingSvc
+    MessageBroker --Customer Events--> BillingSvc
+    MessageBroker --Customer Events--> AnalyticsSvc
+    MessageBroker --Customer Events--> NotificationSvc
+    MessageBroker --Customer Events--> AuditEventSvc
+    MessageBroker --Customer Events--> Reservations 
+
+    MessageBroker --Vehicle Events--> ParkingOps
+    MessageBroker --Vehicle Events--> PricingSvc
+    MessageBroker --Vehicle Events--> IncidentSvc
+    MessageBroker --Vehicle Events--> AnalyticsSvc
+    MessageBroker --Vehicle Events--> AuditEventSvc
+    MessageBroker --Vehicle Events--> CustomerSvc 
+
+    MessageBroker --Pricing Events--> BillingSvc
+    MessageBroker --Pricing Events--> AnalyticsSvc
+    MessageBroker --Pricing Events--> AuditEventSvc
+
+    MessageBroker --Billing Events--> CustomerSvc
+    MessageBroker --Billing Events--> NotificationSvc
+    MessageBroker --Billing Events--> AnalyticsSvc
+    MessageBroker --Billing Events--> AuditEventSvc
+
+    MessageBroker --Infra Events--> ParkingOps
+    MessageBroker --Infra Events--> EVCharging
+    MessageBroker --Infra Events--> AnalyticsSvc
+    MessageBroker --Infra Events--> AuditEventSvc
+    MessageBroker --Infra Events--> NotificationSvc 
+
+    MessageBroker --Policy Events--> ParkingOps
+    MessageBroker --Policy Events--> EVCharging
+    MessageBroker --Policy Events--> PricingSvc
+    MessageBroker --Policy Events--> BillingSvc
+    MessageBroker --Policy Events--> AnalyticsSvc
+    MessageBroker --Policy Events--> AuditEventSvc
+
+    MessageBroker --Incident Events--> PricingSvc     
+    MessageBroker --Incident Events--> BillingSvc     
+    MessageBroker --Incident Events--> NotificationSvc 
+    MessageBroker --Incident Events--> VehicleSvc     
+    MessageBroker --Incident Events--> AnalyticsSvc
+    MessageBroker --Incident Events--> AuditEventSvc
+
+    MessageBroker --Config Events--> ParkingOps
+    MessageBroker --Config Events--> EVCharging
+    MessageBroker --Config Events--> PricingSvc
+    MessageBroker --Config Events--> BillingSvc
+    MessageBroker --Config Events--> AnalyticsSvc
+    MessageBroker --Config Events--> AuditEventSvc
+    
+    MessageBroker --Notification Status Events--> AnalyticsSvc
+    MessageBroker --Notification Status Events--> AuditEventSvc
+
+
+    %% Service to External Systems (Primarily via ExternalIntegrationsService)
+    ParkingOps -->|LPR/Sensor Data| ExtIntSvc
+    EVCharging -->|Charger Ops| ExtIntSvc
+    BillingSvc -->|Payment Req| ExtIntSvc
+    IncidentSvc -->|Tow/Emergency Req| ExtIntSvc
+    Reservations -->|Map Req| ExtIntSvc
+    CustomerSvc -->|Address Validation Req| ExtIntSvc
+
+    ExtIntSvc --LPR Data Stream--> LPRCameras
+    ExtIntSvc --Sensor Data Stream--> OccupancySensors
+    ExtIntSvc --Charger Control/Data--> EVChargerHW
+    ExtIntSvc --Process Payment--> PaymentGateway
+    ExtIntSvc --Request Tow--> TowingServices
+    ExtIntSvc --Get Map Data--> MappingServices
+    ExtIntSvc --Notify Emergency Svcs--> EmergencyServices
+    ExtIntSvc --Validate Address--> MappingServices
+
+    %% Data Persistence Interactions
+    %% Event Sourcing Pattern
+    ParkingOps      --> EventStoreDb
+    EVCharging      --> EventStoreDb
+    Reservations    --> EventStoreDb
+    CustomerSvc     --> EventStoreDb
+    VehicleSvc      --> EventStoreDb
+    PricingSvc      --> EventStoreDb
+    BillingSvc      --> EventStoreDb
+    IncidentSvc     --> EventStoreDb
+    AuditEventSvc   --> EventStoreDb
+
+    %% Command/Query DBs (CQRS)
+    ParkingOps      --> ServiceCmdDbs
+    ParkingOps      --> ServiceQueryDbs
+    EVCharging      --> ServiceCmdDbs
+    EVCharging      --> ServiceQueryDbs
+    Reservations    --> ServiceCmdDbs
+    Reservations    --> ServiceQueryDbs
+    CustomerSvc     --> ServiceCmdDbs
+    CustomerSvc     --> ServiceQueryDbs
+    VehicleSvc      --> ServiceCmdDbs
+    VehicleSvc      --> ServiceQueryDbs
+    PricingSvc      --> ServiceCmdDbs
+    PricingSvc      --> ServiceQueryDbs
+    BillingSvc      --> ServiceCmdDbs
+    BillingSvc      --> ServiceQueryDbs
+    IncidentSvc     --> ServiceCmdDbs
+    IncidentSvc     --> ServiceQueryDbs
+
+    %% Services with primarily traditional DBs or state stores
+    InfraMgmtSvc    --> ServiceCmdDbs
+    InfraMgmtSvc    --> ServiceQueryDbs
+    PolicyMgmtSvc   --> ServiceCmdDbs
+    PolicyMgmtSvc   --> ServiceQueryDbs
+    StaffAccessSvc  --> ServiceCmdDbs 
+    StaffAccessSvc  --> ServiceQueryDbs
+    SysConfigSvc    --> ServiceCmdDbs 
+    SysConfigSvc    --> ServiceQueryDbs
+    NotificationSvc --> ServiceCmdDbs 
+    NotificationSvc --> ServiceQueryDbs
+
+    %% Analytics Data Flow
+    AnalyticsSvc    --> ServiceQueryDbs 
+    AnalyticsSvc    --> AnalyticsDb     
+
+    %% Caching
+    APIGateway      --> GlobalCache
+    ParkingOps      --> GlobalCache
+    EVCharging      --> GlobalCache
+    Reservations    --> GlobalCache
+    CustomerSvc     --> GlobalCache
+    VehicleSvc      --> GlobalCache
+    PricingSvc      --> GlobalCache
+    BillingSvc      --> GlobalCache
+    PolicyMgmtSvc   --> GlobalCache 
+    SysConfigSvc    --> GlobalCache 
+
+    %% Styling
+    classDef client fill:#E8F5E9,stroke:#759C74,stroke-width:2px,color:#3A5A39
+    classDef gatewaybroker fill:#F0E6FF,stroke:#9673C9,stroke-width:2px,color:#5A3E8C
+    classDef service fill:#E1F5FE,stroke:#69A8CD,stroke-width:2px,color:#2A6E90
+    classDef external fill:#FFF3E0,stroke:#D5A65B,stroke-width:2px,color:#8D6E3F
+    classDef datastore fill:#F3E5F5,stroke:#A97ABC,stroke-width:2px,color:#6C437C
+
+    class MobileApp,WebPortal,StaffApps,AdminPortal client
+    class APIGateway,MessageBroker gatewaybroker
+    class ParkingOps,EVCharging,Reservations,CustomerSvc,VehicleSvc,PricingSvc,BillingSvc,InfraMgmtSvc,PolicyMgmtSvc,StaffAccessSvc,SysConfigSvc,ExtIntSvc,IncidentSvc,AnalyticsSvc,NotificationSvc,AuditEventSvc service
+    class LPRCameras,OccupancySensors,EVChargerHW,PaymentGateway,TowingServices,MappingServices,EmergencyServices external
+    class EventStoreDb,ServiceCmdDbs,ServiceQueryDbs,AnalyticsDb,GlobalCache datastore

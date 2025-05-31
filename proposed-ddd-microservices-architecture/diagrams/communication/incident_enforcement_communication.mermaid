@@ -1,0 +1,27 @@
+graph TD
+    subgraph "Incident & Enforcement Service (IES)"
+        IES[(IES)]
+    end
+
+    %% Data & Events Consumed by IES
+    POS[Parking Operations Service] -->|Event: GateFaultDetected| IES
+    EVCS[EV Charging Service] -->|Event: ChargerFaultDetected| IES
+    PMS[Policy Management Service] -->|Provides: Enforcement Rules, Violation Policies| IES
+    SUS[Staff & User Access Service] -->|API: Staff Actions on Incidents| IES
+    EIS[External Integrations Service] -->|Event: ExternalAPIFailure - if critical| IES
+
+    %% Services Called & Events Published by IES
+    IES -->|Event: GateFaultReportStatusUpdated| POS
+    IES -->|Event: ChargerFaultReportStatusUpdated| EVCS
+    IES -->|Event: IncidentCreated, EnforcementActionTaken, FaultResolved| EventBroker[Event Broker]
+    IES -->|Request: Notify Customer of Violation| CS[Customer Service]
+    IES -->|Request: Block Vehicle/Customer| VS[Vehicle Service]
+    IES -->|Request: Block Vehicle/Customer| CS
+
+    %% General Event Publishing by IES
+    EventBroker -->|Consumed by| ARS[Analytics & Reporting Service]
+    EventBroker -->|Consumed by| IAETS[Internal Audit & Event Trace Service]
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class IES,POS,EVCS,PMS,SUS,EIS,CS,VS,ARS,IAETS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;

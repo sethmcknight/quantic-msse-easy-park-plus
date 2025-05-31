@@ -1,0 +1,208 @@
+classDiagram
+    class ParkingLot {
+        <<aggregate_root>>
+        -LotId lot_id
+        -String name
+        -Address address
+        -List~Level~ levels
+        -List~GateConfiguration~ gates
+        -Map~String,String~ lot_attributes // e.g., total_capacity, operator_id
+        +addLevel(level_details)
+        +addGate(gate_details)
+        +updateLotDetails(details)
+        +getLotConfiguration()
+        +publish_slot_maintenance_status_changed_event(slot_id, status, reason)
+        +publish_gate_status_changed_event(gate_id, status, reason)
+        +publish_equipment_item_status_changed_event(equipment_id, status, reason)
+    }
+
+    class Level {
+        -LevelId level_id
+        -LotId lot_id_ref
+        -String level_code // e.g., "G", "P1", "P2"
+        -Integer floor_number
+        -List~SlotConfiguration~ slots
+        -Map~String,String~ level_attributes // e.g., height_restrictions
+        +addSlot(slot_details)
+        +updateLevelDetails(details)
+        +getSlots() List~SlotConfiguration~
+    }
+
+    class SlotConfiguration {
+        -SlotId slot_id // Globally unique
+        -LevelId level_id_ref
+        -String slot_number // Display number on the level
+        -SlotTypeEnum slot_type
+        -Dimensions dimensions
+        -Boolean is_accessible // ADA compliant
+        -Boolean has_ev_charger // Indicates presence, EVCharging context manages charger details
+        -List~FixedEquipment~ associated_equipment // e.g., individual sensor
+        -SlotStatusEnum initial_status // e.g. Available, Maintenance
+        +updateSlotConfiguration(details)
+        +markForMaintenance(reason)
+        +associateEquipment(equipment_id)
+    }
+
+    class GateConfiguration {
+        -GateId gate_id
+        -LotId lot_id_ref
+        -String name
+        -GateTypeEnum gate_type // Entry, Exit, EntryExit
+        -GateOperationalModeEnum initial_mode // ANPR, Ticket, Hybrid
+        -List~FixedEquipment~ associated_equipment // e.g., ANPR Camera, Barrier Arm
+        +updateGateConfiguration(details)
+        +associateEquipment(equipment_id)
+        +setInitialOperationalMode(mode)
+    }
+
+    class FixedEquipment {
+        -EquipmentId equipment_id
+        -String name
+        -EquipmentTypeEnum equipment_type
+        -String model_number
+        -String serial_number
+        -InstallationDetails installation_details
+        -MaintenanceSchedule maintenance_schedule
+        -OperationalStatusEnum current_status // From this context's perspective (e.g. Configured, AwaitingInstall)
+        +registerEquipment(details)
+        +updateEquipmentDetails(details)
+        +scheduleMaintenance(schedule)
+    }
+
+    class Address {
+        -String street
+        -String city
+        -String state
+        -String postal_code
+        -String country
+    }
+
+    class LotId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class LevelId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class SlotId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class GateId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class EquipmentId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class Dimensions {
+        -Decimal length_meters
+        -Decimal width_meters
+    }
+
+    class InstallationDetails {
+        -DateTime installation_date
+        -String installed_by_vendor
+        -String location_description // More specific than just slot/gate
+    }
+
+    class MaintenanceSchedule {
+        -String frequency
+        -DateTime last_maintenance_date
+        -DateTime next_maintenance_date
+    }
+
+    class SlotTypeEnum {
+        <<enumeration>>
+        Standard
+        Compact
+        Motorcycle
+        AccessibleEV
+        StandardEV
+        Premium
+        Valet
+        ServiceVehicle
+    }
+
+    class GateTypeEnum {
+        <<enumeration>>
+        Entry
+        Exit
+        EntryExit // Combined gate
+    }
+
+    class GateOperationalModeEnum {
+        <<enumeration>>
+        ANPR_Primary
+        Ticketed_Entry
+        Hybrid_ANPR_Ticket
+        Manual_Override_Only
+        Closed
+    }
+
+    class EquipmentTypeEnum {
+        <<enumeration>>
+        ANPR_Camera
+        Barrier_Arm_Actuator
+        Induction_Loop_Sensor
+        Ultrasonic_Slot_Sensor
+        Payment_Terminal_Hardware
+        EV_Charger_Hardware_Mount
+        Display_Signage
+        Intercom_Device
+        Network_Switch
+        Local_Controller_Unit
+    }
+
+    class SlotStatusEnum { // Initial/Static status from Infrastructure perspective
+        <<enumeration>>
+        Available_Configured
+        UnderMaintenance_Planned
+        Reserved_FixedAssignment // e.g. for staff
+        Decommissioned
+    }
+    
+    class OperationalStatusEnum { // For FixedEquipment from Infrastructure perspective
+        <<enumeration>>
+        Configured
+        AwaitingInstallation
+        InstallationInProgress
+        Operational_Standby
+        RequiresMaintenance
+        Decommissioned
+    }
+
+    ParkingLot "1" -- "*" Level : contains >
+    ParkingLot "1" -- "*" GateConfiguration : has_gates >
+    Level "1" -- "*" SlotConfiguration : contains_slots >
+    SlotConfiguration "0..*" -- "0..*" FixedEquipment : associated_with
+    GateConfiguration "0..*" -- "0..*" FixedEquipment : associated_with
+
+    ParkingLot -- Address : has_an
+    ParkingLot -- LotId : has_id
+    Level -- LevelId : has_id
+    SlotConfiguration -- SlotId : has_id
+    SlotConfiguration -- Dimensions : has
+    GateConfiguration -- GateId : has_id
+    FixedEquipment -- EquipmentId : has_id
+    FixedEquipment -- InstallationDetails : has
+    FixedEquipment -- MaintenanceSchedule : has
+
+    SlotConfiguration -- SlotTypeEnum : is_of_type
+    SlotConfiguration -- SlotStatusEnum : has_initial_status
+    GateConfiguration -- GateTypeEnum : is_of_type
+    GateConfiguration -- GateOperationalModeEnum : has_initial_mode
+    FixedEquipment -- EquipmentTypeEnum : is_of_type
+    FixedEquipment -- OperationalStatusEnum : has_status

@@ -1,0 +1,129 @@
+sequenceDiagram
+    title Easy Park Plus - System Sequence Overview
+
+    actor Customer
+    participant FL as FrontendLayer
+    participant GW as APIGateway
+    participant CCSvc as CustomerContextSvc
+    participant RSSvc as ReservationsSvc
+    participant PSvc as PricingSvc
+    participant BSvc as BillingSvc
+    participant POSvc as ParkingOperationsSvc
+    participant VCSvc as VehicleContextSvc
+    participant ECSvc as ElectricVehicleChargingSvc
+    participant EISvc as ExternalIntegrationsSvc
+    participant PolMSvc as PolicyManagementSvc
+    participant IAETSvc as InternalAudit&EventTraceSvc
+    participant MB as MessageBroker
+
+    %% User Authentication and Dashboard Load
+    rect rgb(230, 245, 255)
+    Note over Customer, IAETSvc: User Authentication & Session Management
+    Customer->>FL: Start session / Login
+    FL->>GW: Authenticate User
+    GW->>CCSvc: Validate Credentials
+    CCSvc-->>GW: User Authenticated
+    GW-->>FL: Session Established
+    GW-->>IAETSvc: Log(UserSessionStarted)
+    
+    FL->>GW: Load Dashboard
+    GW->>RSSvc: Get Reservations
+    GW->>POSvc: Get Lot Status
+    RSSvc-->>GW: Reservations Data
+    POSvc-->>GW: Lot Status Data
+    GW-->>FL: Dashboard Data
+    end
+
+    %% Make Reservation (with SlotHold)
+    rect rgb(255, 245, 230)
+    Note over Customer, MB: Reservation Creation & Payment Processing
+    Customer->>FL: Make Reservation
+    FL->>GW: Request Reservation(details)
+    GW->>RSSvc: CreateReservation(details)
+    RSSvc->>PolMSvc: GetReservationPolicies(lotId, customerType)
+    PolMSvc-->>RSSvc: ReservationPolicies
+    RSSvc->>RSSvc: CreateSlotHold(PaymentConfirmation)
+    RSSvc-->>IAETSvc: Publish(SlotHoldCreated)
+    RSSvc->>PSvc: GetFeeQuote(details)
+    PSvc-->>RSSvc: FeeQuote
+    RSSvc->>BSvc: PreAuthPayment(fee)
+    BSvc-->>RSSvc: PreAuth OK
+    RSSvc->>RSSvc: ConvertHoldToReservation()
+    RSSvc-->>GW: ReservationConfirmed
+    GW-->>FL: Show Confirmation
+    RSSvc->>MB: publish ReservationConfirmedEvent
+    IAETSvc->>MB: consume ReservationConfirmedEvent
+    end
+
+    %% Vehicle Entry (ANPR based with VisitLifecycleStateMachine)
+    rect rgb(240, 255, 240)
+    Note over EISvc, IAETSvc: Vehicle Entry & Visit Initiation
+    EISvc->>GW: VehicleDetectedAtEntry(plate, gateId)
+    GW->>POSvc: RegisterVehicleEntry(plate, gateId)
+    POSvc->>VCSvc: GetVehicleDetails(plate)
+    VCSvc-->>POSvc: VehicleDetails
+    POSvc->>PolMSvc: GetEntryPolicies(lotId, vehicleCategory)
+    PolMSvc-->>POSvc: EntryPolicies (GracePeriod, Fallback)
+    POSvc->>RSSvc: CheckReservation(plate)
+    RSSvc-->>POSvc: ReservationMatch / NoMatch
+    POSvc->>POSvc: VisitLifecycleStateMachine.StartVisit()
+    POSvc->>BSvc: InitiateBillingForVisit(visitId)
+    POSvc-->>GW: EntryProcessed, OpenGate
+    GW->>EISvc: Command: OpenEntryGate
+    POSvc->>MB: publish VehicleEnteredEvent
+    IAETSvc->>MB: consume VehicleEnteredEvent
+    end
+
+    %% Start EV Charging (with Policy Application)
+    rect rgb(255, 240, 255)
+    Note over Customer, IAETSvc: EV Charging Session Management
+    Customer->>FL: Start EV Charging
+    FL->>GW: RequestStartCharging(chargerId)
+    GW->>ECSvc: StartChargingSession(chargerId, visitId)
+    ECSvc->>PolMSvc: GetChargingPolicies(lotId, chargerType)
+    PolMSvc-->>ECSvc: ChargingPolicies (GracePeriod for idle)
+    ECSvc->>EISvc: Command: StartChargerHardware
+    EISvc-->>ECSvc: Event: ChargerSessionActive (async)
+    ECSvc->>BSvc: NotifyChargingStarted(rateInfo)
+    ECSvc-->>GW: ChargingSessionStarted
+    GW-->>FL: Show Charging Status
+    ECSvc->>MB: publish EVChargingStartedEvent
+    IAETSvc->>MB: consume EVChargingStartedEvent
+    end
+
+    %% Vehicle Exit (ANPR based)
+    rect rgb(255, 235, 235)
+    Note over EISvc, MB: Vehicle Exit & Billing Finalization
+    EISvc->>GW: VehicleDetectedAtExit(plate, gateId)
+    GW->>POSvc: RegisterVehicleExit(plate, gateId)
+    POSvc->>PSvc: CalculateParkingFee(visitData)
+    PSvc-->>POSvc: ParkingFee
+    alt EV Charging was active
+        POSvc->>ECSvc: NotifyVehicleExiting(visitId)
+        ECSvc->>EISvc: Command: StopChargerHardware
+        EISvc-->>ECSvc: Event: ChargerSessionEnded (async)
+        ECSvc->>PSvc: CalculateChargingFee(sessionData)
+        PSvc-->>ECSvc: ChargingFee
+        ECSvc->>BSvc: AddChargingFeeToBill(fee)
+    end
+    POSvc->>BSvc: AddParkingFeeToBill(fee)
+    BSvc-->>GW: BillReady(totalDue)
+    GW-->>FL: Show Payment Due
+    POSvc->>MB: publish VehicleExitedEvent
+    GW->>EISvc: Command: OpenExitGate
+    end
+
+    %% Pay Bill
+    rect rgb(255, 255, 230)
+    Note over Customer, MB: Payment Processing & Completion
+    Customer->>FL: Pay Bill
+    FL->>GW: ProcessPayment(paymentDetails)
+    GW->>BSvc: SettlePayment(billId, paymentDetails)
+    BSvc->>EISvc: Command: ProcessPaymentGateway
+    EISvc-->>BSvc: Event: PaymentProcessed (async)
+    BSvc-->>GW: PaymentConfirmed
+    GW-->>FL: Show Receipt
+    BSvc->>MB: publish PaymentCompletedEvent
+    end
+
+    Note over Customer, MB: This sequence shows a typical user journey: Reservation, Entry, EV Charging, Exit, and Payment, highlighting key service interactions.

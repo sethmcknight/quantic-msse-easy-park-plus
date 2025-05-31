@@ -1,0 +1,172 @@
+sequenceDiagram
+    participant C as Customer (via UI/App)
+    participant RS as Reservations Service
+    participant CS as Customer Service
+    participant IMS as Infrastructure Management Service
+    participant PolMS as Policy Management Service
+    participant PS as Pricing Service
+    participant BS as Billing Service
+    participant PO as Parking Operations Service
+    participant IAET as Internal Audit & Event Trace Service
+    participant MB as Message Broker
+    participant IES as Incident & Enforcement Service
+
+    %% Customer Validation & Availability Check
+    rect rgb(230, 245, 255)
+    Note over C, RS: Customer Validation & Initial Request
+    C->>RS: RequestReservation(details: parking/EV, timeWindow, vehicleInfo_optional)
+    RS->>CS: GetCustomerProfile(customerId_or_details)
+    CS-->>RS: CustomerProfile (status, preferences, paymentMethods_if_any)
+
+    alt Customer Not Found or Invalid
+        RS-->>C: RegistrationOrProfileUpdateRequired
+    else Customer Valid
+        RS->>IMS: GetLotAvailability(lotId, timeWindow, reservationType: parking/EV)
+        IMS-->>RS: AvailabilityDetails (availableSlots, chargerTypes)
+        
+        alt Infrastructure Service Degraded
+            IMS-->>RS: ServiceDegradedResponse
+            RS->>PolMS: GetFallbackPolicy(lotId, "InfrastructureDegraded")
+            PolMS-->>RS: FallbackPolicy (use simplified availability check)
+            RS->>MB: Publish(FallbackPolicyAppliedEvent)
+        end
+    end
+    end
+
+    %% Slot Hold & Policy Application
+    rect rgb(255, 245, 230)
+    Note over RS, PolMS: Slot Hold Creation & Policy Application
+    alt No Availability
+        RS-->>C: NotifyNoAvailability
+        RS->>MB: Publish(ReservationAttemptFailedEvent)
+        RS-->>IAET: Publish(ReservationAttemptFailed_NoAvailabilityEvent)
+    else Slots/Chargers Available
+        RS->>PolMS: GetApplicableReservationPolicies(lotId, customerType, reservationType)
+        PolMS-->>RS: ReservationPolicies (e.g., prePaymentRequired, cancellationFees)
+
+        %% Create SlotHold First
+        RS->>RS: CreateSlotHold(customer_id, lot_id, resource_details, hold_type: PaymentConfirmation)
+        RS->>MB: Publish(SlotHeldEvent)
+        RS-->>IAET: Publish(SlotHoldCreatedEvent)
+        PO->>MB: Consume SlotHeldEvent
+    end
+    end
+
+    %% Pricing & Payment Processing
+    rect rgb(240, 255, 240)
+    Note over RS, BS: Fee Calculation & Payment Processing
+    alt Pricing Service Available
+        RS->>PS: CalculateReservationFeeEstimate(reservationDetails, policies)
+        PS-->>RS: FeeEstimateDetails
+        PS->>MB: Publish(ReservationPriceCalculatedEvent)
+    else Pricing Service Degraded
+        RS->>PolMS: GetFallbackPolicy(lotId, "PricingDegraded")
+        PolMS-->>RS: FallbackPolicy (use standard rates)
+        RS->>MB: Publish(FallbackPolicyAppliedEvent)
+    end
+
+    alt Pre-payment Required by Policy
+        alt Billing Service Available
+            RS->>BS: InitiatePrePaymentForReservation(customerId, feeEstimate)
+            BS-->>RS: PaymentStatus (Success/Failure)
+            BS->>MB: Publish(ReservationPaymentProcessedEvent)
+        else Billing Service Degraded
+            RS->>PolMS: GetFallbackPolicy(lotId, "BillingDegraded")
+            PolMS-->>RS: FallbackPolicy (allow reservation with deferred payment)
+            RS->>MB: Publish(FallbackPolicyAppliedEvent)
+        end
+        
+        alt Payment Failed
+            RS->>RS: ReleaseSlotHold(holdId, reason: PaymentFailed)
+            RS-->>C: NotifyPaymentFailed
+            RS->>MB: Publish(SlotReleasedEvent)
+            RS-->>IAET: Publish(ReservationAttemptFailed_PaymentDeclinedEvent)
+            %% End of flow for payment failure
+        else Payment Successful
+            RS->>RS: ConvertHoldToReservation(holdId, paymentConfirmation)
+            RS->>MB: Publish(ReservationConfirmedEvent)
+            RS-->>IAET: Publish(ReservationConfirmedEvent)
+        end
+    else No Pre-payment Required
+        RS->>RS: ConvertHoldToReservation(holdId, confirmation_details)
+        RS->>MB: Publish(ReservationConfirmedEvent)
+        RS-->>IAET: Publish(ReservationPendingPaymentAtLotEvent)
+    end
+    
+    PO->>MB: Consume ReservationConfirmedEvent
+    RS-->>C: ReservationConfirmation(reservationId, details, feePaid_if_any)
+    Note over RS: ReservationStatus: Confirmed, SlotHold converted to DynamicReservation
+    end
+
+    %% Vehicle Arrival & Reservation Fulfillment
+    rect rgb(255, 240, 255)
+    Note over PO, RS: Reservation Fulfillment at Arrival
+    Note right of RS: Later, when vehicle approaches or at entry...
+
+    PO->>RS: CheckActiveReservationForVehicle(vehiclePlate, entryTime, lotId)
+    RS-->>PO: ReservationDetails (if found, status: Confirmed/Pending)
+    
+    alt Reservation Found and Valid
+        RS->>RS: MarkReservationAsActive(reservationId, vehicle_arrived_time)
+        Note over RS: ReservationStatus: Active_VehicleArrived
+        
+        PO->>RS: ConfirmReservationArrival(reservationId, actualSlotAssignment)
+        RS->>RS: MarkReservationFulfilled(reservationId, visitId)
+        RS-->>PO: ReservationFulfilledConfirmation(reservationId, assignedSlot_if_preassigned)
+        RS->>MB: Publish(ReservationFulfilledEvent)
+        RS-->>IAET: Publish(ReservationFulfilledEvent)
+        
+        opt Billing Service Available
+            RS->>BS: NotifyReservationFulfilledForBilling(reservationId, visitId)
+            BS-->>RS: Acknowledged
+            BS->>MB: Publish(ReservationBillingUpdatedEvent)
+        end
+        
+        Note over RS: ReservationStatus: Fulfilled
+        IAET->>MB: Consume ReservationFulfilledEvent
+    end
+    end
+    %% Error Handling & Mismatch Resolution
+    rect rgb(255, 235, 235)
+    Note over RS, IES: Reservation Mismatch & Error Handling
+    alt No Valid Reservation or Mismatch
+        alt Mismatch Detected (wrong lot, wrong vehicle, etc.)
+            RS->>RS: MarkReservationMismatch(reservationId, mismatch_details)
+            Note over RS: ReservationStatus: Mismatch_Reported
+            RS->>MB: Publish(ReservationMismatchEvent)
+            RS->>IES: ReportReservationMismatch(reservationId, mismatchDetails)
+            RS-->>IAET: Publish(ReservationMismatchEvent)
+            Note over PO: Staff intervention required for mismatch resolution
+        else No Reservation Found
+            Note over PO: Proceed with standard non-reserved entry flow
+        end
+    end
+    end
+
+    %% Optional Reservation Cancellation
+    rect rgb(235, 255, 235)
+    Note over C, MB: Customer-Initiated Cancellation
+    Note right of C: Customer may cancel reservation...
+    
+    opt Customer Cancels Reservation
+        C->>RS: CancelReservation(reservationId, reason)
+        RS->>PolMS: GetCancellationPolicies(reservationId, cancelTime)
+        PolMS-->>RS: CancellationPolicies (fees, refund rules)
+        
+        alt Cancellation Fee Applies
+            opt Billing Service Available
+                RS->>BS: ProcessCancellationFee(reservationId, cancellationFee)
+                BS-->>RS: CancellationFeeProcessed
+                BS->>MB: Publish(CancellationFeeProcessedEvent)
+            end
+        end
+        
+        RS->>RS: MarkReservationCancelled(reservationId, cancelReason, fees_applied)
+        RS-->>C: CancellationConfirmation(refundAmount, feesApplied)
+        RS->>MB: Publish(ReservationCancelledEvent)
+        RS-->>IAET: Publish(ReservationCancelledEvent)
+        PO->>MB: Consume ReservationCancelledEvent  %% To free up held slots
+        Note over RS: ReservationStatus: Cancelled_ByUser
+        Note over MB: All domain events published for downstream consumers
+    end
+    end

@@ -1,0 +1,32 @@
+graph TD
+    Staff((Parking Staff))
+    Admin((System Admin))
+    Customer((Customer))
+
+    subgraph "Incident & Enforcement"
+        UC1[Report Incident]
+        UC2[Process Violation]
+        UC3[Issue Fine]
+        UC4[Initiate Towing]
+        UC5[View Incident History]
+        UC6[Manage Equipment Faults]
+        UC7[Handle Enforcement Workflows]
+        UC8[Report Equipment Issues]
+        UC9[Track Fault Resolution]
+    end
+
+    Staff --> UC1
+    Staff --> UC2
+    Staff --> UC3
+    Staff --> UC4
+    Staff --> UC5
+    Staff --> UC6
+    Staff --> UC7
+    Staff --> UC9
+    Admin --> UC2
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5
+    Admin --> UC6
+    Admin --> UC7
+    Customer --> UC8
