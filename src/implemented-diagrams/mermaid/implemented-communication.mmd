@@ -1,0 +1,81 @@
+---
+title: Easy Park Plus - Communication Diagram (Implemented)
+---
+flowchart TD
+    %% Actors and Main Components
+    User((User))
+    UI["ParkingLotUI<br/>(Observer)"]
+    State["UIStateManager"]
+    Valid["ValidationManager"]
+    Msg["MessageManager"]
+    Tree["TreeViewManager"]
+    Manager["ParkingLotManagerImpl<br/>(Subject)"]
+    Lot["ParkingLot"]
+    Factory["create_vehicle()<br/>(Factory Function)"]
+    
+    %% Data Models
+    VData["VehicleData"]
+    LotData["ParkingLotData"]
+    SearchData["SearchCriteria"]
+    Results["SearchResult"]
+
+    %% User Interactions
+    User -.1: Enter vehicle details.-> UI
+    User -.2: Click park/remove/search.-> UI
+    User -.15: View results.-> UI
+
+    %% Park Vehicle Flow
+    UI -.3: _handle_park().-> UI
+    UI -.4: Get form values.-> State
+    State -.5: Return StringVar/BooleanVar values.-> UI
+    UI -.6: Create VehicleData.-> VData
+    UI -.7: validate_vehicle_data().-> Valid
+    Valid -.8: Validation result.-> UI
+    UI -.9: park_vehicle(lot, level, data).-> Manager
+    Manager -.10: Business logic & storage.-> Lot
+    Manager -.11: _notify_observers().-> UI
+    UI -.12: show_message().-> Msg
+    UI -.13: Update UI state.-> State
+
+    %% Remove Vehicle Flow  
+    UI -.16: _handle_remove().-> UI
+    UI -.17: Get selection.-> State
+    UI -.18: remove_vehicle().-> Manager
+    Manager -.19: Remove from storage.-> Lot
+    Manager -.20: _notify_observers().-> UI
+
+    %% Search Flow
+    UI -.21: _handle_search().-> UI
+    UI -.22: Create SearchCriteria.-> SearchData
+    UI -.23: search_vehicles().-> Manager
+    Manager -.24: Query storage.-> Lot
+    Lot -.25: Return results.-> Results
+    Manager -.26: Return SearchResult[].-> UI
+    UI -.27: Update tree view.-> Tree
+
+    %% Create Lot Flow
+    UI -.28: _handle_create_lot().-> UI
+    UI -.29: Create ParkingLotData.-> LotData
+    UI -.30: create_lot().-> Manager
+    Manager -.31: Initialize lot structure.-> Lot
+
+    %% Vehicle Creation
+    Manager -.32: create_vehicle().-> Factory
+    Factory -.33: Return Vehicle instance.-> Manager
+
+    %% Observer Pattern
+    UI -.34: Implements ParkingLotObserver.-> UI
+    Manager -.35: Maintains observer list.-> Manager
+
+    %% Styling
+    classDef actor fill:#f9f,stroke:#333,stroke-width:2px
+    classDef ui fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef manager fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef data fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef factory fill:#fff3e0,stroke:#e65100,stroke-width:2px
+
+    class User actor
+    class UI,State,Valid,Msg,Tree ui
+    class Manager,Lot manager
+    class VData,LotData,SearchData,Results data
+    class Factory factory

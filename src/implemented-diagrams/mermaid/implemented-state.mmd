@@ -1,0 +1,119 @@
+---
+title: Easy Park Plus - State Diagram (Implemented)
+---
+stateDiagram-v2
+    [*] --> SystemInitialized
+    
+    %% System States
+    SystemInitialized: System Initialized
+    SystemInitialized --> UIReady: Load UI components
+    
+    UIReady: UI Ready
+    UIReady --> ProcessingOperation: User action triggered
+    UIReady --> LoadingSampleData: Load sample data
+    
+    %% Operation Processing States
+    state ProcessingOperation {
+        [*] --> ValidatingInput
+        ValidatingInput --> ExecutingOperation: Input valid
+        ValidatingInput --> ShowingError: Input invalid
+        ExecutingOperation --> UpdatingUI: Operation successful
+        ExecutingOperation --> ShowingError: Operation failed
+        UpdatingUI --> [*]
+        ShowingError --> [*]
+    }
+    
+    ProcessingOperation --> UIReady: Operation complete
+    
+    %% Sample Data Loading
+    LoadingSampleData --> CreatingLots: Initialize lots
+    CreatingLots --> ParkingVehicles: Lots created
+    ParkingVehicles --> UpdatingDropdowns: Vehicles parked
+    UpdatingDropdowns --> UIReady: UI updated
+    
+    %% Parking Lot States (Composite State)
+    state ParkingLotState {
+        [*] --> EmptyLot
+        EmptyLot: No vehicles parked
+        EmptyLot --> PartiallyOccupied: Park first vehicle
+        
+        PartiallyOccupied: Some slots occupied
+        PartiallyOccupied --> FullyOccupied: All slots filled
+        PartiallyOccupied --> EmptyLot: Remove all vehicles
+        PartiallyOccupied --> PartiallyOccupied: Park/Remove vehicle
+        
+        FullyOccupied: All slots occupied
+        FullyOccupied --> PartiallyOccupied: Remove vehicle
+    }
+    
+    %% Individual Slot States (Composite State)
+    state SlotState {
+        [*] --> Available
+        Available: Slot Available
+        Available --> Occupied: Vehicle parked
+        
+        Occupied: Slot Occupied
+        Occupied --> Available: Vehicle removed
+        
+        %% EV Slot Specific States
+        state Occupied {
+            [*] --> StandardOccupied
+            StandardOccupied: Regular vehicle parked
+            StandardOccupied --> EVCharging: Electric vehicle parked
+            EVCharging: EV parked and charging
+            EVCharging --> StandardOccupied: Regular vehicle replaces EV
+        }
+    }
+    
+    %% Observer Pattern State
+    state ObserverPattern {
+        [*] --> ObserverReady
+        ObserverReady: Observer registered
+        ObserverReady --> NotificationSent: Lot state changed
+        NotificationSent: UI notified
+        NotificationSent --> ObserverReady: Notification processed
+    }
+    
+    %% Search Operation States
+    state SearchOperation {
+        [*] --> GatheringCriteria
+        GatheringCriteria: Collecting search inputs
+        GatheringCriteria --> SearchingLots: Execute search
+        SearchingLots --> DisplayingResults: Results found
+        SearchingLots --> ShowingNoResults: No results
+        DisplayingResults --> [*]
+        ShowingNoResults --> [*]
+    }
+    
+    %% UI Tab States
+    state UITabState {
+        [*] --> ParkingTab
+        ParkingTab: Parking Operations Tab
+        SearchTab: Search Operations Tab  
+        AdminTab: Admin Operations Tab
+        DetailsTab: Details View Tab
+        
+        ParkingTab --> SearchTab: Switch tab
+        ParkingTab --> AdminTab: Switch tab
+        ParkingTab --> DetailsTab: Switch tab
+        SearchTab --> ParkingTab: Switch tab
+        SearchTab --> AdminTab: Switch tab
+        SearchTab --> DetailsTab: Switch tab
+        AdminTab --> ParkingTab: Switch tab
+        AdminTab --> SearchTab: Switch tab
+        AdminTab --> DetailsTab: Switch tab
+        DetailsTab --> ParkingTab: Switch tab
+        DetailsTab --> SearchTab: Switch tab
+        DetailsTab --> AdminTab: Switch tab
+    }
+    
+    %% Notes
+    note right of ProcessingOperation
+        Handles validation, business logic,
+        and UI updates for all operations
+    end note
+    
+    note right of ObserverPattern
+        Manager notifies UI observers
+        when lot state changes
+    end note
