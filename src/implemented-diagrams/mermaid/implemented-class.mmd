@@ -1,0 +1,225 @@
+---
+title: Easy Park Plus - Class Diagram (Implemented)
+---
+
+classDiagram
+    %% Core Classes
+    class ParkingLot {
+        +name: str
+        +levels: Dict[int, List[ParkingSlotData]]
+        +add_level(level: int, regular_slots: int, electric_slots: int)
+        +find_available_slot(level: int, is_electric: bool, is_motorcycle: bool): Optional[int]
+        +park_vehicle(level: int, slot: int, vehicle_data: VehicleData): bool
+        +remove_vehicle(level: int, slot: int): bool
+        +get_vehicles_by_criteria(criteria: SearchCriteria): List[SearchResult]
+        +get_vehicle_at_slot(level: int, slot: int): Optional[VehicleData]
+        +get_all_vehicles(): List[SearchResult]
+    }
+    
+    class ParkingLotManagerImpl {
+        +lots: Dict[str, ParkingLot]
+        +observers: Set[ParkingLotObserver]
+        +create_lot(data: ParkingLotData): bool
+        +park_vehicle(lot_name: str, level: int, data: VehicleData): Optional[int]
+        +remove_vehicle(lot_name: str, level: int, slot: int): bool
+        +search_vehicles(criteria: SearchCriteria): List[SearchResult]
+        +get_lot_names(): List[str]
+        +get_levels_for_lot(lot_name: str): List[int]
+        +get_vehicles_in_lot(lot_name: str, level: int): List[SearchResult]
+        +add_observer(observer: ParkingLotObserver)
+        +remove_observer(observer: ParkingLotObserver)
+        -_notify_observers(lot_name: str)
+    }
+    
+    %% Observer Pattern
+    class ParkingLotObserver {
+        <<interface>>
+        +update(message: str)
+    }
+    
+    %% Core Interfaces
+    class ParkingLotInterface {
+        <<interface>>
+        +park_vehicle(level: int, vehicle: Vehicle): Optional[int]
+        +remove_vehicle(level: int, slot: int): bool
+        +get_vehicles_by_criteria(criteria: SearchCriteria): List[SearchResult]
+        +get_vehicle_at_slot(level: int, slot: int): Optional[VehicleData]
+        +get_all_vehicles(): List[SearchResult]
+    }
+    
+    class ParkingLotManager {
+        <<interface>>
+        +create_lot(data: ParkingLotData): bool
+        +park_vehicle(lot_name: str, level: int, data: VehicleData): Optional[int]
+        +remove_vehicle(lot_name: str, level: int, slot: int): bool
+        +search_vehicles(criteria: SearchCriteria): List[SearchResult]
+        +get_lot_names(): List[str]
+        +get_levels_for_lot(lot_name: str): List[int]
+        +get_vehicles_in_lot(lot_name: str, level: int): List[SearchResult]
+        +add_observer(observer: ParkingLotObserver)
+        +remove_observer(observer: ParkingLotObserver)
+    }
+    
+    class ParkingLotUI {
+        +state_manager: UIStateManager
+        +tree_manager: TreeViewManager
+        +message_manager: MessageManager
+        +validation_manager: ValidationManager
+        +parking_manager: ParkingLotManagerImpl
+        +main_window: tk.Tk
+        +create_widgets()
+        +_handle_park()
+        +_handle_remove()
+        +_handle_search()
+        +_update_park_lot_names()
+        +_update_park_levels()
+        +update_ui_after_operation()
+        +_get_vehicle_data(): VehicleData
+        +_get_vehicle_type(): VehicleType
+    }
+    
+    class UIStateManager {
+        +lot_name_value: tk.StringVar
+        +parking_level_value: tk.StringVar
+        +regular_slots_value: tk.StringVar
+        +electric_vehicle_slots_value: tk.StringVar
+        +registration_number_value: tk.StringVar
+        +vehicle_manufacturer_value: tk.StringVar
+        +vehicle_model_value: tk.StringVar
+        +vehicle_color_value: tk.StringVar
+        +vehicle_type_value: tk.StringVar
+        +is_electric_value: tk.BooleanVar
+        +park_lot_value: tk.StringVar
+        +park_level_value: tk.StringVar
+        +search_registration_number_value: tk.StringVar
+        +search_type_value: tk.StringVar
+        +details_filter_value: tk.StringVar
+    }
+    
+    class TreeViewManager {
+        +results_tree: ttk.Treeview
+        +details_tree: ttk.Treeview
+        +update_results()
+        +update_details()
+        +clear_results()
+        +clear_details()
+    }
+    
+    class MessageManager {
+        +message_area: tk.Text
+        +show_error()
+        +show_info()
+        +show_success()
+        +clear_messages()
+    }
+    
+    class ValidationManager {
+        +validate_vehicle_data(data: VehicleData): bool
+        +validate_parking_input(): bool
+        +validate_search_input(): bool
+        +validate_lot_creation(): bool
+    }
+    
+    %% Factory Function (not a class)
+    note for create_vehicle "Factory Function: create_vehicle(registration_number, manufacturer, model, color, vehicle_type, is_electric)"
+    
+    %% Data Models
+    class VehicleData {
+        +registration_number: str
+        +manufacturer: str
+        +model: str
+        +color: str
+        +is_electric: bool
+        +is_motorcycle: bool
+        +vehicle_type: VehicleType
+        +current_battery_charge: Optional[float]
+    }
+    
+    class ParkingSlotData {
+        +slot_number: int
+        +is_occupied: bool
+        +vehicle: Optional[VehicleData]
+        +slot_type: SlotType
+        +level: int
+        +lot_name: str
+    }
+    
+    class ParkingLevelData {
+        +level: int
+        +slots: List[ParkingSlotData]
+        +lot_name: str
+    }
+    
+    class ParkingLotData {
+        +name: str
+        +levels: List[ParkingLevelData]
+    }
+    
+    class SearchCriteria {
+        +registration_number: Optional[str]
+        +color: Optional[str]
+        +manufacturer: Optional[str]
+        +model: Optional[str]
+        +is_electric: Optional[bool]
+        +is_motorcycle: Optional[bool]
+        +vehicle_type: Optional[VehicleType]
+    }
+    
+    class SearchResult {
+        +lot_name: str
+        +level: int
+        +slot: int
+        +vehicle: VehicleData
+    }
+    
+    class Vehicle {
+        +registration_number: str
+        +manufacturer: str
+        +model: str
+        +color: str
+        +vehicle_type: VehicleType
+        +is_electric: bool
+        +current_battery_charge: Optional[float]
+        +get_type(): str
+        +get_manufacturer(): str
+    }
+    
+    class VehicleType {
+        <<enumeration>>
+        CAR
+        TRUCK
+        MOTORCYCLE
+        BUS
+        +from_string(type_str: str): VehicleType
+    }
+    
+    class SlotType {
+        <<enumeration>>
+        REGULAR
+        ELECTRIC
+    }
+    
+    %% Relationships
+    ParkingLotObserver <|.. ParkingLotUI
+    ParkingLotManager <|.. ParkingLotManagerImpl
+    ParkingLotInterface <|.. ParkingLot
+    
+    ParkingLot o-- ParkingSlotData : contains
+    ParkingLotManagerImpl o-- ParkingLot : manages
+    ParkingLotManagerImpl o-- ParkingLotObserver : notifies
+    
+    ParkingLotUI *-- UIStateManager : composition
+    ParkingLotUI *-- TreeViewManager : composition
+    ParkingLotUI *-- MessageManager : composition
+    ParkingLotUI *-- ValidationManager : composition
+    ParkingLotUI --> ParkingLotManagerImpl : uses
+    
+    ParkingLotData *-- ParkingLevelData : composition
+    ParkingLevelData *-- ParkingSlotData : composition
+    ParkingSlotData o-- VehicleData : contains
+    
+    VehicleData --> VehicleType : uses
+    ParkingSlotData --> SlotType : uses
+    
+    Vehicle --> VehicleType : uses
+    ParkingLot ..> create_vehicle : uses factory function 
