@@ -435,11 +435,13 @@ Should we decide to move forward with this plan the following steps should be ta
 
 ### **A) Diagrams**
 
-This appendix identifies the diagrams created for the proposed architecture. All proposed diagrams are found in the /proposed-ddd-microservices-architecture/diagrams directory of the codebase.
+This appendix identifies the diagrams created as .mermaid and .png format for the proposed architecture of Easy Park Plus.
+
+[All proposed diagrams are found in the [`/proposed-ddd-microservices-architecture/diagrams`](./proposed-ddd-microservices-architecture/diagrams) directory of the codebase.]
 
 #### **A.1) High-Level System Diagrams**
 
-This directory contains high-level diagrams providing an overview of the entire system including:
+[proposed-ddd-microservices-architecture/diagrams/_system-high-level/](./proposed-ddd-microservices-architecture/diagrams/_system-high-level/) contains high-level diagrams in .mermaid and .png formats that provide an overview of the entire system including:
 
 * Bounded Context  
 * Context Map  
@@ -453,13 +455,13 @@ This directory contains high-level diagrams providing an overview of the entire 
 
 #### **A.2) Other Diagrams**
 
-The codebase includes detailed diagrams for
+The codebase also includes detailed .mermaid and .png diagrams for:
 
-* Classes  
-* Communication  
-* Sequences  
-* States  
-* Use-Cases
+* Classes: proposed-ddd-microservices-architecture/diagrams/class/  
+* Communication: proposed-ddd-microservices-architecture/diagrams/communication/  
+* Sequences: proposed-ddd-microservices-architecture/diagrams/sequence/  
+* States: proposed-ddd-microservices-architecture/diagrams/state/  
+* Use-Cases: proposed-ddd-microservices-architecture/diagrams/use-case/
 
 ### 
 

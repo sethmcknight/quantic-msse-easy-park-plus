@@ -1,0 +1,171 @@
+---
+title: Easy Park Plus - Customer Registration Sequence Diagram (Proposed)
+---
+
+sequenceDiagram
+    participant Customer
+    participant CustomerSvc as Customer Service
+    participant Vehicle as Vehicle Service
+    participant Payment as Payment Service
+    participant Validation as Validation Service
+    participant Policy as Policy Management
+    participant Analytics as Analytics Service
+    participant Notification as Notification Service
+    
+    Note over Customer, Notification: Customer Registration & Profile Management Flow
+
+    %% New Customer Registration
+    rect rgb(230, 245, 255)
+    Note over Customer, CustomerSvc: New Customer Registration
+    Customer->>+CustomerSvc: Initiate registration
+    CustomerSvc->>CustomerSvc: Validate email/phone uniqueness
+    
+    alt Email/Phone Already Exists
+        CustomerSvc-->>Customer: Account exists - redirect to login
+    else New Customer
+        CustomerSvc->>CustomerSvc: Create customer profile
+        Note right of CustomerSvc: Collect:<br/>- Personal details<br/>- Contact information<br/>- Communication preferences
+        
+        CustomerSvc->>+Notification: Send verification email/SMS
+        Notification-->>-CustomerSvc: Verification sent
+        CustomerSvc-->>Customer: Registration pending verification
+        
+        Customer->>CustomerSvc: Verify email/phone
+        CustomerSvc->>CustomerSvc: Activate customer account
+        CustomerSvc-->>-Customer: Registration complete
+    end
+    end
+
+    %% Vehicle Registration & Linking
+    rect rgb(255, 245, 230)
+    Note over Customer, Vehicle: Vehicle Registration Phase
+    Customer->>+CustomerSvc: Add vehicle to account
+    CustomerSvc->>+Vehicle: Register new vehicle
+    
+    Vehicle->>Vehicle: Validate license plate format
+    Vehicle->>Vehicle: Check for existing registrations
+    
+    alt License Plate Already Registered
+        Vehicle-->>CustomerSvc: Plate already in system
+        CustomerSvc-->>Customer: Vehicle already registered to another account
+        
+    else New Vehicle Registration
+        Vehicle->>Vehicle: Create vehicle profile
+        Note right of Vehicle: Vehicle details:<br/>- License plate<br/>- Make/model/year<br/>- Vehicle type (EV/ICE)<br/>- Color
+        
+        alt Electric Vehicle
+            Vehicle->>Vehicle: Configure EV settings
+            Note right of Vehicle: EV-specific:<br/>- Battery capacity<br/>- Charging preferences<br/>- Connector type
+        end
+        
+        Vehicle->>+Policy: Check vehicle eligibility
+        Policy-->>-Vehicle: Eligibility confirmed
+        
+        Vehicle-->>-CustomerSvc: Vehicle registered
+        CustomerSvc->>CustomerSvc: Link vehicle to customer
+        CustomerSvc-->>Customer: Vehicle added successfully
+    end
+    end
+
+    %% Payment Method Management
+    rect rgb(240, 255, 240)
+    Note over Customer, Payment: Payment Method Setup
+    Customer->>+CustomerSvc: Add payment method
+    CustomerSvc->>+Payment: Register payment method
+    
+    alt Credit/Debit Card
+        Payment->>Payment: Validate card details
+        Payment->>Payment: Create secure token
+        Note right of Payment: PCI compliance:<br/>- Tokenize card data<br/>- Store only tokens<br/>- Never store raw card data
+        
+    else Mobile Wallet
+        Payment->>Payment: Validate wallet token
+        Payment->>Payment: Store wallet reference
+        
+    else Bank Account (ACH)
+        Payment->>Payment: Validate routing/account
+        Payment->>Payment: Create ACH profile
+    end
+    
+    Payment->>Payment: Set as default payment method
+    Payment-->>-CustomerSvc: Payment method secured
+    CustomerSvc-->>-Customer: Payment method added
+    end
+
+    %% Passholder Enrollment
+    rect rgb(255, 240, 255)
+    Note over Customer, Validation: Passholder Program Enrollment
+    Customer->>+CustomerSvc: Enroll in passholder program
+    CustomerSvc->>+Policy: Check program eligibility
+    
+    Policy->>Policy: Validate enrollment criteria
+    Note right of Policy: Eligibility checks:<br/>- Employment verification<br/>- Residency requirements<br/>- Vehicle eligibility<br/>- Background checks
+    
+    alt Eligible for Program
+        Policy-->>CustomerSvc: Enrollment approved
+        CustomerSvc->>+Validation: Create passholder profile
+        
+        Validation->>Validation: Generate passholder ID
+        Validation->>Validation: Set access permissions
+        Validation->>Validation: Configure billing preferences
+        
+        opt Physical Pass Required
+            Validation->>Notification: Order physical pass
+            Notification->>Customer: Pass shipping notification
+        end
+        
+        Validation-->>-CustomerSvc: Passholder profile active
+        CustomerSvc-->>Customer: Enrollment complete
+        
+    else Not Eligible
+        Policy-->>CustomerSvc: Enrollment denied
+        CustomerSvc-->>Customer: Enrollment requirements not met
+    end
+    
+    CustomerSvc-->>-Policy: Enrollment processed
+    end
+
+    %% Profile Updates & Management
+    rect rgb(235, 255, 235)
+    Note over Customer, Analytics: Profile Management & Updates
+    Customer->>+CustomerSvc: Update profile information
+    
+    par Contact Information Change
+        alt Contact Information Change
+            CustomerSvc->>CustomerSvc: Update contact details
+            CustomerSvc->>Notification: Send change confirmation
+        end
+    and Vehicle Information Change
+        CustomerSvc->>Vehicle: Update vehicle details
+        Vehicle->>Policy: Revalidate vehicle eligibility
+    and Payment Method Change
+        CustomerSvc->>Payment: Update payment preferences
+        Payment->>Payment: Validate new payment method
+    end
+    
+    CustomerSvc->>+Analytics: Log profile changes
+    Analytics->>Analytics: Update customer analytics
+    Analytics-->>-CustomerSvc: Analytics updated
+    
+    CustomerSvc-->>-Customer: Profile updated successfully
+    end
+
+    %% Account Deactivation/Deletion
+    rect rgb(255, 235, 235)
+    Note over Customer, Analytics: Account Deactivation (Optional)
+    opt Account Closure Request
+        Customer->>+CustomerSvc: Request account closure
+        CustomerSvc->>Payment: Process final billing
+        CustomerSvc->>Vehicle: Deregister vehicles
+        CustomerSvc->>Validation: Deactivate passes
+        
+        CustomerSvc->>CustomerSvc: Archive customer data
+        Note right of CustomerSvc: Data retention:<br/>- Legal compliance<br/>- Audit requirements<br/>- Anonymize PII
+        
+        CustomerSvc->>Analytics: Record closure reason
+        CustomerSvc->>Notification: Send closure confirmation
+        CustomerSvc-->>-Customer: Account closed
+    end
+    end
+
+    Note over Customer, Notification: Customer Profile Management Complete

@@ -1,0 +1,397 @@
+---
+title: Easy Park Plus - Bounded Context Diagram (Proposed)
+---
+
+graph TB
+    subgraph "Core Domain - Real-time Operations"
+        subgraph PO["🚗 Parking Operations Context"]
+            PO_AGG["`**Visit** (Aggregate Root)
+            • visit_id: VisitId
+            • vehicle_registration
+            • time_range: TimeRange
+            • assigned_slot_id
+            • current_status: VisitStatus`"]
+            
+            PO_ENT["`**Slot** (Operational View - Entity)
+            • slot_id: SlotId
+            • operational_status
+            • last_status_update`"]
+            
+            PO_VO["`**Value Objects**
+            • VisitId
+            • VehicleRegistration
+            • TimeRange
+            • SlotOperationalStatus
+            • GateId
+            • SensorData
+            • Location
+            • VehicleCategory
+            • GateInteractionDetails
+            • FallbackLog
+            • ReconciliationStatus`"]
+        end
+        
+        subgraph EV["⚡ Electric Vehicle Charging Context"]
+            EV_AGG["`**ChargingSession** (Aggregate Root)
+            • charging_session_id
+            • charger_id: ChargerId
+            • energy_consumed: Energy
+            • current_status
+            • grace_period_info`"]
+            
+            EV_ENT["`**Charger** (Entity)
+            • charger_id: ChargerId
+            • physical_location
+            • charger_capabilities
+            • current_operational_status`"]
+            
+            EV_VO["`**Value Objects**
+            • Energy • Power • Duration
+            • ChargerCapabilities
+            • ConnectorType`"]
+        end
+
+        subgraph RES["📅 Reservations Context"]
+            RES_AGG["`**Reservation** (Aggregate Root)
+            • reservation_id: ReservationId
+            • requested_resource: ReservedResource
+            • time_window: TimeRange
+            • status: ReservationStatus`"]
+            
+            RES_VO["`**Value Objects**
+            • ReservedResource
+            • ResourceType
+            • SlotAttributes`"]
+        end
+    end
+
+    subgraph "Financial Domain"
+        subgraph PRICE["💲 Pricing Context"]
+            PRICE_AGG["`**PricingRuleSet** (Aggregate Root)
+            • rule_set_id: RuleSetId
+            • applicability_conditions
+            • rate_definitions
+            • discount_rules
+            • tax_rules`"]
+            
+            PRICE_VO["`**Value Objects**
+            • ChargeEstimate
+            • PricingPreview
+            • Money
+            • PricingCondition`"]
+        end
+
+        subgraph BILL["💳 Billing Context"]
+            BILL_AGG["`**Bill** (Aggregate Root)
+            • bill_id: BillId
+            • related_items: List<BillableItemLink>
+            • line_items: List<LineItem>
+            • total_amount: Money
+            • status: BillStatus`"]
+            
+            %% Placeholder for PricingRuleSet if it moves to Pricing
+            %% BILL_ENT["`**PricingRuleSet** (Entity) ... `"] 
+            
+            BILL_VO["`**Value Objects**
+            • Money • LineItem`"]
+        end
+    end
+    
+    subgraph "Supporting Domain - Business & Customer"
+        subgraph CUST["👤 Customer Context"]
+            CUST_AGG["`**Customer** (Aggregate Root)
+            • customer_id: CustomerId
+            • profile: CustomerProfile
+            • linked_vehicles: List<VehicleRegistration>
+            • passholder_details: PassholderInfo`"]
+            
+            CUST_VO["`**Value Objects**
+            • PassholderInfo
+            • PassholderAccessRule
+            • PaymentMethod
+            • CommuterBenefitLink`"]
+        end
+        
+        subgraph VEH["🚙 Vehicle Context"]
+            VEH_AGG["`**Vehicle** (Aggregate Root)
+            • vehicle_registration (Primary Key)
+            • vehicle_details: VehicleDetails
+            • electric_vehicle_capability
+            • current_system_status`"]
+            
+            VEH_VO["`**Value Objects**
+            • VehicleDetails
+            • ElectricVehicleCapability
+            • VehicleSystemStatus
+            • VehicleCategory`"]
+        end
+    end
+
+    subgraph "Infrastructure & Policy Domain"
+        subgraph IM["🏗️ Infrastructure Management Context"]
+            IM_AGG["`**Lot** (Aggregate Root)
+            • lot_id: LotId
+            • lot_address: Address
+            • total_capacity
+            • lot_dimensions: Dimensions
+            • operational_status`"]
+            
+            IM_ENT["`**Level** (Entity)
+            • level_id: LevelId
+            • level_number
+            • slot_configurations: List<SlotConfiguration>
+            
+            **Gate** (Entity)
+            • gate_id: GateId
+            • gate_type: GateType
+            • location: Location
+            • operational_status`"]
+            
+            IM_VO["`**Value Objects**
+            • LotId • LevelId • SlotId • GateId
+            • Address • Dimensions • Location
+            • SlotConfiguration
+            • EquipmentInventoryItem
+            • PhysicalCapabilities`"]
+        end
+
+        subgraph PM["📜 Policy Management Context"]
+            PM_AGG["`**GracePeriodPolicy** (Aggregate Root)
+            • policy_id: PolicyId
+            • applicable_scope: PolicyScope
+            • grace_period_rules: List<PolicyRule>
+            • enforcement_conditions`"]
+            
+            PM_ENT["`**EventWindow** (Entity)
+            • window_id: WindowId
+            • time_range: TimeRange
+            • applicable_policies
+            
+            **ValidationProgram** (Entity)
+            • program_id: ProgramId
+            • validation_rules
+            • partner_access_rules`"]
+            
+            PM_VO["`**Value Objects**
+            • PolicyRule • PolicyScope
+            • ScopedPolicyBase
+            • EnforcementCondition
+            • ValetProvider
+            • GracePeriodDuration`"]
+        end
+    end
+
+    subgraph "Operational Support & System Management Domain"
+        subgraph SUA["🔑 Staff & User Access Context"]
+            SUA_AGG["`**UserAccount** (Aggregate Root)
+            • user_id: UserId
+            • account_credentials
+            • assigned_roles: List<Role>
+            • access_permissions: List<Permission>
+            • audit_trail: List<AccessEvent>`"]
+            
+            SUA_ENT["`**Role** (Entity)
+            • role_id: RoleId
+            • role_name
+            • permission_set: List<Permission>
+            
+            **Permission** (Entity)
+            • permission_id: PermissionId
+            • resource_access_scope
+            • action_capabilities`"]
+            
+            SUA_VO["`**Value Objects**
+            • AccessEvent • AccessScope
+            • ActionCapability
+            • StaffActionAudit
+            • PartnerCredentials`"]
+        end
+
+        subgraph SC["🛠️ System Configuration Context"]
+            SC_AGG["`**FallbackPolicy** (Aggregate Root)
+            • fallback_id: FallbackId
+            • trigger_conditions
+            • fallback_behavior: FallbackBehavior
+            • recovery_procedures`"]
+            
+            SC_ENT["`**SystemParameter** (Entity)
+            • parameter_id: ParameterId
+            • parameter_name
+            • parameter_value
+            • validation_rules
+            • update_history`"]
+            
+            SC_VO["`**Value Objects**
+            • FallbackBehavior
+            • TriggerCondition
+            • OperationalMode
+            • HealthParameter
+            • ConfigurationValue`"]
+        end
+
+        subgraph EXTINT["🔌 External Integrations Context"]
+            EXTINT_AGG["`**DeviceConfiguration** (Aggregate Root)
+            • device_id: DeviceId
+            • device_type: DeviceType
+            • connection_details: ConnectionConfig
+            • operational_status
+            • last_health_check`"]
+            
+            EXTINT_ENT["`**IntegrationConfig** (Entity)
+            • integration_id: IntegrationId
+            • third_party_service: ServiceType
+            • api_contract: ApiContract
+            • connectivity_status`"]
+            
+            EXTINT_VO["`**Value Objects**
+            • ConnectionConfig • ApiContract
+            • ServiceType • DeviceType
+            • HealthCheckResult
+            • ThirdPartyCredentials`"]
+        end
+        
+        subgraph INC["🚨 Incident & Enforcement Context"]
+            INC_AGG["`**IncidentReport** (Aggregate Root)
+            • report_id: ReportId
+            • report_type: ReportType
+            • actions_taken: List<EnforcementAction>
+            • associated_tow_job_id`"]
+            
+            INC_ENT["`**TowJob** (Entity)
+            • tow_job_id: TowJobId
+            • dispatch_details
+            • status: TowJobStatus`"]
+            
+            INC_VO["`**Value Objects**
+            • EnforcementAction
+            • EvidenceLink
+            • TowDispatchInfo`"]
+        end
+    end
+    
+    subgraph "Cross-Cutting Concerns & Analytics Domain"
+        subgraph ANA["📊 Analytics & Reporting Context"]
+            ANA_RM1["`**Read Models**
+            • LotUtilizationDailySummary
+            • VehicleVisitHistoryReport
+            • RevenueByCustomerType
+            • IncidentTrendReport
+            • OccupancyForecast`"]
+        end
+
+        subgraph AUDIT["🛡️ Internal Audit & Event Trace Context"]
+            AUDIT_AGG["`**AuditLog** (Aggregate Root)
+            • audit_id: AuditId
+            • logged_events: List<EventTrace>
+            • compliance_markers
+            • retention_policy: RetentionPolicy`"]
+            
+            AUDIT_ENT["`**EventTrace** (Entity)
+            • trace_id: TraceId
+            • source_context: ContextId
+            • event_data: EventData
+            • timestamp
+            • correlation_id`"]
+            
+            AUDIT_VO["`**Value Objects**
+            • EventData • ContextId
+            • ComplianceMarker
+            • RetentionPolicy
+            • SlaEnforcement
+            • DebuggingMetadata`"]
+        end
+    end
+    
+    %% Show key relationships with dotted lines (Illustrative - to be refined based on detailed interactions)
+    PO_AGG -.->|"Links to"| EV_AGG
+    PO_AGG -.->|"References"| RES_AGG
+    PO_AGG -.->|"Uses Policies from"| PM
+    PO_AGG -.->|"Uses Infrastructure from"| IM
+    PO_AGG -.->|"Informs"| PRICE
+    
+    BILL_AGG -.->|"Bills for"| PO_AGG
+    BILL_AGG -.->|"Bills for"| EV_AGG
+    BILL_AGG -.->|"Uses Pricing from"| PRICE
+
+    CUST_AGG -.->|"Owns"| VEH_AGG
+    CUST_AGG -.->|"Makes"| RES_AGG
+    
+    RES_AGG -.->|"Impacts Slot Status in"| PO
+    
+    %% e.g., Charger location
+    EV_AGG -.->|"Uses Infrastructure from"| IM
+    EV_AGG -.->|"Informs"| PRICE
+
+    PRICE -.->|"Provides data to"| BILL
+    
+    IM -.->|"Provides data to"| PO
+    IM -.->|"Provides data to"| EV
+    
+    PM -.->|"Provides policies to"| PO
+    PM -.->|"Provides policies to"| EV
+    PM -.->|"Provides policies to"| PRICE
+    PM -.->|"Provides policies to"| BILL
+
+    INC -.->|"Relates to"| PO_AGG
+    INC -.->|"Relates to"| VEH_AGG
+
+    SUA -.->|"Manages access for staff interacting with"| PO
+    SUA -.->|"Manages access for staff interacting with"| INC
+    %% e.g., Fallback Policies
+    SC -.->|"Configures"| PO
+    SC -.->|"Configures"| EV
+    %% e.g., ANPR, Sensors
+    EXTINT -.->|"Integrates with"| PO
+    %% e.g., Charging Hardware APIs
+    EXTINT -.->|"Integrates with"| EV
+    %% e.g., ANPR, Sensors
+    EXTINT -.->|"Integrates with"| PO
+    %% e.g., Charging Hardware APIs
+    EXTINT -.->|"Integrates with"| EV
+
+    ANA -.->|"Consumes data from"| PO
+    ANA -.->|"Consumes data from"| EV
+    ANA -.->|"Consumes data from"| BILL
+    ANA -.->|"Consumes data from"| CUST
+    ANA -.->|"Consumes data from"| RES
+    ANA -.->|"Consumes data from"| INC
+
+    AUDIT -.->|"Subscribes to events from"| PO
+    AUDIT -.->|"Subscribes to events from"| EV
+    AUDIT -.->|"Subscribes to events from"| BILL
+    AUDIT -.->|"Subscribes to events from"| PRICE
+    AUDIT -.->|"Subscribes to events from"| CUST
+    AUDIT -.->|"Subscribes to events from"| VEH
+    AUDIT -.->|"Subscribes to events from"| RES
+    AUDIT -.->|"Subscribes to events from"| IM
+    AUDIT -.->|"Subscribes to events from"| PM
+    AUDIT -.->|"Subscribes to events from"| SUA
+    AUDIT -.->|"Subscribes to events from"| SC
+    AUDIT -.->|"Subscribes to events from"| EXTINT
+    AUDIT -.->|"Subscribes to events from"| INC
+    
+    %% Styling
+    classDef coreAgg fill:#ff6b6b,stroke:#d63031,stroke-width:3px,color:#fff
+    classDef supportingAgg fill:#4ecdc4,stroke:#00b894,stroke-width:2px,color:#fff
+    classDef financialAgg fill:#feca57,stroke:#ff9f43,stroke-width:2px,color:#333
+    classDef infraPolicyAgg fill:#54a0ff,stroke:#2e86de,stroke-width:2px,color:#fff
+    classDef opsSupportAgg fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
+    classDef crossCuttingAgg fill:#1dd1a1,stroke:#10ac84,stroke-width:2px,color:#fff
+    classDef entity fill:#fdcb6e,stroke:#e17055,stroke-width:2px,color:#333
+    classDef valueObj fill:#e17055,stroke:#d63031,stroke-width:1px,color:#fff
+    classDef readModel fill:#a29bfe,stroke:#6c5ce7,stroke-width:2px,color:#fff
+    classDef contextDesc fill:#dfe6e9,stroke:#b2bec3,stroke-width:1px,color:#333,padding:5px
+
+    class PO_AGG,EV_AGG,RES_AGG coreAgg
+    class CUST_AGG,VEH_AGG supportingAgg
+    class PRICE_AGG,BILL_AGG financialAgg
+    class IM_AGG,PM_AGG infraPolicyAgg
+    class SUA_AGG,SC_AGG,EXTINT_AGG,INC_AGG opsSupportAgg
+    class ANA,AUDIT_AGG crossCuttingAgg
+
+    class PO_ENT,EV_ENT,IM_ENT,PM_ENT,SUA_ENT,SC_ENT,EXTINT_ENT,AUDIT_ENT,INC_ENT entity
+    class PO_VO,EV_VO,BILL_VO,CUST_VO,VEH_VO,RES_VO,PRICE_VO,IM_VO,PM_VO,SUA_VO,SC_VO,EXTINT_VO,AUDIT_VO,INC_VO valueObj
+    class ANA_RM1 readModel
+    
+    %% Apply styling to context subgraphs
+    %% Mermaid does not support applying classes to subgraphs directly; remove these lines or only use node IDs.

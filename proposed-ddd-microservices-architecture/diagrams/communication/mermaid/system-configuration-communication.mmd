@@ -1,0 +1,30 @@
+---
+title: Easy Park Plus - System Configuration Communication Diagram (Proposed)
+---
+
+graph TD
+    subgraph "System Configuration Service (SCS)"
+        SCS[(SCS)]
+    end
+
+    %% Data & Events Consumed by SCS
+    SUS[Staff & User Access Service] -->|API: Admin CRUD operations for System Config| SCS
+
+    %% Services Called & Events Published by SCS
+    SCS -->|Provides: FallbackPolicy, System Modes, Health Params| POS[Parking Operations Service]
+    SCS -->|Provides: System Config, Retry Policies| EVCS[EV Charging Service]
+    SCS -->|Provides: Retry Policies, Endpoint Configs| EIS[External Integrations Service]
+    SCS -->|Provides: System Config| BS[Billing Service]
+    SCS -->|Event: SystemConfigUpdated, FallbackModeActivated| EventBroker[Event Broker]
+
+    %% General Event Publishing by SCS
+    EventBroker -->|SystemConfigUpdated| POS
+    EventBroker -->|SystemConfigUpdated| EVCS
+    EventBroker -->|SystemConfigUpdated| EIS
+    EventBroker -->|SystemConfigUpdated| BS
+    EventBroker -->|All SCS Events| IAETS[Internal Audit & Event Trace Service]
+    EventBroker -->|SystemHealthParameterChanged| ARS[Analytics & Reporting Service]
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class SCS,SUS,POS,EVCS,EIS,BS,IAETS,ARS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;

@@ -1,0 +1,23 @@
+---
+title: Easy Park Plus - External Integrations Use Case Diagram (Proposed)
+---
+
+graph TD
+    SystemAdmin((System Admin))
+    Staff((Parking Staff))
+
+    subgraph "External Integrations"
+        UC1[Configure Third-Party Integrations]
+        UC2[Monitor Integration Status]
+        UC3[Manage API Contracts]
+        UC4[View Integration Logs]
+        UC5[Handle Integration Failures]
+    end
+
+    SystemAdmin --> UC1
+    SystemAdmin --> UC2
+    SystemAdmin --> UC3
+    SystemAdmin --> UC4
+    SystemAdmin --> UC5
+    Staff --> UC2
+    Staff --> UC5
