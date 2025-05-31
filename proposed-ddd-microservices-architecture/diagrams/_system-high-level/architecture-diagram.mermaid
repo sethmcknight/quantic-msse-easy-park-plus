@@ -2,89 +2,127 @@ architecture-beta
     
     %% Central Event Bus
     service event_bus(server)[Event Bus]
+    service event_bus_db(database)[Event Store DB] 
     
-    %% Core Operations - Top Level
+    %% Core Operations Services
     group core_ops(cloud)[Core Operations]
-    service parking_ops(server)[Parking Ops] in core_ops
-    service ev_charging(server)[EV Charging] in core_ops
-    service reservations(server)[Reservations] in core_ops
+    service parking_ops(server)[Parking Options API] in core_ops
+    service parking_ops_db(database)[Parking Ops Ops DB] in core_ops
+    service ev_charging(server)[EV Charging API] in core_ops
+    service ev_charging_db(database)[EV Charging DB] in core_ops
+    service reservations(server)[Reservations API] in core_ops
+    service reservations_db(database)[Reservations DB] in core_ops
     
-    %% Financial Services - Right of Core
-    group financial(cloud)[Financial]
-    service pricing(server)[Pricing] in financial
-    service billing(server)[Billing] in financial
+    %% Financial Services
+    group financial(cloud)[Financial Services]
+    service pricing(server)[Pricing API] in financial
+    service pricing_db(database)[Pricing DB] in financial
+    service billing(server)[Billing API] in financial
+    service billing_db(database)[Billing DB] in financial
     
-    %% Data Services - Left of Core  
-    group data_services(database)[Data Services]
-    service customer(database)[Customer] in data_services
-    service vehicle(database)[Vehicle] in data_services
+    %% Customer and Vehicle Management
+    group customer_vehicle(cloud)[Customer and Vehicle Management]
+    service customer(server)[Customer API] in customer_vehicle
+    service customer_db(database)[Customer DB] in customer_vehicle
+    service vehicle(server)[Vehicle API] in customer_vehicle
+    service vehicle_db(database)[Vehicle DB] in customer_vehicle
     
-    %% Configuration Services - Below Core
-    group config_services(cloud)[Configuration]
-    service infra_mgmt(server)[Infrastructure] in config_services
-    service policy_mgmt(server)[Policy] in config_services
-    service sys_config(server)[System Config] in config_services
-    service staff_access(server)[Staff Access] in config_services
+    %% Infrastructure and Policy Management
+    group infra_policy(cloud)[Infrastructure and Policy]
+    service infra_mgmt(server)[Infrastructure Mgmt API] in infra_policy
+    service infra_mgmt_db(database)[Infrastructure DB] in infra_policy
+    service policy_mgmt(server)[Policy Mgmt API] in infra_policy
+    service policy_mgmt_db(database)[Policy DB] in infra_policy
     
-    %% External Systems - Far Right
-    group external(internet)[External]
-    service ext_integrations(server)[Ext Integration] in external
-    service gate_systems(server)[Gates] in external
-    service payment_gateways(server)[Payments] in external
-    service anpr_cameras(server)[ANPR] in external
+    %% System Configuration and Access Control
+    group system_mgmt(cloud)[System Management]
+    service sys_config(server)[System Config API] in system_mgmt
+    service sys_config_db(database)[System Config DB] in system_mgmt
+    service staff_access(server)[Staff Access API] in system_mgmt
+    service staff_access_db(database)[Staff Access DB] in system_mgmt
     
-    %% Monitoring - Bottom
-    group monitoring(cloud)[Monitoring]
-    service incident_enforcement(server)[Incidents] in monitoring
-    service analytics_reporting(server)[Analytics] in monitoring
-    service audit_trace(server)[Audit] in monitoring
+    %% External Integration Management
+    group external_mgmt(cloud)[External Integration Management]
+    service ext_integrations(server)[External Integrations API] in external_mgmt
+    service ext_integrations_db(database)[External Integrations DB] in external_mgmt
     
-    %% Core operational flow connections
-    parking_ops:R --> L:pricing
-    pricing:R --> L:billing
-    parking_ops:B --> T:reservations
-    ev_charging:L --> R:pricing
+    %% Physical External Systems
+    group external_systems(internet)[External Systems]
+    service gate_systems(server)[Gate Systems] in external_systems
+    service payment_gateways(server)[Payment Gateways] in external_systems
+    service anpr_cameras(server)[ANPR Cameras] in external_systems
     
-    %% Customer and vehicle data connections
-    parking_ops:B --> T:customer
-    parking_ops:B --> T:vehicle
-    ev_charging:B --> T:customer
-    reservations:B --> T:customer
-    billing:B --> T:customer
+    %% Monitoring and Compliance
+    group monitoring(cloud)[Monitoring and Compliance]
+    service incident_enforcement(server)[Incident and Enforcement API] in monitoring
+    service incident_enforcement_db(database)[Incident DB] in monitoring
+    service analytics_reporting(server)[Analytics and Reporting API] in monitoring
+    service analytics_reporting_db(database)[Analytics DB] in monitoring
+    service audit_trace(server)[Internal Audit and Event Trace API] in monitoring
+    service audit_trace_db(database)[Audit and Event Trace DB] in monitoring
     
-    %% Infrastructure and policy connections
-    parking_ops:L --> R:infra_mgmt
-    parking_ops:T --> B:policy_mgmt
-    ev_charging:T --> B:infra_mgmt
-    reservations:T --> B:infra_mgmt
-    parking_ops:T --> B:sys_config
     
-    %% External system connections
-    parking_ops:L --> R:ext_integrations
-    ev_charging:L --> R:ext_integrations
-    ext_integrations:R --> L:gate_systems
-    ext_integrations:R --> L:anpr_cameras
-    billing:R --> L:payment_gateways
+    %% Database connections for each service
+    parking_ops:B -- T:parking_ops_db
+    ev_charging:B -- T:ev_charging_db
+    reservations:B -- T:reservations_db
+    pricing:B -- T:pricing_db
+    billing:B -- T:billing_db
+    customer:B -- T:customer_db
+    vehicle:B -- T:vehicle_db
+    infra_mgmt:B -- T:infra_mgmt_db
+    policy_mgmt:B -- T:policy_mgmt_db
+    sys_config:B -- T:sys_config_db
+    staff_access:B -- T:staff_access_db
+    ext_integrations:B -- T:ext_integrations_db
+    incident_enforcement:B -- T:incident_enforcement_db
+    analytics_reporting:B -- T:analytics_reporting_db
+    audit_trace:B -- T:audit_trace_db
+    event_bus:R -- L:event_bus_db
     
-    %% Staff access connections
-    parking_ops:T --> B:staff_access
-    incident_enforcement:T --> B:staff_access
+    %% Core operational flow - simplified connections for better layout
+    parking_ops:R -- L:pricing
+    pricing:R -- L:billing
+    parking_ops:T -- B:reservations
+    ev_charging:T -- B:pricing
+    reservations:T -- B:pricing
     
-    %% Event bus connections representing event-driven communication
-    parking_ops:B --> T:event_bus
-    ev_charging:B --> T:event_bus
-    reservations:B --> T:event_bus
-    customer:B --> T:event_bus
-    vehicle:B --> T:event_bus
-    pricing:B --> T:event_bus
-    billing:B --> T:event_bus
-    infra_mgmt:B --> T:event_bus
-    incident_enforcement:B --> T:event_bus
+    %% Customer and vehicle data access - horizontal layout
+    parking_ops:L -- R:customer
+    reservations:L -- R:vehicle
+    ev_charging:L -- R:customer
+    billing:L -- R:customer
     
-    %% Analytics and audit consuming from event bus
-    event_bus:R --> L:analytics_reporting
-    event_bus:R --> L:audit_trace
+    %% Infrastructure and policy dependencies - vertical layout
+    parking_ops:B -- T:infra_mgmt
+    ev_charging:B -- T:policy_mgmt
+    reservations:B -- T:sys_config
     
-    %% Incident management connections
-    parking_ops:R --> L:incident_enforcement
-    ev_charging:R --> L:incident_enforcement
+    %% External system integrations - right side layout
+    ext_integrations:R -- L:gate_systems
+    ext_integrations:T -- B:anpr_cameras
+    billing:R -- L:payment_gateways
+    parking_ops:R -- L:ext_integrations
+    ev_charging:R -- L:ext_integrations
+    
+    %% Staff access connections - distributed layout
+    infra_mgmt:L -- R:staff_access
+    policy_mgmt:L -- R:staff_access
+    incident_enforcement:L -- R:staff_access
+    
+    %% Event bus as central hub - star pattern
+    event_bus:T -- B:parking_ops
+    event_bus:T -- B:ev_charging
+    event_bus:T -- B:reservations
+    event_bus:L -- R:customer
+    event_bus:L -- R:vehicle
+    event_bus:R -- L:pricing
+    event_bus:R -- L:billing
+    event_bus:B -- T:infra_mgmt
+    event_bus:B -- T:policy_mgmt
+    event_bus:B -- T:sys_config
+    event_bus:B -- T:staff_access
+    event_bus:B -- T:ext_integrations
+    event_bus:R -- L:incident_enforcement
+    event_bus:R -- L:analytics_reporting
+    event_bus:R -- L:audit_trace
