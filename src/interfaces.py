@@ -48,61 +48,61 @@ class ParkingLotInterface(ABC):
     
     @abstractmethod
     def park_vehicle(self, level: int, vehicle: Vehicle) -> Optional[int]:
-        """Park a vehicle in the lot
-        
+        """Parks a vehicle at the specified level.
+
         Args:
-            level: The level to park in
-            vehicle: The vehicle to park
-            
+            level: The level number where the vehicle should be parked.
+            vehicle: The vehicle object to park.
+
         Returns:
-            The slot number where the vehicle was parked, or None if parking failed
+            The slot number where the vehicle was parked, or None if parking failed.
         """
         pass
     
     @abstractmethod
     def remove_vehicle(self, level: int, slot: int) -> Optional[Vehicle]:
-        """Remove a vehicle from the lot
-        
+        """Removes a vehicle from the specified level and slot.
+
         Args:
-            level: The level to remove from
-            slot: The slot to remove from
-            
+            level: The level number from which to remove the vehicle.
+            slot: The slot number from which to remove the vehicle.
+
         Returns:
-            The removed vehicle, or None if no vehicle was found
+            The vehicle object that was removed, or None if no vehicle was found.
         """
         pass
     
     @abstractmethod
     def get_status(self) -> List[ParkingLevelData]:
-        """Get the status of all levels in the lot
-        
+        """Gets the current status of all levels in the parking lot.
+
         Returns:
-            List of level data
+            A list of ParkingLevelData objects representing the status of each level.
         """
         pass
     
     @abstractmethod
     def get_vehicle(self, level: int, slot: int) -> Optional[Vehicle]:
-        """Get a vehicle from the lot
-        
+        """Retrieves the vehicle parked at the specified level and slot.
+
         Args:
-            level: The level to get from
-            slot: The slot to get from
-            
+            level: The level number.
+            slot: The slot number.
+
         Returns:
-            The vehicle in the slot, or None if no vehicle is present
+            The vehicle object if found, otherwise None.
         """
         pass
 
     @abstractmethod
     def get_vehicles_in_lot(self, level: int) -> Dict[int, Vehicle]:
-        """Get all vehicles in a specific level
-        
+        """Gets all vehicles parked on a specific level.
+
         Args:
-            level: The level to get vehicles from
-            
+            level: The level number.
+
         Returns:
-            Dictionary mapping slot numbers to vehicles
+            A dictionary mapping slot numbers to Vehicle objects for the specified level.
         """
         pass
 
@@ -111,105 +111,105 @@ class ParkingLotManager(ABC):
     
     @abstractmethod
     def create_lot(self, data: ParkingLotData) -> bool:
-        """Create a new parking lot
-        
+        """Creates a new parking lot.
+
         Args:
-            data: The parking lot data
-            
+            data: ParkingLotData object containing the configuration for the new lot.
+
         Returns:
-            True if the lot was created successfully
+            True if the lot was created successfully, False otherwise.
         """
         pass
     
     @abstractmethod
     def park_vehicle(self, lot_name: str, level: int, data: VehicleData) -> Optional[int]:
-        """Park a vehicle in a lot
-        
+        """Parks a vehicle in the specified parking lot and level.
+
         Args:
-            lot_name: The name of the lot
-            level: The level to park in
-            data: The vehicle data
-            
+            lot_name: The name of the parking lot.
+            level: The level number to park the vehicle on.
+            data: VehicleData object for the vehicle to be parked.
+
         Returns:
-            The slot number where the vehicle was parked, or None if parking failed
+            The slot number where the vehicle was parked, or None if parking failed.
         """
         pass
     
     @abstractmethod
     def remove_vehicle(self, lot_name: str, level: int, slot: int) -> Optional[Vehicle]:
-        """Remove a vehicle from a lot
-        
+        """Removes a vehicle from the specified parking lot, level, and slot.
+
         Args:
-            lot_name: The name of the lot
-            level: The level to remove from
-            slot: The slot to remove from
-            
+            lot_name: The name of the parking lot.
+            level: The level number.
+            slot: The slot number.
+
         Returns:
-            The removed vehicle, or None if no vehicle was found
+            The removed Vehicle object, or None if no vehicle was found.
         """
         pass
     
     @abstractmethod
     def search_vehicles(self, lot_name: str, criteria: SearchCriteria) -> List[SearchResult]:
-        """Search for vehicles matching criteria in a specific lot
-        
+        """Searches for vehicles in a parking lot based on given criteria.
+
         Args:
-            lot_name: The name of the lot to search in
-            criteria: The search criteria
-            
+            lot_name: The name of the parking lot to search within.
+            criteria: SearchCriteria object specifying the search parameters.
+
         Returns:
-            List of search results
+            A list of SearchResult objects matching the criteria.
         """
         pass
     
     @abstractmethod
     def get_lot_status(self, lot_name: str) -> List[ParkingLevelData]:
-        """Get the status of a lot
-        
+        """Gets the current status of a specific parking lot.
+
         Args:
-            lot_name: The name of the lot
-            
+            lot_name: The name of the parking lot.
+
         Returns:
-            List of level data
+            A list of ParkingLevelData objects for the specified lot.
         """
         pass
     
     @abstractmethod
     def get_lot_names(self) -> List[str]:
-        """Get the names of all lots
-        
+        """Gets the names of all available parking lots.
+
         Returns:
-            List of lot names
+            A list of parking lot names.
         """
         pass
     
     @abstractmethod
     def register_observer(self, observer: ParkingLotObserver) -> None:
-        """Register an observer
-        
+        """Registers an observer to receive updates about parking lot events.
+
         Args:
-            observer: The observer to register
+            observer: The ParkingLotObserver instance to register.
         """
         pass
     
     @abstractmethod
     def remove_observer(self, observer: ParkingLotObserver) -> None:
-        """Remove an observer
-        
+        """Removes a previously registered observer.
+
         Args:
-            observer: The observer to remove
+            observer: The ParkingLotObserver instance to remove.
         """
         pass
 
     @abstractmethod
     def get_vehicles_in_lot(self, lot_name: str, level: int) -> Dict[int, Vehicle]:
-        """Get all vehicles in a specific lot and level
-        
+        """Gets all vehicles parked on a specific level of a specific lot.
+
         Args:
-            lot_name: The name of the lot
-            level: The level to get vehicles from
-            
+            lot_name: The name of the parking lot.
+            level: The level number.
+
         Returns:
-            Dictionary mapping slot numbers to vehicles
+            A dictionary mapping slot numbers to Vehicle objects for the specified level and lot.
         """
         pass
