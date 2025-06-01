@@ -1,0 +1,258 @@
+classDiagram
+    class Customer {
+        <<Aggregate Root>>
+        +CustomerId customer_id
+        +CustomerProfile profile
+        +CustomerType customer_type
+        +List~VehicleLink~ linked_vehicles
+        +List~PaymentMethodTokenVO~ payment_method_tokens // Stores tokens, not actual card details
+        +PassholderInfo passholder_details // Optional
+        +CommuterBenefitLink commuter_benefit_info // Optional
+        +AccountStatus account_status
+        +List~ValidationProgramId~ sponsored_validation_programs // For SponsoringBusiness type
+        +CommunicationPreferences communication_preferences
+        +AddressBook address_book // For business customers or frequent users
+        +register_new_customer(profile_details, customer_type)
+        +link_vehicle_to_customer(vehicle_registration, is_primary)
+        +unlink_vehicle_from_customer(vehicle_registration)
+        +add_payment_method_token(payment_method_token_details)
+        +remove_payment_method_token(payment_method_token_id)
+        +update_profile(new_profile_details)
+        +enroll_as_passholder(pass_type, start_date, access_rules, validity_period)
+        +update_passholder_access_rules(pass_id, new_access_rules)
+        +link_commuter_benefit(benefit_details)
+        +deactivate_account(reason)
+        +reactivate_account()
+        +register_sponsoring_business(profile_details, contact_person_details)
+        +register_valet_provider_customer_profile(profile_details, operational_contact)
+        +add_sponsored_validation_program(validation_program_id)
+        +remove_sponsored_validation_program(validation_program_id)
+        +publish_customer_registered_event() DomainEvent
+        +publish_customer_profile_updated_event() DomainEvent
+        +publish_passholder_status_changed_event(customer_id, new_status, pass_details) DomainEvent
+        +publish_passholder_enrolled_event() DomainEvent
+        +publish_passholder_access_updated_event() DomainEvent
+        +publish_account_status_changed_event() DomainEvent
+    }
+
+    class CustomerId {
+        <<Value Object>>
+        +UUID id
+    }
+    class CustomerProfile {
+        <<Value Object>>
+        +String name // Or company_name + contact_person_name
+        +EmailAddress email
+        +PhoneNumber phone_number // Optional
+        +LanguageCode preferred_language
+        +Address primary_address // Optional
+    }
+    class CustomerType {
+        <<Enumeration>>
+        Individual
+        Business
+        Fleet // Sub-type of Business or distinct
+        Vendor
+        ValetProvider
+        SponsoringBusiness
+        Staff // Internal user with customer-like features
+    }
+
+    class VehicleLink {
+        <<Value Object>>
+        +VehicleRegistration vehicle_registration
+        +Boolean is_primary_vehicle
+        +String nickname // Optional, e.g., "My Sedan"
+        +DateTime link_date
+    }
+
+    class VehicleRegistration {
+        <<Value Object>>
+        +String plate_number
+        +String jurisdiction
+    }
+    class PaymentMethodTokenVO {
+        <<Value Object>>
+        +PaymentMethodTokenId payment_method_token_id
+        +String provider_token // Token from payment gateway
+        +String card_type_brand // e.g., Visa, Mastercard
+        +String last_four_digits
+        +String expiry_month_year // MM/YYYY
+        +Boolean is_default
+        +Address billing_address // Optional
+    }
+
+    class PaymentMethodTokenId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class PassholderInfo {
+        <<Value Object>>
+        +PassId pass_id
+        +PassType pass_type_name // e.g., Monthly_24_7
+        +Date start_date
+        +Date end_date // Optional, for fixed-term passes
+        +List~PassholderAccessRule~ access_rules
+        +PassholderStatus status
+    }
+
+    class PassId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class PassType {
+        <<Enumeration>>
+        Monthly_24_7
+        Monthly_BusinessHours
+        Annual_VIP
+        WeekendPass
+        NightOwlPass
+    }
+
+    class PassholderAccessRule {
+        <<Value Object>>
+        +RuleId rule_id
+        +List~DayOfWeekEnum~ applicable_days
+        +Time start_time // Time of day
+        +Time end_time // Time of day
+        +List~LotId~ applicable_lots // Optional, if pass is lot-specific
+        +Boolean applies_to_holidays
+    }
+
+    class RuleId {
+        <<Value Object>>
+        +UUID id
+    }
+
+    class DayOfWeekEnum {
+        <<Enumeration>>
+        Monday
+        Tuesday
+        Wednesday
+        Thursday
+        Friday
+        Saturday
+        Sunday
+    }
+
+    class Time {
+        <<Value Object>>
+        +String time_hh_mm // e.g., "09:00", "17:30"
+    }
+
+    class LotId { // Referenced by PassholderAccessRule
+        <<Value Object>>
+        +UUID id
+    }
+
+    class PassholderStatus {
+        <<Enumeration>>
+        Active
+        Expired
+        Suspended
+        Cancelled
+    }
+
+    class CommuterBenefitLink {
+        <<Value Object>>
+        +String benefit_provider_name
+        +String benefit_account_id
+        +BenefitType benefit_type
+        +Money monthly_allowance // Optional
+        +Boolean is_active
+    }
+
+    class BenefitType {
+        <<Enumeration>>
+        Parking
+        TransitAndParking
+        GeneralCommute
+    }
+
+    class AccountStatus {
+        <<Enumeration>>
+        Active
+        PendingVerification
+        Suspended_PaymentIssue
+        Suspended_AdminAction
+        Deactivated_ByUser
+        Closed
+    }
+
+    class ValidationProgramId { // From Policy Management
+        <<Value Object>>
+        +UUID id
+    }
+
+    class CommunicationPreferences {
+        <<Value Object>>
+        +Boolean receive_email_marketing
+        +Boolean receive_email_transactional
+        +Boolean receive_sms_notifications
+        +NotificationChannel preferred_channel_for_alerts
+    }
+
+    class NotificationChannel {
+        <<Enumeration>>
+        Email
+        SMS
+        InApp
+    }
+
+    class AddressBook {
+        <<Value Object>>
+        +List~AddressEntry~ addresses
+    }
+
+    class AddressEntry {
+        <<Value Object>>
+        +String label // e.g., "Work", "Head Office"
+        +Address address
+        +Boolean is_default_shipping
+        +Boolean is_default_billing
+    }
+
+    class Address {
+        <<Value Object>>
+        +String street_address_line1
+        +String street_address_line2 // Optional
+        +String city
+        +String state_province_region
+        +String postal_code
+        +String country_code
+    }
+
+    class EmailAddress {
+        <<Value Object>>
+        +String address
+        +Boolean is_verified
+    }
+
+    class PhoneNumber {
+        <<Value Object>>
+        +String number
+        +Boolean is_verified
+    }
+
+    class LanguageCode {
+        <<Value Object>>
+        +String code // e.g., "en-US", "es-MX"
+    }
+
+    class Money { // Referenced by CommuterBenefitLink
+        <<Value Object>>
+        +Decimal amount
+        +String currency_code
+    }
+
+    Customer "1" *-- "1" CustomerId : has
+    Customer "1" *-- "1" CustomerProfile : has_profile
+    Customer "1" *-- "0..*" VehicleLink : links_vehicles
+    Customer "1" *-- "0..*" PaymentMethodTokenVO : has_payment_tokens
+    Customer "1" -- "0..1" PassholderInfo : has_pass
+    Customer "1" -- "0..1" CommuterBenefitLink : has_benefit_link
+    Customer "1" *-- "0..*" ValidationProgramId : sponsors_programs
+
+    note for Customer "Manages customer identities, profiles, vehicles, payment tokens, and passholder status."

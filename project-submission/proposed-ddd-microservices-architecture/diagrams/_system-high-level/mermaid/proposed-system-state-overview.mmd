@@ -1,0 +1,97 @@
+stateDiagram-v2
+    [*] --> SystemOperational : All microservices healthy
+
+    SystemOperational --> ReservationFlow : Customer makes reservation
+    SystemOperational --> DirectEntry : Vehicle enters without reservation
+    SystemOperational --> Degraded : System issues detected
+
+    ReservationFlow --> VisitActive : Vehicle arrives, reservation fulfilled
+    ReservationFlow --> ReservationCancelled : Reservation cancelled/expired
+    ReservationFlow --> ReservationMismatch : Arrival doesn't match reservation
+
+    DirectEntry --> VisitActive : Vehicle entry processed
+    DirectEntry --> EntryBlocked : Entry denied (policy, capacity, etc.)
+
+    VisitActive --> ChargingActive : EV begins charging session
+    VisitActive --> VisitComplete : Vehicle exits, no charging
+    VisitActive --> IncidentReported : Issue occurs during visit
+
+    ChargingActive --> ChargingIdle : Charging complete, vehicle still connected
+    ChargingActive --> VisitComplete : Charging complete, vehicle exits
+    ChargingActive --> ChargingFaulted : Charger or charging fault
+
+    ChargingIdle --> VisitComplete : Vehicle finally exits
+    ChargingIdle --> ChargingActive : Charging resumes
+
+    ChargingFaulted --> VisitActive : Fault resolved, charging ends
+    ChargingFaulted --> VisitComplete : Vehicle exits despite fault
+
+    VisitComplete --> BillingSettlement : Pricing and payment processing
+    BillingSettlement --> Completed : Payment successful
+    BillingSettlement --> BillingIssue : Payment failed or disputed
+
+    IncidentReported --> VisitActive : Incident resolved, visit continues
+    IncidentReported --> VisitComplete : Incident forces visit termination
+    IncidentReported --> Escalated : Incident requires escalation
+
+    Degraded --> SystemOperational : Issues resolved
+    Degraded --> MaintenanceMode : Degradation requires maintenance
+    Degraded --> EmergencyMode : Critical system failure
+
+    ReservationCancelled --> SystemOperational : System ready for next operation
+    ReservationMismatch --> VisitActive : Mismatch resolved
+    ReservationMismatch --> ReservationCancelled : Mismatch unresolvable
+    EntryBlocked --> SystemOperational : Entry issue resolved
+
+    BillingIssue --> Completed : Billing issue resolved
+    BillingIssue --> ManualIntervention : Requires staff action
+
+    Escalated --> VisitComplete : Escalated incident resolved
+    Escalated --> ManualIntervention : Requires administrative action
+
+    MaintenanceMode --> SystemOperational : Maintenance complete
+    MaintenanceMode --> Degraded : Partial restoration
+
+    EmergencyMode --> MaintenanceMode : Emergency contained
+    EmergencyMode --> SystemOperational : Emergency fully resolved
+
+    ManualIntervention --> Completed : Staff resolves issue
+    ManualIntervention --> SystemOperational : Issue resolved, system ready
+
+    Completed --> [*]
+
+    note right of VisitActive
+        Core operational state where vehicle
+        is actively using parking facilities.
+        Detailed in: visit_lifecycle_state_machine.mermaid
+        Includes: slot assignment, valet handoff,
+        validation, manual overrides, and conflicts.
+    end note
+    
+    note right of Degraded
+        System operating under FallbackPolicy.
+        Some microservices degraded but core
+        functionality maintained. Creates
+        VisitReconciliationJobs for data recovery.
+    end note
+    
+    note right of EmergencyMode
+        Critical failure requiring emergency
+        procedures. VisitLifecycleStateMachine
+        transitions to emergency mode. Gates may
+        open, evacuation protocols active.
+    end note
+    
+    note right of ChargingActive
+        EV charging session in progress.
+        Detailed in: ev_charging_session_state_machine.mermaid
+        Includes: authentication, monitoring, faults,
+        grace periods, and billing integration.
+    end note
+    
+    note right of BillingSettlement
+        Involves Pricing Service for charge
+        calculation and Billing Service for
+        payment processing. May include grace
+        period exemptions and validation redemptions.
+    end note

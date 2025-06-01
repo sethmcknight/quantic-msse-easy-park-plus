@@ -1,0 +1,102 @@
+---
+title: Easy Park Plus - Fallback Reconciliation Sequence Diagram (Proposed)
+---
+
+sequenceDiagram
+    title Fallback Mode and Visit Reconciliation Workflow
+    
+    participant ANPR as ANPR Camera
+    participant Gate as Entry Gate
+    participant POSvc as Parking Operations
+    participant PolMSvc as Policy Management
+    participant SCMSvc as System Configuration
+    participant Staff as Parking Staff
+    participant VCSvc as Vehicle Context
+    participant MB as Message Broker
+    participant AuditSvc as Audit & Event Trace
+    
+     Note over ANPR, AuditSvc: Fallback Mode and Visit Reconciliation Flow
+
+    %% System Degradation Detection
+    rect rgb(255, 235, 235)
+    Note over ANPR, AuditSvc: System Degradation & Fallback Activation
+    ANPR->>POSvc: ANPR Service Unavailable
+    POSvc->>SCMSvc: GetSystemHealthStatus()
+    SCMSvc-->>POSvc: SystemDegraded(componentFailures)
+    POSvc->>PolMSvc: GetFallbackPolicy(systemState, lotId)
+    PolMSvc-->>POSvc: FallbackPolicy(minimalDataCollection, emergencyProcedures)
+    POSvc->>POSvc: activate_fallback_mode(fallback_policy)
+    POSvc-->>MB: Publish(FallbackModeActivated)
+    AuditSvc->>MB: Consume(FallbackModeActivated)
+    end
+    
+    %% Vehicle Entry Under Fallback
+    rect rgb(255, 245, 230)
+    Note over Gate, AuditSvc: Vehicle Entry with Minimal Data Collection
+    Gate->>POSvc: VehicleDetectedAtGate(gateId, timestamp)
+    Note over POSvc: No ANPR data available
+    POSvc->>POSvc: start_visit(unknown_registration, fallback_entry_details, estimated_category, active_fallback_policy)
+    POSvc->>POSvc: create_fallback_log(original_event_data, fallback_policy_applied_id)
+    POSvc->>POSvc: create_reconciliation_job(visit_id, missing_data_types)
+    POSvc-->>Gate: OpenGate(emergencyMode)
+    POSvc-->>MB: Publish(VisitStartedUnderFallback)
+    AuditSvc->>MB: Consume(VisitStartedUnderFallback)
+    end
+    
+    %% System Recovery Notification
+    rect rgb(240, 255, 240)
+    Note over ANPR, Staff: System Recovery & Reconciliation Trigger
+    ANPR->>POSvc: ANPR Service Restored
+    POSvc->>SCMSvc: GetSystemHealthStatus()
+    SCMSvc-->>POSvc: SystemOperational(allComponentsHealthy)
+    POSvc->>POSvc: deactivate_fallback_mode()
+    POSvc-->>MB: Publish(SystemRecovered)
+    POSvc->>POSvc: trigger_reconciliation_jobs()
+    POSvc-->>Staff: Notify(ReconciliationJobsAvailable)
+    end
+    
+    %% Visit Reconciliation Process
+    rect rgb(245, 245, 255)
+    Note over Staff, AuditSvc: Manual Visit Reconciliation
+    Staff->>POSvc: ReviewReconciliationJob(job_id)
+    POSvc-->>Staff: FallbackVisitDetails(visit_id, missing_data, estimated_data)
+    
+    alt License Plate Identified
+        Staff->>POSvc: UpdateVisitWithPlate(visit_id, actual_registration)
+        POSvc->>VCSvc: GetVehicleDetails(actual_registration)
+        VCSvc-->>POSvc: VehicleDetails(category, customer_info)
+        POSvc->>POSvc: update_visit_details(actual_vehicle_category, customer_links)
+        POSvc->>POSvc: recalculate_pricing_eligibility()
+    else License Plate Unknown
+        Staff->>POSvc: MarkAsUnidentifiable(visit_id, reason)
+        POSvc->>POSvc: apply_standard_anonymous_pricing()
+    end
+    
+    POSvc->>POSvc: mark_reconciliation_complete(job_id, resolution_method)
+    POSvc-->>Staff: ReconciliationCompleted(visit_id)
+    POSvc-->>MB: Publish(VisitReconciled)
+    AuditSvc->>MB: Consume(VisitReconciled)
+    end
+    
+    %% Escalation for Complex Cases
+    rect rgb(255, 240, 240)
+    Note over Staff, AuditSvc: Escalation for Unresolvable Cases
+    alt Reconciliation Failed
+        Staff->>POSvc: EscalateReconciliation(job_id, escalation_reason)
+        POSvc->>POSvc: mark_reconciliation_escalated(job_id)
+        POSvc-->>Staff: NotifyManager(escalated_reconciliation)
+        POSvc-->>MB: Publish(ReconciliationEscalated)
+        AuditSvc->>MB: Consume(ReconciliationEscalated)
+    end
+    end
+    
+    %% Audit Trail Completion
+    rect rgb(230, 255, 230)
+    Note over POSvc, AuditSvc: Complete Audit Trail
+    POSvc-->>MB: Publish(FallbackReconciliationWorkflowCompleted)
+    AuditSvc->>MB: Consume(FallbackReconciliationWorkflowCompleted)
+    AuditSvc->>AuditSvc: create_compliance_report(fallback_incident, resolution_summary)
+    end
+    
+    Note over ANPR, AuditSvc: This workflow ensures business continuity during system degradation while maintaining data integrity through reconciliation processes.
+

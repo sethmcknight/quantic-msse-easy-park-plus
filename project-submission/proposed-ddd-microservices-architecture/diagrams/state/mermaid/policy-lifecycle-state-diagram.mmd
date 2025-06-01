@@ -1,0 +1,65 @@
+---
+title: Easy Park Plus - Policy Lifecycle State Diagram (Proposed)
+---
+
+stateDiagram-v2
+    [*] --> Draft : Policy creation initiated
+
+    Draft --> UnderReview : Policy submitted for approval
+    Draft --> Deleted : Draft deleted before review
+
+    UnderReview --> Approved : Policy review passed
+    UnderReview --> Rejected : Policy review failed
+    UnderReview --> Draft : Returned for revision
+
+    Approved --> Active : Policy deployed and effective
+    Approved --> Deleted : Approved policy deleted before activation
+
+    Active --> Suspended : Policy temporarily disabled
+    Active --> Superseded : Replaced by newer version
+    Active --> Retired : Policy end-of-life
+
+    Suspended --> Active : Policy re-enabled
+    Suspended --> Retired : Suspended policy permanently disabled
+
+    Rejected --> Draft : Rejected policy revised
+    Rejected --> Deleted : Rejected policy abandoned
+
+    Superseded --> [*]
+    Retired --> [*]
+    Deleted --> [*]
+
+    note right of Active
+        Policy is live and being applied:
+        - GracePeriodPolicy
+        - FallbackPolicy
+        - EmergencyMode
+        - ValetServicePolicy
+        - EventWindow
+        - LotOperationalPolicy
+        Consumed by other microservices
+    end note
+    
+    note right of Suspended
+        Policy temporarily inactive:
+        - System maintenance
+        - Policy conflicts
+        - Emergency overrides
+        - Testing new policies
+    end note
+    
+    note right of Superseded
+        Policy replaced by newer version:
+        - Policy versioning
+        - Gradual rollout
+        - A/B testing scenarios
+        - Regulatory updates
+    end note
+    
+    note right of UnderReview
+        Policy approval workflow:
+        - Compliance review
+        - Impact assessment
+        - Stakeholder approval
+        - Technical validation
+    end note

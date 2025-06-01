@@ -1,0 +1,180 @@
+classDiagram
+    class IncidentReport {
+        <<aggregate_root>>
+        -IncidentId incident_id
+        -IncidentTypeEnum type
+        -String description
+        -IncidentStatusEnum status
+        -TimeStamp incident_timestamp
+        -VehicleRegistration vehicle_registration // Optional
+        -String location_details // E.g., LotID, SlotID, GateID
+        -String reported_by // E.g., StaffID, SystemService, CustomerID
+        -List~String~ evidence_urls // Links to photos, logs
+        +createIncident(type, description, timestamp, vehicle_registration, location, reported_by)
+        +updateStatus(newStatus)
+        +addEvidence(url)
+        +associateFault(faultId)
+        +publish_incident_created_event(incident_id, type, description, location_details)
+    }
+
+    class EquipmentFault {
+        <<aggregate_root>>
+        -FaultId fault_id
+        -String equipment_id_ref // ID of the equipment from Infrastructure/EV context
+        -EquipmentTypeEnum equipment_type
+        -TimeStamp reported_timestamp
+        -TimeStamp resolved_timestamp // Optional
+        -String description
+        -FaultStatusEnum status
+        -String reported_by_source // E.g., ServiceName, StaffID
+        +reportFault(equipment_id_ref, equipment_type, reported_timestamp, description, reported_by_source)
+        +updateStatus(newStatus)
+        +associateIncident(incidentId)
+        +publish_fault_resolved_event(fault_id, equipment_id_ref, equipment_type)
+        +publish_gate_fault_report_status_updated_event(fault_id, equipment_id_ref, status)
+        +publish_charger_fault_report_status_updated_event(fault_id, equipment_id_ref, status)
+    }
+
+    class EnforcementAction {
+        <<aggregate_root>>
+        -ActionId action_id
+        -EnforcementActionTypeEnum type
+        -EnforcementActionStatusEnum status
+        -TimeStamp creation_timestamp
+        -TimeStamp completion_timestamp // Optional
+        -String details // JSON or structured string for type-specific data (e.g., fine amount, tow company, repair notes)
+        -StaffId assigned_staff_id // Optional
+        -IncidentId source_incident_id // Optional: if action is for an incident
+        -FaultId source_fault_id       // Optional: if action is for a fault
+        -VehicleRegistration vehicle_registration // Optional: if action targets a vehicle
+        +createAction(type, details, staff_id, vehicle_registration, source_incident_id, source_fault_id)
+        +updateStatus(newStatus)
+        +assignToStaff(staff_id)
+        +publish_enforcement_action_taken_event(action_id, type, details)
+    }
+
+    class IncidentTypeEnum {
+        <<enumeration>>
+        ParkingViolation
+        UnauthorizedAccess
+        PropertyDamage
+        SafetyHazard
+        EquipmentMalfunction // An incident primarily about an equipment issue
+        SecurityBreach
+        CustomerComplaint
+        Other
+    }
+
+    class IncidentStatusEnum {
+        <<enumeration>>
+        Reported
+        UnderInvestigation
+        ActionPending
+        Resolved
+        Closed
+        Escalated
+    }
+
+    class EquipmentTypeEnum {
+        <<enumeration>>
+        Gate
+        EVCharger
+        Sensor
+        PaymentTerminal
+        NetworkDevice
+        ParkingMeter
+        OtherInfrastructure
+    }
+
+    class FaultStatusEnum {
+        <<enumeration>>
+        Reported
+        Diagnosing
+        RepairInProgress
+        AwaitingParts
+        Resolved
+        Unresolved_NeedsReplacement
+        Monitoring
+    }
+
+    class EnforcementActionTypeEnum {
+        <<enumeration>>
+        IssueWarning
+        IssueFine
+        BootVehicle
+        TowVehicle
+        DispatchTechnician // For equipment faults
+        NotifyAuthorities
+        BanCustomer
+        SystemAdjustment
+        Other
+    }
+
+    class EnforcementActionStatusEnum {
+        <<enumeration>>
+        PendingAuthorization
+        Scheduled
+        InProgress
+        Completed
+        Cancelled
+        Failed
+        RequiresFollowUp
+    }
+
+    class IncidentId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class FaultId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class ActionId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class StaffId {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class VehicleRegistration {
+        <<value_object>>
+        -String value
+        +toString() String
+    }
+
+    class TimeStamp {
+        <<value_object>>
+        -DateTime value
+        +toString() String
+    }
+
+    IncidentReport -- IncidentId : has_id
+    IncidentReport "1" -- "0..*" EnforcementAction : leads_to
+    EquipmentFault -- FaultId : has_id
+    EquipmentFault "1" -- "0..*" EnforcementAction : leads_to
+    EnforcementAction -- ActionId : has_id
+    EnforcementAction -- StaffId : assigned_to
+    EnforcementAction -- VehicleRegistration : targets
+    IncidentReport -- VehicleRegistration : involves
+    IncidentReport -- TimeStamp : occurred_at
+    EquipmentFault -- TimeStamp : reported_at
+
+    IncidentReport "0..*" -- "0..*" EquipmentFault : related_to
+
+    IncidentReport -- IncidentTypeEnum : has_type
+    IncidentReport -- IncidentStatusEnum : has_status
+
+    EquipmentFault -- EquipmentTypeEnum : for_equipment_type
+    EquipmentFault -- FaultStatusEnum : has_status
+
+    EnforcementAction -- EnforcementActionTypeEnum : has_type
+    EnforcementAction -- EnforcementActionStatusEnum : has_status
