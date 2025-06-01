@@ -3,7 +3,6 @@
 Test runner for the parking management system.
 
 This script runs all tests with proper GUI mocking to prevent hanging issues.
-It can be run from the project root directory.
 """
 
 import sys
@@ -60,13 +59,15 @@ def run_tests():
             
             if result.failures:
                 print(f"\nFailures ({len(result.failures)}):")
-                for test, traceback in result.failures:
-                    print(f"  - {test}")
+                for test, tb_text in result.failures: # Renamed traceback to tb_text
+                    print(f"  - Test: {test}")
+                    print(f"    Traceback:\\n{tb_text}") # Print the traceback
                     
             if result.errors:
                 print(f"\nErrors ({len(result.errors)}):")
-                for test, traceback in result.errors:
-                    print(f"  - {test}")
+                for test, tb_text in result.errors: # Renamed traceback to tb_text
+                    print(f"  - Test: {test}")
+                    print(f"    Traceback:\\n{tb_text}") # Print the traceback
             
             return 1
             
@@ -74,7 +75,7 @@ def run_tests():
         # Restore original working directory
         os.chdir(original_cwd)
 
-def run_specific_test(test_name):
+def run_specific_test(test_name: str): # Added type hint for test_name
     """Run a specific test class or module."""
     setup_test_environment()
     
