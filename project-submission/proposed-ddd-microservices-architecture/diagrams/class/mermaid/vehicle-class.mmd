@@ -1,0 +1,150 @@
+---
+title: Easy Park Plus - Vehicle Class Diagram (Proposed)
+---
+
+classDiagram
+    class Vehicle {
+        <<Aggregate Root>>
+        +VehicleId vehicleId
+        +VehicleRegistration registration
+        +VehicleDetails details
+        +ElectricVehicleCapability evCapability
+        +VehicleSystemStatus systemStatus
+        +CustomerLink customerLink
+        +LocationContext lastKnownLocation
+        +List~VehicleTag~ associatedTags
+        +List~OperationalNote~ operationalNotes
+        +registerNewVehicle(registration, details, evCapability_optional) Vehicle
+        +updateVehicleDetails(details_partial)
+        +updateEVChargingProfile(evCapability_partial)
+        +linkToCustomerAccount(customerId) CustomerLink
+        +updateSystemStatus(newStatus, reason_optional)
+        +recordLocationUpdate(locationContext)
+        +addOperationalNote(content, authorId, severity) OperationalNote
+        +publish_vehicle_registered_event() DomainEvent
+        +publish_vehicle_details_updated_event() DomainEvent
+        +publish_vehicle_ev_profile_updated_event() DomainEvent
+        +publish_vehicle_status_changed_event() DomainEvent
+        +publish_vehicle_customer_linked_event() DomainEvent
+    }
+
+    class VehicleId {
+        <<Value Object>>
+        +String id
+    }
+
+    class VehicleRegistration {
+        <<Value Object>>
+        +String plateNumber
+        +String stateOrRegion
+        +String countryCode
+        +Date expirationDate
+    }
+
+    class VehicleDetails {
+        <<Value Object>>
+        +String make
+        +String model
+        +Integer year
+        +String color
+        +String bodyStyle
+        +String VIN_optional
+    }
+
+    class ElectricVehicleCapability {
+        <<Value Object>>
+        +List~ConnectorType~ connectorType
+        +PositiveDecimal batteryCapacityKWh_optional
+        +PositiveDecimal maxChargingRateKW_optional
+        +EVChargingPreferences chargingPreferences_optional
+    }
+
+    class EVChargingPreferences {
+        <<Value Object>>
+        +List~ChargerType~ preferredChargerTypes
+        +Percentage minBatteryLevelForCharging
+        +Percentage targetBatteryLevel
+    }
+
+    class CustomerLink {
+        <<Value Object>>
+        +CustomerId customerId
+        +Timestamp linkTimestamp
+        +LinkStatusEnum linkStatus
+    }
+
+    class LocationContext {
+        <<Value Object>>
+        +LotId lotId_optional
+        +SlotId slotId_optional
+        +GPSCoordinates gpsCoordinates_optional
+        +Timestamp timestamp
+    }
+
+    class VehicleTag {
+        <<Value Object>>
+        +String tagName
+        +String tagValue
+        +UserId assignedBy
+        +Timestamp assignmentTimestamp
+    }
+
+    class OperationalNote {
+        <<Value Object>>
+        +NoteId noteId
+        +String content
+        +UserId authorId
+        +Timestamp creationTimestamp
+        +NoteSeverityEnum severity
+    }
+
+    class VehicleSystemStatus {
+        <<Enumeration>>
+        ACTIVE
+        INACTIVE
+        MAINTENANCE_REQUIRED
+        TOWED
+        STOLEN
+        UNKNOWN
+    }
+
+    class LinkStatusEnum {
+        <<Enumeration>>
+        PENDING_CONFIRMATION
+        ACTIVE
+        INACTIVE
+    }
+
+    class NoteSeverityEnum {
+        <<Enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+    }
+
+    %% Relationships
+    Vehicle "1" *-- "1" VehicleId : identifies
+    Vehicle "1" *-- "1" VehicleRegistration : has
+    Vehicle "1" *-- "1" VehicleDetails : describes
+    Vehicle "1" *-- "0..1" ElectricVehicleCapability : may have
+    Vehicle "1" *-- "1" VehicleSystemStatus : has status
+    Vehicle "1" *-- "0..1" CustomerLink : may link to
+    Vehicle "1" *-- "0..1" LocationContext : last known at
+    Vehicle "1" *-- "0..*" VehicleTag : can have
+    Vehicle "1" *-- "0..*" OperationalNote : can have
+    ElectricVehicleCapability "1" -- "0..1" EVChargingPreferences : defines
+
+    %% Notes
+    note for Vehicle "Manages all aspects of a vehicle's lifecycle and data within the system."
+    note for VehicleRegistration "Represents the legal registration details of a vehicle."
+    note for VehicleDetails "Contains physical and descriptive attributes of a vehicle."
+    note for ElectricVehicleCapability "Specific attributes for electric vehicles, including charging needs."
+    note for EVChargingPreferences "User-defined preferences for EV charging."
+    note for CustomerLink "Links a vehicle to a customer account."
+    note for LocationContext "Represents the last known location of the vehicle."
+    note for VehicleTag "Allows for arbitrary tagging of vehicles for various operational purposes."
+    note for OperationalNote "Records significant events or notes related to a vehicle's operation or status."
+    note for VehicleSystemStatus "Overall status of the vehicle within the Easy Park Plus system."
+    note for LinkStatusEnum "Status of the link between a vehicle and a customer account."
+    note for NoteSeverityEnum "Severity level for operational notes."

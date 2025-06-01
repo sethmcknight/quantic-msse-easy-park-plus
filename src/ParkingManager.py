@@ -542,6 +542,7 @@ class ParkingLotManagerImpl(ParkingLotManager):
 
 # Main App
 def main():
+    """Initializes and runs the parking lot application UI."""
     # Create UI
     from ParkingLotUI import ParkingLotUI
     ui = ParkingLotUI()  # No need to pass parking lot since it's created in __init__

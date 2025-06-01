@@ -1,0 +1,199 @@
+---
+title: Easy Park Plus - Valet Service Operations Sequence Diagram (Proposed)
+---
+
+sequenceDiagram
+    participant Customer
+    participant ValetSvc as Valet Service
+    participant ParkingOps as Parking Operations
+    participant Vehicle as Vehicle Service
+    participant Staff as Staff Service
+    participant Billing as Billing Service
+    participant EVCharging as EV Charging Service
+    participant Notification as Notification Service
+    participant Analytics as Analytics Service
+    
+    Note over Customer, Analytics: Valet Service Operations Flow
+
+    %% Valet Parking Request
+    rect rgb(230, 245, 255)
+    Note over Customer, ValetSvc: Valet Parking Request Phase
+    Customer->>+ValetSvc: Request valet parking
+    ValetSvc->>ValetSvc: Check valet service availability
+    
+    alt Valet Service Available
+        ValetSvc->>+Vehicle: Retrieve customer vehicle info
+        Vehicle-->>-ValetSvc: Vehicle details confirmed
+        
+        ValetSvc->>+ParkingOps: Check optimal parking zones
+        ParkingOps->>ParkingOps: Identify available premium spots
+        
+        alt Electric Vehicle
+            ParkingOps->>EVCharging: Check EV charging availability
+            EVCharging-->>ParkingOps: EV spots available
+            Note right of EVCharging: EV-specific considerations:<br/>- Charging port compatibility<br/>- Customer charging preferences<br/>- Battery level requirements
+        end
+        
+        ParkingOps-->>-ValetSvc: Optimal spot allocated
+        ValetSvc-->>Customer: Valet service confirmed
+        
+    else Valet Service Unavailable
+        ValetSvc-->>-Customer: Valet service temporarily unavailable
+        ValetSvc->>Customer: Offer self-parking alternatives
+    end
+    end
+
+    %% Vehicle Drop-off Process
+    rect rgb(255, 245, 230)
+    Note over Customer, Staff: Vehicle Drop-off Phase
+    Customer->>+ValetSvc: Arrive for vehicle drop-off
+    ValetSvc->>+Staff: Assign valet attendant
+    
+    Staff->>Staff: Conduct vehicle inspection
+    Note right of Staff: Pre-parking inspection:<br/>- Document existing damage<br/>- Check fuel/battery level<br/>- Verify vehicle identification<br/>- Take photos for record
+    
+    Staff->>+Vehicle: Update vehicle status
+    Vehicle->>Vehicle: Record inspection details
+    Vehicle-->>-Staff: Inspection logged
+    
+    alt Electric Vehicle Special Handling
+        Staff->>+EVCharging: Configure charging session
+        EVCharging->>EVCharging: Set customer charging preferences
+        Note right of EVCharging: EV Valet Rules:<br/>- Respect charging schedule<br/>- Monitor battery levels<br/>- Handle charging errors<br/>- Optimize charging cost
+        EVCharging-->>-Staff: Charging configured
+    end
+    
+    Staff->>Customer: Provide claim ticket
+    Staff->>+ParkingOps: Park vehicle in designated spot
+    
+    ParkingOps->>ParkingOps: Record parking location
+    ParkingOps->>Analytics: Log valet parking session
+    ParkingOps-->>-Staff: Vehicle parked successfully
+    
+    Staff-->>-ValetSvc: Drop-off complete
+    ValetSvc->>+Billing: Initialize valet billing session
+    Billing->>Billing: Apply valet service rates
+    Billing-->>-ValetSvc: Billing session started
+    
+    ValetSvc->>+Notification: Send drop-off confirmation
+    Notification->>Customer: SMS/email confirmation with claim details
+    Notification-->>-ValetSvc: Confirmation sent
+    
+    ValetSvc-->>-Customer: Valet drop-off complete
+    end
+
+    %% Vehicle Retrieval Request
+    rect rgb(240, 255, 240)
+    Note over Customer, Staff: Vehicle Retrieval Phase
+    Customer->>+ValetSvc: Request vehicle retrieval
+    ValetSvc->>ValetSvc: Validate claim ticket/code
+    
+    alt Valid Claim
+        ValetSvc->>+ParkingOps: Locate customer vehicle
+        ParkingOps->>ParkingOps: Retrieve parking location
+        ParkingOps-->>-ValetSvc: Vehicle location confirmed
+        
+        ValetSvc->>+Staff: Assign retrieval attendant
+        Staff->>Staff: Navigate to vehicle location
+        
+        alt Electric Vehicle Retrieval
+            Staff->>+EVCharging: Check charging status
+            
+            alt Charging in Progress
+                EVCharging->>EVCharging: Stop charging session safely
+                EVCharging->>Billing: Record charging consumption
+                Note right of EVCharging: Charging completion:<br/>- Safe disconnection<br/>- Store charging cable<br/>- Record energy delivered<br/>- Update billing
+            else Charging Complete
+                EVCharging->>EVCharging: Verify charging completion
+            end
+            
+            EVCharging-->>-Staff: EV ready for retrieval
+        end
+        
+        Staff->>Staff: Conduct exit inspection
+        Note right of Staff: Pre-return inspection:<br/>- Compare with drop-off photos<br/>- Check for new damage<br/>- Verify vehicle condition<br/>- Document any issues
+        
+        Staff->>+Vehicle: Update vehicle exit status
+        Vehicle-->>-Staff: Exit inspection logged
+        
+        Staff->>+ParkingOps: Retrieve vehicle to pickup area
+        ParkingOps->>ParkingOps: Update spot availability
+        ParkingOps->>Analytics: Log retrieval metrics
+        ParkingOps-->>-Staff: Vehicle at pickup location
+        
+        Staff-->>-ValetSvc: Vehicle ready for customer
+        
+        ValetSvc->>+Notification: Send retrieval ready notification
+        Notification->>Customer: Vehicle ready for pickup
+        Notification-->>-ValetSvc: Customer notified
+        
+    else Invalid Claim
+        ValetSvc-->>Customer: Invalid claim ticket - verification required
+    end
+    end
+
+    %% Customer Vehicle Pickup
+    rect rgb(255, 240, 255)
+    Note over Customer, Analytics: Vehicle Pickup & Payment
+    Customer->>+ValetSvc: Arrive for vehicle pickup
+    ValetSvc->>+Staff: Verify customer identity
+    Staff->>Staff: Confirm identity with claim ticket
+    
+    Staff->>Customer: Present vehicle and inspection report
+    Customer->>Customer: Inspect vehicle condition
+    
+    alt Customer Satisfied
+        Customer->>Staff: Accept vehicle condition
+        Staff->>+ParkingOps: Complete valet session
+        ParkingOps-->>-Staff: Session completed
+        
+        Staff->>+Billing: Finalize valet billing
+        Billing->>Billing: Calculate total charges
+        Note right of Billing: Valet charges include:<br/>- Base valet service fee<br/>- Parking duration charges<br/>- EV charging costs (if any)<br/>- Premium service surcharges
+        
+        Billing->>Customer: Present final bill
+        Customer->>Billing: Complete payment
+        Billing->>Analytics: Record valet revenue
+        Billing-->>-Staff: Payment confirmed
+        
+        Staff->>Customer: Return vehicle keys
+        Staff-->>-ValetSvc: Customer handoff complete
+        
+    else Customer Disputes Condition
+        Customer->>+Staff: Report vehicle damage concern
+        Staff->>Staff: Document dispute details
+        Staff->>ValetSvc: Escalate to valet manager
+        ValetSvc->>Analytics: Log service quality issue
+        Staff-->>-Customer: Dispute will be investigated
+    end
+    end
+
+    %% Post-Service Processing
+    rect rgb(235, 255, 235)
+    Note over ValetSvc, Analytics: Post-Service Analysis
+    ValetSvc->>+Analytics: Submit complete valet session data
+    
+    Analytics->>Analytics: Analyze valet service metrics
+    Note right of Analytics: Valet KPIs:<br/>- Average retrieval time<br/>- Customer satisfaction scores<br/>- Revenue per valet session<br/>- EV handling efficiency<br/>- Service quality incidents
+    
+    Analytics->>Analytics: Update valet performance dashboards
+    Analytics->>Staff: Provide performance feedback
+    
+    opt Customer Feedback Request
+        ValetSvc->>+Notification: Send feedback survey
+        Notification->>Customer: Valet service satisfaction survey
+        Notification-->>-ValetSvc: Survey sent
+    end
+    
+    Analytics-->>-ValetSvc: Analysis complete
+    end
+
+    %% Special EV Valet Handling (Highlighted)
+    rect rgb(220, 255, 220)
+    Note over EVCharging, Analytics: EV-Specific Valet Considerations
+    Note over EVCharging: Advanced EV Valet Features:<br/>- Intelligent charging scheduling<br/>- Battery optimization algorithms<br/>- Multi-standard connector support<br/>- Climate control management<br/>- Charging cost optimization<br/>- Integration with grid demand response
+    end
+
+    ValetSvc-->>-Customer: Valet service complete
+
+    Note over Customer, Analytics: Premium Valet Service Experience Delivered

@@ -1,0 +1,28 @@
+---
+title: Easy Park Plus - Staff & User Access Communication Diagram (Proposed)
+---
+
+graph TD
+    subgraph "Staff & User Access Service (SUS)"
+        SUS[(SUS)]
+    end
+
+    %% Services Called & Events Published by SUS
+    SUS -->|Provides: AuthN/AuthZ Checks| POS[Parking Operations Service]
+    SUS -->|Provides: AuthN/AuthZ Checks| IMS[Infrastructure Management Service]
+    SUS -->|Provides: AuthN/AuthZ Checks| PMS[Policy Management Service]
+    SUS -->|Provides: AuthN/AuthZ Checks| SCS[System Configuration Service]
+    SUS -->|Provides: AuthN/AuthZ Checks| IES[Incident & Enforcement Service]
+    SUS -->|Event: StaffUserCreated, RoleUpdated, PermissionChanged, StaffActionAudited| EventBroker[Event Broker]
+
+    %% General Event Publishing by SUS
+    EventBroker -->|StaffActionAudited| IAETS[Internal Audit & Event Trace Service]
+    EventBroker -->|StaffActivity| ARS[Analytics & Reporting Service]
+
+    %% External Interactions
+    AdminUI[Admin UIs / Staff Tools] -->|API: Login, Perform Action| SUS
+
+    classDef service fill:#lightyellow,stroke:#333,stroke-width:2px;
+    class SUS,POS,IMS,PMS,SCS,IES,IAETS,ARS service;
+    class EventBroker fill:#lightblue,stroke:#333,stroke-width:2px;
+    class AdminUI fill:#lightgreen,stroke:#333,stroke-width:2px;
