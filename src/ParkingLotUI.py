@@ -146,7 +146,7 @@ class MessageManager:
 
     def show_error(self, message: str):
         """Show error message"""
-        messagebox.showerror("Error", message)
+        messagebox.showerror("Error", message)  # type: ignore
 
 class ValidationManager:
     """Manages input validation"""
@@ -735,7 +735,7 @@ class ParkingLotUI(ParkingLotObserver):
                 ))
             
             # Switch to admin tab to show results
-            self.notebook.select(self.admin_tab)
+            self.notebook.select(self.admin_tab)  # type: ignore
             
         except Exception as e:
             logger.error(f"Error showing lots: {e}")
@@ -892,7 +892,7 @@ class ParkingLotUI(ParkingLotObserver):
         try:
             # Get all slots for the selected lot and level
             statuses = self.parking_manager.get_lot_status(lot_name)
-            occupied_slots = []
+            occupied_slots: List[str] = []
             
             for level_data in statuses:
                 if level_data.level == level:
